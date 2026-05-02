@@ -73,8 +73,10 @@ think of X"), use it as background and leave it out of the prose.
 
 3. **Pick image URLs.** Hotlink real images from stable sources where you can
    (Wikimedia Commons, the venue's own site, established tourism sites like
-   visitfinland.com or myhelsinki.fi). Prefer 3-5 gallery images plus a
-   thumbnail. Vary the angles — don't pick five photos of the same façade.
+   visitfinland.com or myhelsinki.fi). Aim for 3-5 gallery images plus a
+   thumbnail, up to ~10 if you find genuinely varied high-quality images
+   from stable sources. Vary the angles — don't pick five photos of the
+   same façade.
    If you can't find good images, set thumbnailUrl to a picsum placeholder
    (`https://picsum.photos/seed/<idea-slug>/1200/900`) and leave galleryUrls
    short — flag this in your summary so the user can replace them.
