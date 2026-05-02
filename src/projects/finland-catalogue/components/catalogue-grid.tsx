@@ -119,9 +119,11 @@ export function CatalogueGrid({
             {visibleIdeas.length === 0 ? (
               <EmptyState mode={mode} hasFilters={activeCount > 0} basePath={basePath} />
             ) : (
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="columns-1 gap-5 sm:columns-2 xl:columns-3">
                 {visibleIdeas.map((idea) => (
-                  <IdeaCard key={idea.slug} idea={idea} basePath={basePath} />
+                  <div key={idea.slug} className="mb-5 break-inside-avoid">
+                    <IdeaCard idea={idea} basePath={basePath} />
+                  </div>
                 ))}
               </div>
             )}

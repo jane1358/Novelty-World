@@ -27,7 +27,7 @@ const DURATION_LABELS: Record<Idea["duration"], string> = {
 
 function formatCost(cost: Idea["cost"]): string {
   if (cost.perPersonEur === 0) return "Free";
-  return `€${cost.perPersonEur}`;
+  return `${cost.perPersonEur}`;
 }
 
 /** Pick a glanceable icon for the months chip. Year-round = sun
@@ -98,17 +98,17 @@ export function IdeaCard({ idea, basePath }: { idea: Idea; basePath: string }) {
       href={`${basePath}/${idea.slug}`}
       className="group flex flex-col overflow-hidden rounded-lg border border-border-default bg-surface-secondary transition-colors hover:border-brand-pink"
     >
-      <div className="relative aspect-[4/3] w-full bg-surface-tertiary">
-        <HotlinkImage src={idea.thumbnailUrl} alt={idea.title} fit="cover" />
+      <div className="relative w-full bg-surface-tertiary">
+        <HotlinkImage src={idea.thumbnailUrl} alt={idea.title} fit="natural" />
         <StarButton slug={idea.slug} size="sm" className="absolute right-2 top-2" />
       </div>
 
       <div className="flex flex-1 flex-col gap-3 p-4">
         <div className="flex flex-col gap-1">
-          <h3 className="text-lg font-semibold leading-tight text-text-primary group-hover:text-brand-pink">
+          <h3 className="line-clamp-2 min-h-[2lh] text-lg font-semibold leading-tight text-text-primary group-hover:text-brand-pink">
             {idea.title}
           </h3>
-          <p className="line-clamp-2 text-sm text-text-secondary">
+          <p className="line-clamp-2 min-h-[2lh] text-sm text-text-secondary">
             {idea.shortDescription}
           </p>
         </div>

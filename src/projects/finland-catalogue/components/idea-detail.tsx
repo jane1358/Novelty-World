@@ -178,7 +178,7 @@ export function IdeaDetail({ idea, basePath }: { idea: Idea; basePath: string })
               <div className="font-medium">
                 {idea.cost.perPersonEur === 0
                   ? "Free"
-                  : `€${idea.cost.perPersonEur}`}
+                  : idea.cost.perPersonEur}
               </div>
               {idea.cost.notes && (
                 <div className="mt-1 text-text-secondary">{idea.cost.notes}</div>
