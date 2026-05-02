@@ -101,6 +101,7 @@ export function CatalogueGrid({
               className={cn(
                 "rounded-lg border border-border-default bg-surface-secondary p-5",
                 "mt-3 lg:mt-0",
+                "lg:sticky lg:top-8 lg:max-h-[calc(100vh-4rem)] lg:overflow-y-auto",
                 mobilePanelOpen ? "block" : "hidden lg:block",
               )}
             >

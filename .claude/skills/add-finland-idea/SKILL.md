@@ -154,27 +154,30 @@ Highlights worth restating:
 
 ## Tag and region policy
 
-Tags and `location.region` both pull from canonical vocabularies defined
-in `src/projects/finland-catalogue/filters.ts` (`KNOWN_TAGS` and
-`KNOWN_REGIONS`). The filter UI renders every value in those lists as
-a chip, whether or not any current idea uses it.
+Tags and `location.region` are derived dynamically from `IDEAS` — the
+filter UI renders one chip per unique value, so adding a new tag or
+region to an idea makes its chip appear automatically. The catalogue is
+the source of truth; there is no separate canonical list to update.
 
-**Tags** — current canonical list: **`'food'`**. Apply it to cafes,
-restaurants, food markets, and food-focused experiences (food tours,
-cooking classes). For everything else leave `tags` as `[]`.
+**Reuse existing values where they fit.** Read `ideas.ts` first and
+prefer an existing tag or region over a near-duplicate (`"Helsinki"`
+not `"Helsinki, Finland"`; `"food"` not `"foods"` or `"culinary"`).
+Typos and casing variations create duplicate filter chips.
 
-**Regions** — current canonical list: **`Helsinki`**. Pick it for any
-Helsinki-area idea, including satellite cities reachable as day trips
-(Espoo, Vantaa, Porvoo) — put the actual location in `address` and
-`accessFromHelsinki.notes`. For an idea outside the Helsinki area,
-suggest a new region in your summary; do NOT silently add an entry with
-a non-canonical region.
+**Tags** — short freeform labels for grouping. Currently used: **`'food'`**
+(cafes, restaurants, food markets, food experiences). Add a new tag only
+when at least two ideas would share it; one-off tags clutter the filter.
+For ideas that don't fit any existing tag, leave `tags` as `[]`.
 
-**Do not invent new tags or regions and apply them silently.** If a new
-idea would form a clear grouping with multiple existing entries — three
-sauna-focused ideas, two Turku ideas — suggest the new tag/region in
-your summary. List existing entries that would share it, and let the
-user decide whether to add it to `KNOWN_TAGS` / `KNOWN_REGIONS`.
+**Regions** — broad geographic groupings. Currently used: **`Helsinki`,
+`Turku`**. Pick the existing region for any idea reachable from it as
+the natural base — including satellite cities (Espoo, Vantaa, Porvoo
+sit under `Helsinki`; Naantali sits under `Turku`) — with specifics in
+`address` and `accessFromHelsinki.notes`. Introduce a new region only
+when an idea genuinely doesn't belong in any existing one.
+
+In your summary, call out any new tag or region you introduced so the
+user can sanity-check it.
 
 ## After writing
 
@@ -185,8 +188,9 @@ user decide whether to add it to `KNOWN_TAGS` / `KNOWN_REGIONS`.
    review the diff before committing.
 3. If you used picsum placeholders for any images, call that out clearly
    so the user can replace them.
-4. If you considered suggesting a new tag, state the suggestion and the
-   ideas that would share it.
+4. If you introduced a new tag or region, state it in your summary so
+   the user can sanity-check that it's worth keeping (vs. folding into
+   an existing one).
 
 ## Output expectations
 

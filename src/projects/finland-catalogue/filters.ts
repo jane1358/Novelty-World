@@ -1,3 +1,4 @@
+import { IDEAS } from "./ideas";
 import type { Idea } from "./types";
 
 export type CostBucket = "free" | "under-30" | "under-100" | "over-100";
@@ -27,15 +28,18 @@ export const EMPTY_FILTERS: Filters = {
   tags: [],
 };
 
-/** Canonical tag vocabulary. The filter renders every value here as a chip,
- *  whether or not any current idea uses it. Grow this list when the
- *  add-finland-idea skill flags a clear new grouping. */
-export const KNOWN_TAGS: readonly string[] = ["food"] as const;
+/** Tag vocabulary, derived from whatever values appear in IDEAS. The filter
+ *  renders one chip per unique tag — adding a new tag to an idea makes its
+ *  chip appear automatically. The catalogue is the source of truth. */
+export const KNOWN_TAGS: readonly string[] = [
+  ...new Set(IDEAS.flatMap((i) => i.tags)),
+].sort();
 
-/** Canonical region vocabulary. Same policy as KNOWN_TAGS — the filter
- *  always renders these, and new regions get added when an idea genuinely
- *  needs one. */
-export const KNOWN_REGIONS: readonly string[] = ["Helsinki"] as const;
+/** Region vocabulary, derived from whatever values appear in IDEAS. Same
+ *  pattern as KNOWN_TAGS — adding a new region to an idea grows the list. */
+export const KNOWN_REGIONS: readonly string[] = [
+  ...new Set(IDEAS.map((i) => i.location.region)),
+].sort();
 
 export function bucketCost(eur: number): CostBucket {
   if (eur === 0) return "free";
