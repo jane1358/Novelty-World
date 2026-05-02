@@ -3,6 +3,7 @@ import type { Idea } from "./types";
 export type CostBucket = "free" | "under-30" | "under-100" | "over-100";
 export type AccessComplexity = Idea["accessFromHelsinki"]["complexity"];
 export type Duration = Idea["duration"];
+export type IndoorOutdoor = Idea["indoorOutdoor"];
 
 export interface Filters {
   /** Months (1-12) the user is interested in. An idea matches if its
@@ -12,6 +13,7 @@ export interface Filters {
   costs: CostBucket[];
   durations: Duration[];
   access: AccessComplexity[];
+  indoorOutdoor: IndoorOutdoor[];
   tags: string[];
 }
 
@@ -21,6 +23,7 @@ export const EMPTY_FILTERS: Filters = {
   costs: [],
   durations: [],
   access: [],
+  indoorOutdoor: [],
   tags: [],
 };
 
@@ -70,6 +73,10 @@ export function applyFilters(ideas: Idea[], filters: Filters): Idea[] {
       }
     }
 
+    if (filters.indoorOutdoor.length > 0) {
+      if (!filters.indoorOutdoor.includes(idea.indoorOutdoor)) return false;
+    }
+
     if (filters.tags.length > 0) {
       const hasAny = filters.tags.some((t) => idea.tags.includes(t));
       if (!hasAny) return false;
@@ -86,6 +93,7 @@ export function countActive(filters: Filters): number {
     filters.costs.length +
     filters.durations.length +
     filters.access.length +
+    filters.indoorOutdoor.length +
     filters.tags.length
   );
 }

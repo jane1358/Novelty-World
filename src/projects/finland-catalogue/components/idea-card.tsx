@@ -1,7 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { Baby, Clock, Euro, Snowflake, Sun, Leaf, CalendarDays } from "lucide-react";
+import {
+  CalendarDays,
+  Clock,
+  Euro,
+  Home,
+  Leaf,
+  Shuffle,
+  Snowflake,
+  Sun,
+  Trees,
+} from "lucide-react";
 import type { Idea } from "../types";
 import { summarizeMonths } from "../months";
 import { HotlinkImage } from "./hotlink-image";
@@ -37,6 +47,22 @@ function MonthsChip({ months }: { months: number[] }) {
     <Chip>
       <MonthsIcon months={months} />
       {summarizeMonths(months)}
+    </Chip>
+  );
+}
+
+const INDOOR_OUTDOOR_LABELS: Record<Idea["indoorOutdoor"], string> = {
+  indoor: "Indoor",
+  outdoor: "Outdoor",
+  mixed: "Indoor + outdoor",
+};
+
+function IndoorOutdoorChip({ value }: { value: Idea["indoorOutdoor"] }) {
+  const Icon = value === "indoor" ? Home : value === "outdoor" ? Trees : Shuffle;
+  return (
+    <Chip>
+      <Icon size={13} />
+      {INDOOR_OUTDOOR_LABELS[value]}
     </Chip>
   );
 }
@@ -98,12 +124,7 @@ export function IdeaCard({ idea, basePath }: { idea: Idea; basePath: string }) {
           </Chip>
           <MonthsChip months={idea.availability.suitableMonths} />
           {events && events.length > 0 && <EventsChip events={events} />}
-          {idea.toddlerFriendly && (
-            <Chip>
-              <Baby size={13} />
-              Toddler-friendly
-            </Chip>
-          )}
+          <IndoorOutdoorChip value={idea.indoorOutdoor} />
         </div>
       </div>
     </Link>

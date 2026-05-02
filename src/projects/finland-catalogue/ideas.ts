@@ -51,9 +51,9 @@ export const IDEAS: Idea[] = [
       notes:
         "Walk-in. Recording studios, meeting rooms, and 3D-printer slots are also free but need to be reserved online in advance.",
     },
-    toddlerFriendly: true,
-    toddlerNotes:
-      "Dedicated children's section on the third floor with picture books, play areas, and family bathrooms. Stroller-friendly elevators throughout.",
+    suitableAgeRange: { min: 0 },
+    childrenNotes:
+      "Dedicated children's section on the third floor with picture books, play areas, and family bathrooms. Stroller-friendly elevators throughout — works for any age from babies upward.",
     indoorOutdoor: "indoor",
     physicalIntensity: "low",
     duration: "1-3h",

@@ -58,6 +58,18 @@ function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+function formatAgeRange(range: { min: number; max?: number }): string {
+  if (range.max === undefined) {
+    return range.min === 0 ? "All ages" : `Ages ${range.min}+`;
+  }
+  if (range.min === range.max) return `Age ${range.min}`;
+  return `Ages ${range.min}–${range.max}`;
+}
+
+function googleMapsUrl(query: string): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
+
 function MetaRow({
   icon,
   label,
@@ -133,9 +145,15 @@ export function IdeaDetail({ idea, basePath }: { idea: Idea; basePath: string })
             <MetaRow icon={<MapPin size={14} />} label="Location">
               <div>{idea.location.region}</div>
               {idea.location.address && (
-                <div className="mt-1 text-text-secondary">
+                <a
+                  href={googleMapsUrl(`${idea.title}, ${idea.location.address}`)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 inline-flex items-center gap-1 text-text-secondary underline-offset-2 transition-colors hover:text-brand-pink hover:underline"
+                >
                   {idea.location.address}
-                </div>
+                  <ExternalLink size={12} />
+                </a>
               )}
             </MetaRow>
 
@@ -216,12 +234,14 @@ export function IdeaDetail({ idea, basePath }: { idea: Idea; basePath: string })
               <div>{capitalize(idea.indoorOutdoor)}</div>
             </MetaRow>
 
-            <MetaRow icon={<Baby size={14} />} label="Toddler-friendly (ages 2-5)">
+            <MetaRow icon={<Baby size={14} />} label="Children-friendly">
               <div className="font-medium">
-                {idea.toddlerFriendly ? "Yes" : "No"}
+                {idea.suitableAgeRange
+                  ? formatAgeRange(idea.suitableAgeRange)
+                  : "Not recommended for kids"}
               </div>
-              {idea.toddlerNotes && (
-                <div className="mt-1 text-text-secondary">{idea.toddlerNotes}</div>
+              {idea.childrenNotes && (
+                <div className="mt-1 text-text-secondary">{idea.childrenNotes}</div>
               )}
             </MetaRow>
 

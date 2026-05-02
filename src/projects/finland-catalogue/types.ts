@@ -145,14 +145,21 @@ export interface Idea {
   cost: IdeaCost;
   booking: IdeaBooking;
 
-  /** True if a 2-5 year old can comfortably do this without the family
-   *  having to work around major obstacles. Fancy restaurants, intense
-   *  hikes, late-night events = false. A flat forest trail with a
-   *  playground = true. When unsure, err toward false and explain. */
-  toddlerFriendly: boolean;
-  /** Caveats either way. e.g. "Yes, but stroller-unfriendly trail —
-   *  bring a carrier", "No high chairs but kid-friendly menu". */
-  toddlerNotes?: string;
+  /** Ideal / suitable age range of children for this idea. Omit entirely
+   *  if the idea is not well-suited to children at all (fancy late-night
+   *  restaurants, serious multi-day hiking, adult-only saunas, bars).
+   *  When present, `min` is the youngest age that can comfortably enjoy
+   *  it; `max` is the oldest age that still finds it engaging — omit
+   *  `max` when there is no upper bound (libraries, museums, parks).
+   *  The presence of this object is itself the "children-friendly"
+   *  signal. When unsure, err toward omitting it and explain in
+   *  `childrenNotes`. */
+  suitableAgeRange?: { min: number; max?: number };
+  /** Caveats about visiting with kids — applies whether or not
+   *  `suitableAgeRange` is set. e.g. "Stroller-unfriendly trail — bring
+   *  a carrier", "No high chairs but kid-friendly menu", "Loud crowds
+   *  may overwhelm under-3s even though they're allowed". */
+  childrenNotes?: string;
 
   /** Where you'll spend most of your time. "mixed" if it genuinely splits
    *  (e.g. a sauna with outdoor pools, a museum with a courtyard). */

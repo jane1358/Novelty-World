@@ -7,6 +7,7 @@ import {
   type CostBucket,
   type Duration,
   type Filters,
+  type IndoorOutdoor,
   countActive,
   EMPTY_FILTERS,
   KNOWN_REGIONS,
@@ -33,6 +34,12 @@ const ACCESS_OPTIONS: { value: AccessComplexity; label: string }[] = [
   { value: "simple", label: "Simple" },
   { value: "moderate", label: "Moderate" },
   { value: "complex", label: "Complex" },
+];
+
+const INDOOR_OUTDOOR_OPTIONS: { value: IndoorOutdoor; label: string }[] = [
+  { value: "indoor", label: "Indoor" },
+  { value: "outdoor", label: "Outdoor" },
+  { value: "mixed", label: "Mixed" },
 ];
 
 function toggle<T>(arr: T[], value: T): T[] {
@@ -102,6 +109,15 @@ export function FilterPanel({ filters, onChange }: FilterPanelProps) {
         options={ACCESS_OPTIONS}
         selected={filters.access}
         onToggle={(v) => onChange({ ...filters, access: toggle(filters.access, v) })}
+      />
+
+      <ChipGroup
+        label="Indoor / outdoor"
+        options={INDOOR_OUTDOOR_OPTIONS}
+        selected={filters.indoorOutdoor}
+        onToggle={(v) =>
+          onChange({ ...filters, indoorOutdoor: toggle(filters.indoorOutdoor, v) })
+        }
       />
 
       <ChipGroup

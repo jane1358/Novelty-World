@@ -129,10 +129,21 @@ Highlights worth restating:
 - **booking.leadTime**: realistic horizon. `'months'` is for genuinely
   hard-to-get experiences (Christmas-week glass igloos, peak-season
   husky safaris) — don't over-use it.
-- **toddlerFriendly**: calibrated for ages 2-5. The question is *can a
-  family with a young child do this without major workarounds?* Late-night
-  events, intense hikes, fancy restaurants → false. When unsure, err
-  toward false and explain in toddlerNotes.
+- **suitableAgeRange**: an optional `{ min, max? }` object describing the
+  age window of children this idea suits. Omit it entirely if the idea is
+  not well-suited to children at all (late-night events, intense hikes,
+  fancy restaurants, adult-only saunas) — its absence IS the
+  "not-children-friendly" signal. When you do include it: `min` is the
+  youngest age that can comfortably enjoy it; omit `max` when there's no
+  upper bound (libraries, parks, most museums work for any age upward),
+  set it when the idea genuinely loses its appeal past a certain age (a
+  splash playground might cap at ~10). Use `min: 0` for things that work
+  with babies/strollers. When unsure, err toward omitting and explain in
+  `childrenNotes`.
+- **childrenNotes**: caveats for visiting with kids — applies whether or
+  not `suitableAgeRange` is set. e.g. "Stroller-unfriendly trail — bring
+  a carrier", "No high chairs but kid-friendly menu", "Loud crowds may
+  overwhelm under-3s even though they're allowed".
 - **physicalIntensity**: most museums, restaurants, ferries → `'low'`.
   Half-day walking tours, swimming, skating → `'moderate'`. Serious
   hiking, cross-country skiing, multi-hour active sport → `'high'`.
