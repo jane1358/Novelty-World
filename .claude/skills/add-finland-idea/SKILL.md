@@ -175,10 +175,33 @@ prefer an existing tag or region over a near-duplicate (`"Helsinki"`
 not `"Helsinki, Finland"`; `"food"` not `"foods"` or `"culinary"`).
 Typos and casing variations create duplicate filter chips.
 
-**Tags** — short freeform labels for grouping. Currently used: **`food`,
-`landmark`, `museum`, `historical`**. Add a new tag only when at least
-two ideas would share it; one-off tags clutter the filter. For ideas
-that don't fit any existing tag, leave `tags` as `[]`.
+**Tags** — short labels for grouping. The catalogue itself is the
+source of truth: tag names live in `ideas.ts`, and a tag's meaning is
+whatever it consistently describes across the entries that carry it.
+The skill tells you *how* to think about tags, not which ones exist.
+
+**Workflow when filling in tags:**
+
+1. **Survey first.** Before writing tags, scan every entry in
+   `ideas.ts` and note which tags each carries. To know what
+   `historical` means (or any other tag), look at every idea tagged
+   with it and infer the pattern from usage — not from the bare word.
+2. **Apply existing tags where they genuinely fit.** Match the new
+   idea against the *inferred meaning* of each existing tag. A
+   1900s-built sauna isn't `historical` if every other `historical`
+   idea has the history as the *draw*, not incidentally old.
+3. **After integrating, look for emergent patterns.** Adding an idea
+   isn't just a write — it's a chance to notice that the catalogue
+   now has, say, three nature-focused entries sharing a facet no
+   existing tag captures. If a new pattern would apply to ≥2 ideas
+   (the one being added plus at least one existing), introduce the
+   tag AND backfill it onto the existing entries it applies to.
+   One-off tags clutter the filter; a tag that retrofits onto
+   existing entries is earning its keep. If nothing fits and no new
+   pattern emerges, `tags: []` is fine.
+4. **Call it out in your summary.** Tags applied to the new idea,
+   any new tag introduced, and which existing entries you backfilled.
+   The user reviews the diff against the recap.
 
 **Regions** — geographic groupings. The filter UI renders one chip per
 unique region, so the granularity of these chips IS the planner's
