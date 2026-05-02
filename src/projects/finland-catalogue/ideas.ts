@@ -1237,4 +1237,343 @@ export const IDEAS: Idea[] = [
     website: "https://www.tallink.com/",
     tags: [],
   },
+  {
+    slug: "savonlinna",
+    title: "Savonlinna & Olavinlinna Castle",
+    shortDescription:
+      "A small lakeside town built on islands in the heart of Saimaa Lakeland, anchored by the 1475 Olavinlinna castle — a near-perfectly preserved three-tower medieval fortress that hosts the Savonlinna Opera Festival in its courtyard every July.",
+    longDescription: [
+      "Savonlinna sits on a chain of islands where the wide arms of Lake Saimaa narrow into a pair of fast-running straits — Kyrönsalmi and Haapasalmi. The town's name (\"Savo Castle\") refers to Olavinlinna, the medieval fortress founded in 1475 by Erik Axelsson Tott to defend Sweden's eastern border against Novgorod. It's the only Finnish medieval castle still standing largely as built — three round towers connected by curtain walls, perched directly on a rocky islet in the strait, with the lake lapping the foot of the bastions on both sides. The setting is the magic: from the bridge you walk across to enter, the castle reads as a stone ship moored in the lake.",
+      "Inside, the museum experience is straightforward: a self-guided route through the King's Hall, the chapel, the ramparts, and the bell tower; a small permanent exhibition on the castle's history; and guided tours in English and Finnish through the day. Allow two hours. The town itself is small — a 30-minute walk takes you past the cathedral, the Riihisaari lake-and-Saimaa-seal museum, the harbour with its old steamships, and the market square (Kauppatori) for a bowl of muikku (fried whitebait). It's an easy two-day trip: castle and town one day, a Lake Saimaa cruise the next.",
+      "The town's headline event is the Savonlinna Opera Festival (3 July – 1 August 2026), now in its second century. The covered courtyard becomes a 2,200-seat opera house under the medieval walls — the 2026 programme runs Madama Butterfly, Nabucco, The Marriage of Figaro, La Traviata, and concert performances of Norma with Lisette Oropesa. The acoustic and the setting (candlelit ramparts, cool lake air, the floodlit castle reflecting in Kyrönsalmi) genuinely is a one-off experience even for non-opera people. Tickets €70–230 depending on seat tier and night, on sale months ahead — premium nights sell out by spring.",
+      "From Helsinki the train takes ~4h 10m via VR (transfer at Parikkala onto a Pieksämäki connection), so this is comfortably a multi-day trip rather than a day excursion. Stay at the central Hotel Original Sokos Seurahuone (next to the market), or for atmosphere splurge on the SS Heinävesi or Punkaharju Resort 30 minutes south — Punkaharju's pine-ridge esker is the most-photographed landscape in Finland and is worth the detour if you have a spare half-day.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Olavinlinna_20180811.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Olavinlinna_(3).jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Olavinlinna_Olofsborg_courtyard_01.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Olavinlinna_Kingshall.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Church_tower_staircase_Olavinlinna.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Savonlinna_Opera_Festival_Canopy.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Kyrönsalmi_bridge_and_Olavinlinna.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Olofsborg_från_sjösidan.JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/SS_Saimaa_at_Olavinlinna.JPG",
+    ],
+    availability: {
+      suitableMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      events: [
+        {
+          from: "07-03",
+          to: "08-01",
+          name: "Savonlinna Opera Festival",
+        },
+      ],
+      weeklySchedule:
+        "Castle: Jan 2 – Apr 30 Tue–Fri 10:00–16:00, Sat–Sun 11:00–16:00 (closed Mondays). May daily 10:00–16:00. Jun–Sept daily 11:00–18:00. Oct 1 – Dec 15 Tue–Sun 10:00–16:00.",
+      notes:
+        "Year-round destination but the experience swings hard with the season. July is peak (opera festival, lake at its warmest, 19+ hours of daylight). Snowy lake-and-castle scenery in February is genuinely beautiful but most lake activities pause. Castle closed New Year, Easter, May Day, and 16–26 Dec.",
+    },
+    location: {
+      region: "Lakeland",
+      address: "Olavinkatu 27, 57130 Savonlinna",
+    },
+    accessFromHelsinki: {
+      complexity: "complex",
+      duration: "~4h 10m each way by train",
+      notes:
+        "VR train Helsinki → Parikkala (~3h) with a 5–10 min transfer onto the Parikkala → Savonlinna connecting train (~1h). About 11 services a day. Effectively a multi-day trip — a same-day return is not realistic. Driving (~4h) and the small Savonlinna airport (Finnair via Helsinki, seasonal) are alternatives.",
+    },
+    cost: {
+      perPersonEur: 15,
+      notes:
+        "Castle entry adults €15 (€10 advance/group/student/senior, €7 child 7–17, family ticket €35, under-7 free). Museum Card covered. Opera Festival tickets are separate: €70–230 per night, €40–60 for restricted-view seats; book months ahead via operafestival.fi.",
+    },
+    booking: {
+      leadTime: "weeks",
+      notes:
+        "Castle walk-in fine. Opera Festival tickets and Savonlinna hotels for July sell out 3–6 months ahead — book by March for opening-week premium nights. Outside opera season, hotels are easy a few days ahead.",
+    },
+    suitableAgeRange: { min: 5 },
+    childrenNotes:
+      "Castle interior has steep stone staircases and uneven thresholds — bring a carrier rather than a stroller for under-3s. Older kids enjoy the towers, dungeons, and the wooden bridge that swings out for boats. Opera evenings are not a kids' activity (long, late, formal-ish).",
+    indoorOutdoor: "mixed",
+    physicalIntensity: "moderate",
+    duration: "multi-day",
+    website: "https://www.kansallismuseo.fi/en/olavinlinna",
+    tags: ["museum", "landmark", "historical"],
+  },
+  {
+    slug: "cafe-regatta",
+    title: "Cafe Regatta",
+    shortDescription:
+      "A pocket-sized red wooden cottage on Taivallahti bay near the Sibelius Monument — order a cinnamon bun and coffee through the door, sit by the outdoor fire pit, and grill your own sausage on the always-lit grill.",
+    longDescription: [
+      "Cafe Regatta sits in a 1887 red-painted log cabin originally built as a fishnet shed for the Paulig coffee dynasty, on the Taivallahti bay shore a couple of minutes' walk from the Sibelius Monument. It's tiny — the inside is one cluttered room of mismatched chairs, vintage enamel signs, and old kitchen tools nailed to every available beam — so most of the seating is outside on the rocky shore, on benches around the always-burning fire pit, and at picnic tables looking out at the masts of the Töölö yacht club.",
+      "The pull is twofold: the building itself, which is the postcard image of cosy Finnish coffee culture, and the cinnamon buns (korvapuusti) — denser and less sweet than the Swedish version, baked through the day, and inexpensive enough that locals bring visitors here precisely because the bill never feels touristy. The other classics on the counter are blueberry pie (mustikkapiirakka), salmon soup, and rye-bread sandwiches. Order at the hatch, take a number, the staff bring it out.",
+      "The fire pit is the secret weapon — it's lit year-round, and the café sells sausages and skewers you can grill yourself over the embers. In winter you sit bundled with a hot glögi while snow lands on the lid of your cup; in summer the rocks are sunbathing-hot and the café's sub-brand SUP Regatta rents kayaks, SUPs, and rowing boats off the dock 5 metres away. There's no booking and no table service — at peak summer-Saturday hours the queue snakes back to the road, but the line moves fast.",
+      "From central Helsinki, walk along the Töölö coastal path (~25 min from the train station) or take tram 4 to Töölön halli and walk five minutes down. Combine with the Sibelius Monument (3 min walk), the Hietaniemi cemetery and beach (15 min walk south), or as a stop on the coastal bike loop.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Cafe_Regatta_in_Helsinki.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Cafe_Regatta_2018-1.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Café_Regatta_in_Helsinki,_Finland,_2022_October.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Café_Regatta_feb_2015.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/2018_January_in_Helsinki_(46315531434).jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Cafe_Regatta.jpg",
+    ],
+    availability: {
+      suitableMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      weeklySchedule: "Daily ~08:00–21:00 (slightly shorter in deepest winter).",
+      notes:
+        "Genuine year-round destination — the fire pit and cottage charm work just as well in February snow as in July sun. Lunchtime weekend queues in summer are heaviest 11:00–14:00.",
+    },
+    location: {
+      region: "Helsinki",
+      address: "Merikannontie 8, 00260 Helsinki",
+    },
+    accessFromHelsinki: {
+      complexity: "simple",
+      duration: "~15 min",
+      notes:
+        "Tram 4 from Helsinki Central Station to Töölön halli, then a 5-min walk down the slope to the bay. Or walk along the Töölö coastal path from the centre (~25 min). 2-min walk from the Sibelius Monument.",
+    },
+    cost: {
+      perPersonEur: 8,
+      notes:
+        "Coffee + cinnamon bun ~€7. Salmon soup ~€12. Sausage to grill ~€4. Cash and card. SUP/kayak rental from a separate counter (~€20/hour) in summer.",
+    },
+    booking: {
+      leadTime: "same-day",
+      notes:
+        "No bookings — walk-up only. At peak summer-Saturday hours the queue can be 20–30 minutes; weekday mornings are wide open.",
+    },
+    suitableAgeRange: { min: 0 },
+    childrenNotes:
+      "Kid-friendly in every sense — outdoor space, the fire pit (supervised), buns big enough to share, and rocks to scramble on. Stroller-friendly approach but the actual cafe interior is too small for one inside; park outside.",
+    indoorOutdoor: "outdoor",
+    physicalIntensity: "low",
+    duration: "<1h",
+    website: "https://www.caferegatta.fi/in-english",
+    tags: ["food"],
+  },
+  {
+    slug: "kasinonranta",
+    title: "Kasinonranta (Lauttasaari Beach)",
+    shortDescription:
+      "Helsinki's most central proper sand beach — a wide south-facing crescent on Lauttasaari with a beach café in a 1930s pavilion, a pier to jump off, and a children's playground, ten minutes by metro from the city centre.",
+    longDescription: [
+      "Kasinonranta (\"Casino Beach\", a nod to the 1930s seaside casino-restaurant that once stood here) sits on the south shore of Lauttasaari, a residential island five minutes by metro west of the city centre. It's the larger and livelier of Lauttasaari's two main beaches — a wide arc of soft sand, calm shallow water, a wooden pier with diving steps, and a backdrop of pine woods and rocky outcrops you can scramble up for a view back over the bay. Helsinki city lifeguards staff it during the official swimming season.",
+      "On a warm summer Saturday it's the obvious move: families spread blankets and parasols, teenagers cannonball off the pier, kiteboarders launch from the western end (it's one of the better Helsinki spots for it), and the beach volleyball and basketball courts behind the sand run all afternoon. Facilities are unusually complete for a Finnish city beach — proper changing cabins, showers, toilets, a children's playground with a big wooden climbing ship, and a kiosk for ice cream and beach essentials.",
+      "Lauttasaaren Paviljonki (also called Kahvila Kasinonranta or \"Kassari\") sits right on the sand — a wood-and-glass pavilion with a terrace facing the water and a fireplace inside for cooler days. The kitchen runs Nordic-leaning lunches and dinners, the terrace is a destination for sundowners on long July evenings, and they extend the season into autumn with covered heated outdoor seating. The Paseo café-sauna nearby serves the cold-water-swim-and-sauna ritual through winter when the beach itself is quiet.",
+      "Take the metro to Lauttasaari station (~6 min from Helsinki Central), then walk 10 minutes south to the shore. Or do the coastal walk/bike route from Hietaniemi over the bridge and along the Lauttasaari rantareitti (~30 min). Free entry, free everything except food and drinks at the pavilion.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Lauttasaari_beach_in_September.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Lauttasaari_waterfront_trail_near_the_southern_tip_of_the_island_on_an_evening_in_May_2025.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Lauttasaari_waterfront_trail_on_the_western_shore_of_the_southern_part_of_the_island_on_an_evening_in_May_2025.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Lauttasaaren_uimaranta_Kasinon_ranta_-_N2228_(hkm.HKMS000005-000001eb).jpg",
+    ],
+    availability: {
+      suitableMonths: [5, 6, 7, 8, 9],
+      notes:
+        "Beach is at its best mid-June to mid-August, when the Baltic warms to ~18–20°C and the lifeguards are on duty. May and September are still walkable and atmospheric but too cold for most swimmers. Winter sees ice swimmers and the Paseo sauna scene; the Paviljonki café runs reduced hours.",
+    },
+    location: {
+      region: "Helsinki",
+      address: "Vattuniemenranta 4, 00210 Helsinki (Lauttasaari)",
+    },
+    accessFromHelsinki: {
+      complexity: "simple",
+      duration: "~20 min total",
+      notes:
+        "Metro from Helsinki Central Station to Lauttasaari (~6 min), then a 10-min walk south through the residential streets to the beach. Or walk/cycle the Lauttasaari coastal route from Ruoholahti or over the Hietaniemi bridge.",
+    },
+    cost: {
+      perPersonEur: 0,
+      notes:
+        "Free beach access. Showers, changing rooms, and toilets free. Pavilion lunches ~€18–28; coffee + pastry ~€8.",
+    },
+    booking: {
+      leadTime: "same-day",
+      notes:
+        "No booking for the beach. Pavilion takes reservations for dinner — useful on Friday/Saturday evenings June–August.",
+    },
+    suitableAgeRange: { min: 0 },
+    childrenNotes:
+      "Properly kid-friendly — gentle shallow water, lifeguards in season, a big wooden climbing-ship playground, and ice cream from the kiosk. Stroller-accessible on the paved approach but the sand is soft.",
+    indoorOutdoor: "outdoor",
+    physicalIntensity: "low",
+    duration: "half-day",
+    website: "https://www.myhelsinki.fi/places/lauttasaari-beach-kasinonranta/",
+    tags: [],
+  },
+  {
+    slug: "allas-pool",
+    title: "Allas Sea Pool",
+    shortDescription:
+      "An open-air seawater pool, a heated 27°C pool, and three Finnish saunas right on the South Harbour next to the SkyWheel — swim outdoors year-round with the Cathedral, the Suomenlinna ferries, and the Helsinki skyline as a backdrop.",
+    longDescription: [
+      "Allas Sea Pool opened in 2016 on the wooden quay between Kauppatori and the Katajanokka SkyWheel — three pools and three saunas built directly on the harbour deck, with the Lutheran Cathedral, the Presidential Palace, and the Stockholm ferries all visible from the loungers. The whole complex is open-air; the only indoor bits are the changing rooms and the saunas. The architectural play is the pull: you swim outside, in the harbour, with the city set-piece as your view, and you can do it through January snowfall.",
+      "There are three pools. The 25-metre lap pool is heated to a comfortable 27°C year-round — the workhorse if you actually want to swim. The smaller children's pool runs warmer (~30°C). The headline pool is the Sea Pool — filtered Baltic seawater pumped in from a cleaner intake offshore, UV-treated, but otherwise unheated, so it's 18°C in August and 2°C in February. Combined with the saunas (one mixed Corner Sauna at 90°C, plus separate men's and women's panorama saunas with floor-to-ceiling windows over the water) it's the city's most accessible introduction to the Finnish löyly-and-cold-plunge ritual.",
+      "Allas runs as a public pool, not a spa: tickets are €18 weekday adult, €25 weekend/peak, with reduced and child rates and 0–2 free. You bring your own swimsuit and towel (rentals available); shampoo and shower gel are stocked. There's a counter restaurant on the upper deck and a sun terrace that turns into the city's de facto sunset bar in July (separate, no pool ticket needed). Towels, robes, and bag lockers are extra paid items — budget another €10 if you turn up empty-handed.",
+      "Walk from Helsinki Central Station in 10 minutes via Esplanadi and Market Square — Allas is at the harbour end of Katajanokanlaituri, right under the SkyWheel. Tram 4 stops nearby. Bookings aren't required even on busy summer Saturdays — the place handles 1,500+ guests on peak days without feeling oversold.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Allas_Sea_Pool_in_Katajanokka,_Helsinki,_Finland,_2021_June.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Allas_Sea_Pool_in_September_2019.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/SkyWheel_Helsinki_and_Allas_Sea_Pool_in_Fog_(2024).jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Allas_Sea_Pool_kauppatori.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/2018_Winter_in_Helsinki,_Finland_(26611927908).jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Allas_Sea_Pool_by_Petri_Sipilä_2016.jpeg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Allas_Sea_Pool_Feb_18.jpg",
+    ],
+    availability: {
+      suitableMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      weeklySchedule:
+        "Mon–Thu 06:00–22:00, Fri–Sat 06:00–01:00, Sun 09:00–21:00. Ticket sales end 1h before closing; swimming/sauna ends 20 min before closing.",
+      notes:
+        "Genuine year-round destination — the saunas and heated pool make it work in deep winter, and the experience flips from a sun-deck scene in July to a steaming-pool-against-snow tableau in February. Closed for an annual maintenance week (usually mid-January); check the site if your trip lands then.",
+    },
+    location: {
+      region: "Helsinki",
+      address: "Katajanokanlaituri 2a, 00160 Helsinki",
+    },
+    accessFromHelsinki: {
+      complexity: "simple",
+      duration: "~10 min walk",
+      notes:
+        "10-min walk from Helsinki Central Station via Esplanadi and Market Square. Trams 4 and 5 stop on Aleksanterinkatu / Mariankatu within a block. Right under the SkyWheel.",
+    },
+    cost: {
+      perPersonEur: 18,
+      notes:
+        "Weekday adults €18, weekend/peak €25; reduced (3–17/student/senior) €13–18; under-3 free. Towel rental ~€5, robe ~€8, swimsuit ~€10, locker €2. Restaurant prices separate (~€12–22 a plate).",
+    },
+    booking: {
+      leadTime: "same-day",
+      notes:
+        "Walk-in. No reservations for the pools. Capacity-managed only on the busiest July evenings — buy online to skip the door queue.",
+    },
+    suitableAgeRange: { min: 3 },
+    childrenNotes:
+      "Dedicated heated 30°C children's pool with shallow steps. The Sea Pool itself is too cold for most under-7s most of the year. Lockers and changing rooms are stroller-friendly. Saunas are mixed in swimsuits — no nudity, fine for kids who are comfortable with the heat.",
+    indoorOutdoor: "outdoor",
+    physicalIntensity: "low",
+    duration: "1-3h",
+    website: "https://www.allaspool.fi/en/",
+    tags: [],
+  },
+  {
+    slug: "uspenski-cathedral",
+    title: "Uspenski Cathedral",
+    shortDescription:
+      "The largest Orthodox cathedral in Western Europe — Aleksey Gornostayev's red-brick, gold-domed 1868 Byzantine landmark on the Katajanokka cliff, a five-minute uphill walk from Market Square.",
+    longDescription: [
+      "Uspenski Cathedral (Uspenskin katedraali) was designed by the Russian architect Aleksey Gornostayev (he died before it was finished) and completed in 1868, when Helsinki was the capital of the autonomous Grand Duchy of Finland under the Russian Empire. It sits on a granite cliff at the southern tip of Katajanokka peninsula, deliberately raised above the harbour so its thirteen gilded onion-domes are visible from anywhere on the South Harbour. The 700,000 red bricks were salvaged from the destroyed fortress of Bomarsund in Åland — that's why the colour is so insistent against Helsinki's pale stone-and-stucco centre.",
+      "Inside, the contrast with the Lutheran Helsinki Cathedral five minutes away is the point. Where Helsinki Cathedral is white, austere, and plain by Lutheran rule, Uspenski is dim, gold, and full — a tall iconostasis of saints and Marys behind the altar, candles on stands all the way down the nave, frescoes climbing the inside of the central dome. It functions as the main church of the Orthodox Diocese of Helsinki, and a service in progress means the chants drift down through the building's whole height. The crypt below sometimes hosts art exhibitions; the small shop sells icons, candles, and Orthodox liturgical books.",
+      "Adult entry is €5 (introduced May 2025 after a century of free admission); under-18s are free, and the cathedral is free for everyone during divine services. Photography is allowed without flash. Open Tue–Fri 10:00–18:00, Sat 10:00–15:00, Sun 13:00–16:00 in the summer schedule (winter hours are slightly shorter); closed Mondays and during weddings and funerals — the website's weekly schedule is the place to confirm before you go.",
+      "From Helsinki Central Station it's a 10-minute walk through Esplanadi and Market Square, then up the Katajanokka steps. Pair it with the Old Market Hall (3 min downhill), Allas Sea Pool (5 min along the quay), or as an early stop before the SkyWheel and a Suomenlinna ferry. The little terrace beside the cathedral is one of the better unscheduled photo spots in central Helsinki.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Helsinki_Uspenski_Cathedral_01.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Helsinki_Uspenski_Cathedral_02.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Uspenski_Cathedral_Helsinki_2012.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Front_of_Uspenski_Cathedral_In_Helsinki.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Pohjoisranta_with_Uspenski_Cathedral_and_Relandersgrund_on_a_sunny_afternoon_in_May_2024.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Helsinki_Orthodoxe_Kathedrale_Innen_Kuppel_1.JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/06047_FIN_Helsinki_Uspenski_cathedral_chandelier_V-P.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Altarraum_uspenki-kirche.jpg",
+    ],
+    availability: {
+      suitableMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      weeklySchedule:
+        "Summer (May–Sept) Tue–Fri 10:00–18:00, Sat 10:00–15:00, Sun 13:00–16:00. Winter hours slightly shorter. Closed Mondays.",
+      notes:
+        "Working cathedral — Sunday morning services, weddings, and funerals close it to general visits. Check the weekly schedule on hos.fi the day before if your timing is tight.",
+    },
+    location: {
+      region: "Helsinki",
+      address: "Kanavakatu 1, 00160 Helsinki",
+    },
+    accessFromHelsinki: {
+      complexity: "simple",
+      duration: "~10 min walk",
+      notes:
+        "10-min walk from Helsinki Central Station via Esplanadi, Market Square, and the Katajanokka bridge — then up the granite steps. Trams 4 and 5 stop a block away.",
+    },
+    cost: {
+      perPersonEur: 5,
+      notes:
+        "Adults €5 (introduced May 2025). Under-18 free. Free for everyone during divine services. Cash and card.",
+    },
+    booking: {
+      leadTime: "same-day",
+      notes: "Walk-in. No tickets needed in advance.",
+    },
+    suitableAgeRange: { min: 4 },
+    childrenNotes:
+      "The cathedral is steep stairs up from the quay — bring a carrier for under-3s. Inside is a working church; expect a quiet, candle-lit space rather than a play environment.",
+    indoorOutdoor: "indoor",
+    physicalIntensity: "low",
+    duration: "<1h",
+    website: "https://hos.fi/en/uspenski-cathedral-main-cathedral-of-the-orthodox-parish-of-helsinki-and-the-diocese-of-helsinki/",
+    tags: ["landmark", "historical"],
+  },
+  {
+    slug: "fuji-sushi-lauttasaari",
+    title: "Ravintola Fuji Sushi (Lauttasaari)",
+    shortDescription:
+      "An unflashy neighbourhood Japanese on Lauttasaari's Vattuniemi side — properly fresh nigiri and sashimi, omakase if you ask, ramen and tempura too, and a small children's play corner that earns it the local-family vote.",
+    longDescription: [
+      "Fuji Sushi sits in a quiet block of Vattuniemi at the southern end of Lauttasaari, in among the residential apartment buildings rather than on any tourist drag. It's the kind of place that doesn't show up on best-of-Helsinki lists but is on a steady rotation for half the families on the island — high-quality fish, careful preparation, and a price point in the €10–25 mains range that makes it a regular weeknight option rather than a once-a-trip splurge.",
+      "The menu hits the full range of a Japanese restaurant in Helsinki: nigiri and sashimi at the heart of it (tamago €3.50 a pair, salmon and tuna nigiri in the €4–6 range), maki and uramaki rolls, big party platters that go up to a 56-piece set at €60, plus ramen, tempura, edamame, miso soup, gyoza, and poke bowls. They'll also do an omakase (chef's selection) if you ask for it — call ahead and discuss budget. Lunch sets are good value.",
+      "The reason it's a parent-favourite: there's a small children's play corner — a rare commodity in central Helsinki sit-down restaurants — which means a sushi dinner with a 3-year-old is actually possible without speed-eating. The staff are unflappable about kids. Food shows up quickly enough that you can leave with the post-bedtime patience reserves still topped up. Highchairs available.",
+      "From central Helsinki, take the metro to Lauttasaari station (~6 min), then walk south down Lauttasaarentie and turn onto Vattuniemenkatu — about 12 minutes door-to-door, and the same metro line that takes you to Allas Sea Pool or downtown after dinner. Open Mon–Fri 10:30–20:30, Sat–Sun 12:00–20:30. Walk-ins fine on weeknights; book a table for Friday/Saturday evenings.",
+    ],
+    thumbnailUrl:
+      "https://img02.restaurantguru.com/cc57-Fuji-Sushi-Helsinki-meals.jpg",
+    galleryUrls: [
+      "https://img02.restaurantguru.com/cc0a-Ravintola-Fuji-Sushi-Helsinki-interior.jpg",
+      "https://img02.restaurantguru.com/c779-Restaurant-Ravintola-Fuji-Sushi-food.jpg",
+      "https://img02.restaurantguru.com/c3a5-Restaurant-Ravintola-Fuji-Sushi-meals.jpg",
+    ],
+    availability: {
+      suitableMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      weeklySchedule: "Mon–Fri 10:30–20:30, Sat–Sun 12:00–20:30.",
+      notes: "Open year-round. Midweek lunch is the quietest window.",
+    },
+    location: {
+      region: "Helsinki",
+      address: "Vattuniemenkatu 13, 00210 Helsinki (Lauttasaari)",
+    },
+    accessFromHelsinki: {
+      complexity: "simple",
+      duration: "~20 min",
+      notes:
+        "Metro from Helsinki Central Station to Lauttasaari (~6 min), then a 12-min walk south down Lauttasaarentie and along Vattuniemenkatu. Bus 21 also serves the area.",
+    },
+    cost: {
+      perPersonEur: 25,
+      notes:
+        "À la carte sushi from €3.50 (single nigiri) up to €60 for a 56-piece party platter. Typical dinner with a few rolls and a starter ~€20–30 per person; lunch sets cheaper. Drinks extra. Cash and card.",
+    },
+    booking: {
+      leadTime: "few-days",
+      notes:
+        "Walk-ins fine Mon–Thu. Book a table for Friday and Saturday dinner — the dining room is small and fills quickly. Phone +358 50 592 9990 or via Wolt/Foodora for delivery.",
+    },
+    suitableAgeRange: { min: 0 },
+    childrenNotes:
+      "Small children's play corner inside the restaurant — unusual for a Helsinki sit-down spot and the reason local families come back. Highchairs available. Stroller-accessible entrance from the street.",
+    indoorOutdoor: "indoor",
+    physicalIntensity: "low",
+    duration: "1-3h",
+    website: "https://www.sushihelsinki.fi/ravintola-fuji-sushi",
+    tags: ["food"],
+  },
 ];
