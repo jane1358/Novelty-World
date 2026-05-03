@@ -93,6 +93,27 @@ export function applyFilters(ideas: Idea[], filters: Filters): Idea[] {
   });
 }
 
+/** Free-text search across the fields a planner would scan: title, the
+ *  card hook, the detail prose, tags, and regions. Whitespace-tokenised so
+ *  "punavuori cafe" matches an idea whose title contains "cafe" and whose
+ *  region contains "Punavuori". */
+export function applySearch(ideas: Idea[], query: string): Idea[] {
+  const tokens = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return ideas;
+  return ideas.filter((idea) => {
+    const haystack = [
+      idea.title,
+      idea.shortDescription,
+      ...idea.longDescription,
+      ...idea.tags,
+      ...idea.location.region,
+    ]
+      .join(" ")
+      .toLowerCase();
+    return tokens.every((t) => haystack.includes(t));
+  });
+}
+
 export function countActive(filters: Filters): number {
   return (
     filters.months.length +

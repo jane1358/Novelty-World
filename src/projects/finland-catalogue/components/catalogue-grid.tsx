@@ -1,13 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BookOpen, SlidersHorizontal, Star } from "lucide-react";
+import { BookOpen, Search, SlidersHorizontal, Star, X } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { IDEAS } from "../ideas";
 import {
   applyFilters,
+  applySearch,
   countActive,
   EMPTY_FILTERS,
   type Filters,
@@ -27,8 +28,15 @@ export function CatalogueGrid({
   mode: GridMode;
 }) {
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
+  const [query, setQuery] = useState("");
   const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
   const favoriteSlugs = useFavorites((s) => s.slugs);
+
+  // Re-rendering the grid (50+ IdeaCards with images) on every keystroke
+  // makes typing feel sluggish. useDeferredValue lets React interrupt the
+  // grid re-render to keep the input responsive — the input updates
+  // immediately, the filtered results catch up a tick later.
+  const deferredQuery = useDeferredValue(query);
 
   const baseIdeas = useMemo(
     () =>
@@ -39,11 +47,12 @@ export function CatalogueGrid({
   );
 
   const visibleIdeas = useMemo(
-    () => applyFilters(baseIdeas, filters),
-    [baseIdeas, filters],
+    () => applySearch(applyFilters(baseIdeas, filters), deferredQuery),
+    [baseIdeas, filters, deferredQuery],
   );
 
   const activeCount = countActive(filters);
+  const hasNarrowing = activeCount > 0 || query.trim().length > 0;
 
   return (
     <div className="min-h-screen bg-surface-primary">
@@ -65,6 +74,8 @@ export function CatalogueGrid({
             </div>
           }
         />
+
+        <SearchBar value={query} onChange={setQuery} />
 
         <div className="lg:grid lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-8">
           <aside className="mb-6 lg:mb-0">
@@ -104,11 +115,15 @@ export function CatalogueGrid({
             <ResultsHeader
               total={baseIdeas.length}
               showing={visibleIdeas.length}
-              activeCount={activeCount}
+              narrowed={hasNarrowing}
             />
 
             {visibleIdeas.length === 0 ? (
-              <EmptyState mode={mode} hasFilters={activeCount > 0} basePath={basePath} />
+              <EmptyState
+                mode={mode}
+                narrowed={hasNarrowing}
+                basePath={basePath}
+              />
             ) : (
               <div className="columns-1 gap-5 sm:columns-2 xl:columns-3 2xl:columns-4">
                 {visibleIdeas.map((idea) => (
@@ -189,19 +204,61 @@ function SwitchTrack({ on }: { on: boolean }) {
   );
 }
 
+function SearchBar({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="relative mb-6 lg:mb-8">
+      <Search
+        size={18}
+        aria-hidden
+        className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-muted"
+      />
+      <input
+        type="search"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Search ideas"
+        aria-label="Search ideas"
+        className={cn(
+          "w-full rounded-full border border-border-default bg-surface-secondary",
+          "py-3 pl-11 pr-11 text-sm text-text-primary placeholder:text-text-muted",
+          "transition-colors hover:border-border-hover",
+          "focus:border-brand-pink focus:outline-none focus:ring-2 focus:ring-brand-pink/40",
+          "[&::-webkit-search-cancel-button]:appearance-none",
+        )}
+      />
+      {value && (
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          aria-label="Clear search"
+          className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-surface-elevated hover:text-text-primary"
+        >
+          <X size={16} />
+        </button>
+      )}
+    </div>
+  );
+}
+
 function ResultsHeader({
   total,
   showing,
-  activeCount,
+  narrowed,
 }: {
   total: number;
   showing: number;
-  activeCount: number;
+  narrowed: boolean;
 }) {
   if (total === 0) return null;
   return (
     <div className="mb-4 text-sm text-text-muted">
-      {activeCount > 0 ? (
+      {narrowed ? (
         <>
           Showing <span className="font-medium text-text-primary">{showing}</span> of{" "}
           {total}
@@ -217,17 +274,17 @@ function ResultsHeader({
 
 function EmptyState({
   mode,
-  hasFilters,
+  narrowed,
   basePath,
 }: {
   mode: GridMode;
-  hasFilters: boolean;
+  narrowed: boolean;
   basePath: string;
 }) {
-  if (hasFilters) {
+  if (narrowed) {
     return (
       <div className="rounded-lg border border-border-default bg-surface-secondary p-8 text-center text-text-secondary">
-        No ideas match the current filters.
+        No ideas match your search and filters.
       </div>
     );
   }
