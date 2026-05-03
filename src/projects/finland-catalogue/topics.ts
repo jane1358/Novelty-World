@@ -360,8 +360,8 @@ export const TOPICS: Topic[] = [
     thumbnailUrl:
       "https://commons.wikimedia.org/wiki/Special:FilePath/Old-fashioned_pram_in_pine_woods.jpg",
     galleryUrls: [
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Old-fashioned_pram_in_pine_woods_2.jpg",
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Mother_and_child_1948_(JOKAUAS2_151-4).jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Baby_im_Kinderwagen_im_Winter,_um_1952_(1).jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Paul_Fischer_-_Parti_fra_indgangen_til_Frederiksberg_Have._En_mor_ser_til_sit_barn_i_barnevognen,_vinter_-_1908.png",
       "https://commons.wikimedia.org/wiki/Special:FilePath/Sauvosaari-1968.jpg",
     ],
   },
@@ -390,6 +390,91 @@ export const TOPICS: Topic[] = [
       "https://commons.wikimedia.org/wiki/Special:FilePath/Muumimuseon_sisäänkäynti_Tampere-talossa.jpg",
       "https://commons.wikimedia.org/wiki/Special:FilePath/Tuulikki_Pietilä_Tove_Jansson_and_Signe_Hammarsten-Jansson_1956.jpeg",
       "https://commons.wikimedia.org/wiki/Special:FilePath/Moomin_Coffee_at_Helsinki-Vantaa_Airport_in_Finland,_2021.jpg",
+    ],
+  },
+  {
+    slug: "everymans-right",
+    title: "Everyman's Right (Jokamiehenoikeus)",
+    aliases: [
+      "everyman's right",
+      "everyman's rights",
+      "jokamiehenoikeus",
+      "jokamiehenoikeudet",
+      "jokaisenoikeudet",
+      "right to roam",
+      "freedom to roam",
+      "foraging",
+      "berry picking",
+      "mushroom picking",
+    ],
+    shortDescription:
+      "Anyone in Finland — Finn or visitor — can walk, ski, swim, pitch a tent, and pick berries and mushrooms across almost any patch of land in the country, with or without the owner's permission. The rule is roughly a thousand years old and the country runs on it.",
+    longDescription: [
+      "Jokamiehenoikeus — \"everyman's right,\" or in the gender-neutral form Finnish authorities adopted in 2023, jokaisenoikeudet (\"everyone's rights\") — is the bundle of customary freedoms that lets anyone in Finland use the natural environment essentially anywhere, regardless of who owns the land. You can walk, ski, cycle, ride a horse, swim, paddle, fish with a rod and line, camp for a night or two, and pick wild berries, mushrooms, and unprotected wildflowers — all without asking permission, all without paying anyone, and all on land you don't own. The only places it doesn't apply are private yards and gardens, fields under cultivation, and a small handful of restricted nature reserves.",
+      "The right is older than the country. Versions of it have existed across the Nordic world since the medieval period, when communities depended on shared access to forests for fuel, fodder, food, and game. The Finnish term jokamiehenoikeus was first put down on paper in the 1920s, when berry picker Ilma Lindgren successfully sued a Saimaa landowner who had tried to stop her gathering on his land — the court found that the customary right outweighed his property claim. Unlike the right to roam in England or Scotland, which exists as a single named statute, jokamiehenoikeus has never been codified into one law: it lives across roughly thirty different pieces of Finnish legislation, plus a much older layer of unwritten norm. The Ministry of the Environment, in a deliberately understated 2010s evaluation, concluded that the system was \"working well\" and needed no reform.",
+      "The whole thing rests on a single principle, often stated as äläkä häiritse, äläkä tuhoa — \"do not disturb, do not destroy.\" In practice that means: stay back from the immediate vicinity of houses (the rule of thumb is far enough that the people inside don't feel watched), don't damage growing trees or fragile ground, don't make a fire on someone else's wood pile or during a fire warning, take only what you'll personally eat, leave no trace. Hunting and most fishing require licences. Motor vehicles need landowner permission off public tracks. Reindeer herding districts in Lapland have additional sensitivities. None of this is enforced by patrols — it's enforced by an inherited expectation that everyone behaves, which Finns extend reflexively to visitors and which visitors are expected to honour in turn.",
+      "For a traveller, the practical translation is straightforward: any forest you can reach on foot, you can walk in. Any lake you can reach, you can swim in. Any patch of cloudberries, blueberries (mustikka), lingonberries (puolukka), or chanterelles you find is yours to pick and eat. The Finnish autumn habit of weekend foraging — a basket, a rake, a paper map, a thermos — runs on this right; so do most hiking trips, every cross-country ski outing through unmarked terrain, and the entire mökki (cottage) culture. It is one of the quietest and most generous things about Finland, and one of the easiest to take for granted until you try the same thing in a country that doesn't have it.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Bilberries_and_lingonberries.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Berry-picking_rake.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Picking_natural_blackberries_in_Finland.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Eero_Järnefelt_-_Berry_Pickers.jpg",
+    ],
+  },
+  {
+    slug: "aurora-borealis",
+    title: "Aurora Borealis (Revontulet)",
+    aliases: [
+      "aurora borealis",
+      "aurora",
+      "auroras",
+      "northern lights",
+      "revontulet",
+    ],
+    shortDescription:
+      "On about three nights out of four with a clear sky, somewhere in Finnish Lapland, the upper atmosphere lights up green. The Finnish name — revontulet, \"fox fires\" — comes from the folk tale that an Arctic fox is sweeping its tail across the snow and throwing sparks into the sky.",
+    longDescription: [
+      "The aurora borealis is what happens when charged particles from the sun — protons and electrons hurled out by solar flares and the constant solar wind — slam into Earth's upper atmosphere. The planet's magnetic field funnels them toward the poles, where they collide with oxygen and nitrogen molecules between roughly 100 and 300 kilometres up. Each collision dumps a tiny pulse of energy that gets re-emitted as visible light: oxygen produces the dominant green and the rare deep red, nitrogen contributes the magenta-pink fringes and the occasional purple. The display sits in a ring around the magnetic pole called the auroral oval, and Finnish Lapland sits squarely under it for most of every winter.",
+      "Frequency drops sharply as you move south. In Utsjoki, Finland's northernmost municipality, auroras occur on more than 200 nights a year — about three out of every four cloudless nights. In Sodankylä (where the University of Oulu's geophysical observatory has been monitoring them since 1914) it's roughly every second night. By Rovaniemi on the Arctic Circle the count is still high — about 150 nights of aurora activity a year — but you need a clear sky and a forecast that lines up. Helsinki, far enough south to sit outside the normal oval, gets visible aurora maybe 10–40 times a year, almost always during stronger geomagnetic storms (Kp 5+); when it happens, social media lights up and people drive twenty minutes out of the city to escape light pollution. The dark months — September through March — are the only window: from late April through August the sky simply isn't dark enough.",
+      "The Finnish name is older than the science. Revontulet literally means \"fox fires,\" from an old Eastern and Northern Finnish folk tale about a tulirepo (fire fox) running across the snowy fells, its bushy tail brushing the snow and sending sparks streaking into the sky. Sámi people of Lapland tell a parallel story; their northern lights word is guovssahasat. Both traditions read the lights as something alive and slightly uncanny — to be respected rather than enjoyed. Whistling at the aurora was supposed to attract its attention; older Sámi belief held that the lights could come down and cut you if you mocked them. The modern Finnish attitude is more relaxed but the words have stuck. Forecasters at the Finnish Meteorological Institute (ilmatieteenlaitos.fi/northern-lights) still post nightly aurora probability maps under the heading \"Revontulet,\" and that is what locals actually call them.",
+      "For a visitor: the practical aurora-chasing season is September through March, with the equinox months (September–October and February–March) statistically the strongest because of how Earth's magnetic field aligns with the solar wind during those windows. Best hours are 21:00–01:00 local time. You need three things, in this order: latitude (Lapland, ideally Inari, Saariselkä, Kilpisjärvi, or anywhere north of Rovaniemi), darkness (away from town lights), and a clear sky (the easiest factor to under-plan — even a perfect Kp 7 storm is invisible through cloud). The Aurora Alert Finland app, the FMI's website, and the auroranow.fi push-notification service are the local-favourite forecasting tools. In the south, plan a night out only when a storm is actually forecast; in Lapland, just look up after dinner.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Aurora_borealis_over_Saana_fell.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Aurora_borealis_over_Lapland_(Unsplash).jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Aurora_ad_Inari_-_1.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Northern_Lights_-_Sirkka,_Kittilä_(46211740125).jpg",
+    ],
+  },
+  {
+    slug: "cross-country-skiing",
+    title: "Cross-country Skiing (Hiihto)",
+    aliases: [
+      "cross-country skiing",
+      "cross country skiing",
+      "cross-country ski",
+      "cross-country skier",
+      "cross-country skiers",
+      "hiihto",
+    ],
+    shortDescription:
+      "The default winter mode of getting from A to B in Finland for the better part of a thousand years — and still the country's national sport, with grade-school PE classes done on skis, lit forest tracks in every neighbourhood, and a 50 km mass race that once held the Guinness world record for biggest ski event ever.",
+    longDescription: [
+      "Hiihto — cross-country skiing — is the oldest organised activity Finns do, by a wide margin. Skis preserved in Finnish bogs date back roughly 6,000 years (the Salla ski fragment, the Suomusjärvi finds), making the practice older than agriculture in the country. The Finnish words suksi (\"ski\") and hiihtää (\"to ski\") are part of the deep Uralic vocabulary, both predating contact with Indo-European languages. Long before it was a sport it was infrastructure: the only practical way to cross deep snow on foot, the way mail and milk and rural mid-winter visits all moved. The Finnish military formalised ski training in the 1700s and ran the world's first biathlon-shaped competition in 1767.",
+      "The cultural status it now occupies is the result of a single extraordinary half-century at the Olympics. Veikko Hakulinen took three golds across 1952–1960 and a then-record seven medals over three Games. Eero Mäntyranta won seven medals in his own right between 1960 and 1972 — including two individual golds at Innsbruck 1964 — later revealed to have a rare genetic mutation that gave him a 20% higher red blood cell count than rivals (an asset, not a doping case, though he was suspected for decades). Juha Mieto's 1980 Lake Placid 15 km silver, lost to Sweden's Thomas Wassberg by 0.01 seconds, is taught in Finnish schools as a parable about quiet dignity in defeat — the rules were changed afterwards to time finishes to two decimal places, in part because of him. Finland has won more Olympic cross-country skiing medals than any non-Norwegian country.",
+      "What this means for ordinary Finnish life is that the country runs on grooved ski tracks all winter. Helsinki's Central Park, Espoo's Nuuksio, Jyväskylä's Laajavuori, Lahti's Salpausselkä — every city of any size grooms classic and skating tracks through the surrounding forest from December to March (or April in the north), and many are floodlit until 22:00 for after-work skiing. Equipment rental is cheap (~€20/day at any city ski lodge), trail use is free, and you'll see everyone from PE classes (every Finnish primary-schooler learns to ski) to retired couples in matching anoraks to elite athletes training between World Cup races. The Finlandia-hiihto, a 50 km mass race held annually in Lahti every February since 1974, peaked at 13,604 finishers in 1984 — the Guinness World Record for the largest mass skiing event ever — and still pulls 5,000–7,000 starters each February.",
+      "For a visitor: rent a classic-style set on your first try (skating-style is much harder to learn), book an instructor for an hour if you've never been, and start on the lit urban tracks rather than the wilderness ones. Helsinki's Paloheinä lodge in Central Park rents from ~€20/day; Lahti, Vuokatti, Saariselkä, and Levi all run dedicated cross-country resorts where the entire town is wired for the sport. Don't try to be fast on day one — the Finnish 70-year-old gliding past you on the same loop has been doing it since they were three. December through March is the reliable window in southern Finland; November to early May in Lapland. Wear less than you think (you'll warm up after 5 minutes), bring water, and accept that you will fall over at least once on the first hill.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Skiing_at_Riisitunturi_National_Park.JPG",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Skiing_in_Yyteri_1.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Lykynlampi1.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Skiers_in_Oulu_in_1893.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Finlandia_Hiihto_Medal_2014.jpg",
     ],
   },
 ];
