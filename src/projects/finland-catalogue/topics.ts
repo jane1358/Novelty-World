@@ -10,7 +10,7 @@ export const TOPICS: Topic[] = [
   {
     slug: "sauna",
     title: "Sauna",
-    aliases: ["sauna", "saunas", "sauna culture", "löyly"],
+    aliases: ["sauna", "saunas", "sauna culture", "löyly", "kiuas", "vasta"],
     shortDescription:
       "Finland has more saunas than cars — roughly three million for five and a half million people, and most still get used every week.",
     longDescription: [
@@ -221,6 +221,99 @@ export const TOPICS: Topic[] = [
     galleryUrls: [
       "https://commons.wikimedia.org/wiki/Special:FilePath/Thunder_storm_rising_in_Suodenniemi.jpg",
       "https://commons.wikimedia.org/wiki/Special:FilePath/Thunderous_weather_rising_above_Metsola.JPG",
+    ],
+  },
+  {
+    slug: "juhannus",
+    title: "Juhannus (Midsummer)",
+    aliases: [
+      "Juhannus",
+      "Juhannusaatto",
+      "Midsummer",
+      "Midsummer Eve",
+      "Midsummer Day",
+    ],
+    shortDescription:
+      "On the longest day of the year Finland empties: cities fall silent and roughly half the country drives to a lake, lights a bonfire, and stays up through a night that never gets dark.",
+    longDescription: [
+      "Juhannus is the Finnish summer solstice — Midsummer Eve (Juhannusaatto) on the Friday between June 19 and 25, Midsummer Day (Juhannuspäivä) on the Saturday after. In 2026 those fall on the 19th and 20th. It's a national holiday and a flag day (the blue cross runs from 6pm Friday through 9pm Saturday — the only night of the year the Finnish flag stays up overnight), but more importantly it's the week the country physically empties out. Helsinki turns into one of those after-the-rapture photographs — half-empty trams, supermarkets closing early, restaurants shut for three days — while an estimated 2.4 million Finns drive to a summer cottage on a lake somewhere.",
+      "The festival is older than the country. Pre-Christian Finns marked the solstice with Ukon juhla, a feast for Ukko the sky god — bonfires, fertility rituals, and the magic of the midnight sun. When the church arrived in the 12th century the celebration was rebranded as the feast of John the Baptist (June 24), and the Finnish name Juhannus comes from \"John.\" The pagan layer never really went away. Single women still pick seven different wildflowers and place them under their pillow to dream of a future spouse; couples who jump over the bonfire are said to stay together; rolling naked in dewy grass is, depending on who you ask, beautifying or just very Finnish.",
+      "The bonfire — kokko — is the visible centrepiece. Originally an eastern-Finland tradition (the oldest written description is from Turku in 1645), it's now lit anywhere a body of water meets a wood pile: at dusk, fed through the small hours, supposedly chasing away evil spirits but mostly gathering everybody around the only warm spot in a cool midsummer night. Birch branches go up against doorways for luck (juhannuskoivut), the sauna gets fired hard, and most cottages cycle through sauna, lake plunge, beer, sauna, lake, sausage on the grill, until 4am when nobody's tired but everyone's sun-drunk.",
+      "If you're stuck in Helsinki for Juhannus, the city is still magical — empty streets, gold light at midnight, the seafront eerily peaceful — but you'll want a destination. Seurasaari Open-Air Museum has run the city's marquee bonfire since 1956; a newlywed couple traditionally lights the main fire from a church boat, and tens of thousands turn up. Most museums and many restaurants close fully Friday through Sunday — assume nothing's open and check websites. And bring a windbreaker: midsummer in Helsinki can be 25°C and it can be 12°C with horizontal rain, often in the same afternoon.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Midsummer_bonfire_in_Pielavasi,_Finland.JPG",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/A_midsummer_pole_(Juhannussalko)_in_front_of_Raseborg_Castle_(Raaseporin_linna).jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Midsummer_in_Kilpisjärvi,_Lapland_(52222783091).jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Midsummer_in_Finland,_Joensuu_2024.jpg",
+    ],
+  },
+  {
+    slug: "vappu",
+    title: "Vappu (May Day)",
+    aliases: [
+      "Vappu",
+      "Vappuaatto",
+      "May Day",
+      "sima",
+      "munkki",
+      "tippaleipä",
+    ],
+    shortDescription:
+      "A pagan welcome-to-spring, an academic graduation party, an international workers' day, and a national excuse to drink sima and eat doughnuts in a park — all stacked into the same 24 hours every May.",
+    longDescription: [
+      "Vappu is the most chaotic holiday on the Finnish calendar because it's at least three holidays in a trench coat. May Day Eve (30 April, Vappuaatto) and May Day proper (1 May) layer a pagan welcome-to-spring ritual on top of the medieval feast of Saint Walpurga, on top of the year-end celebration of Finnish university students, on top of the international workers' day. They all happen at once, mostly outdoors, mostly with a drink in hand. The country basically doesn't function for two days.",
+      "The starting gun fires at 6pm on April 30, in Helsinki's Market Square. A delegated student crew from one of the city's universities ceremonially washes the Havis Amanda statue (a bronze mermaid by Ville Vallgren, unveiled 1908) and crowns her with a giant white student cap. Some hundred thousand people pack the surrounding square and Esplanade. The capping itself dates back, unofficially, to 1909 — students put a cap on her without permission — and was finally police-sanctioned in 1951; it now rotates between universities. The white cap (ylioppilaslakki) on Manta's head is the same cap every Finn earns at high-school graduation and digs out of a closet exactly twice a year — for Vappu, and for personal occasions. Engineering students, alone among the tribes, also pull on bright-coloured boilersuits covered in event patches.",
+      "The food is the reliable bit. Sima — a lightly fermented honey-and-lemon soft mead, sweet, fizzy, and 1–2% ABV — is brewed at home days in advance with raisins floating in the bottle as a fermentation indicator (when the raisins float to the top, it's ready). Munkki is the deep-fried, sugar-rolled doughnut bakeries pile into windows for two weeks a year; tippaleipä is its more architectural cousin, a tangle of batter funnelled into hot oil to produce a crispy bird's nest dusted with powdered sugar. Both predate Vappu — they're 18th-century upper-class festive sweets — but became the official May Day pastries in the late 1800s and now show up in every café, kiosk, and grocery store from late April. A glass of sima and a munkki is the universal Finnish Vappu breakfast.",
+      "May 1 itself is Helsinki's biggest picnic. Tens of thousands fan out across Kaivopuisto Park on the southern tip of the peninsula, blankets edge-to-edge, with everything from elaborate three-course spreads (silver candelabras, linen napkins, a relative in a tuxedo) to a bag of munkkis and a bottle of cheap sparkling. There's also a workers'-day march in the morning — Vappu has been Finland's official Labour Day since 1944, and the unions still parade — but for most Finns the political layer is now background and the foreground is sima, picnic, and the first warm day of the year. If the weather collaborates the parks are full until midnight; if it doesn't, everyone retreats inside and drinks the sima anyway.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Crowning_of_the_Havis_Amanda_statue_on_May_Day_eve_(April_2019).jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Sima_and_tippaleipä.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Mead_and_doughnut_20180501.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Havis_Amanda_at_Vappu_2008.jpg",
+    ],
+  },
+  {
+    slug: "independence-day",
+    title: "Independence Day",
+    aliases: ["Independence Day", "Itsenäisyyspäivä", "Linnan juhlat"],
+    shortDescription:
+      "On the night of December 6, two candles burn in every Finnish window and three million people watch the President shake 2,000 hands on television. It's the quietest, strangest, most-watched national holiday in Europe.",
+    longDescription: [
+      "Finland declared independence from the collapsing Russian Empire on 6 December 1917. The Senate, led by Pehr Evind Svinhufvud, drafted the declaration; the Parliament adopted it the same day. Soviet Russia recognised it on 31 December (the first country to do so), then Germany, France, and Sweden in early January 1918. The civil war that broke out the following spring nearly tore the new country in half, but the date stuck. Itsenäisyyspäivä — Independence Day — is now the most solemn entry on the Finnish calendar, and remarkably unlike independence days elsewhere. There are no fireworks, no parades down main streets, no parties in the conventional sense. The mood is closer to a national memorial day than a national birthday.",
+      "The day's defining ritual is candles in windows. By tradition every Finnish household lights two candles — increasingly white and blue — in their front-facing windowsills at 6pm. The custom is officially traced to 1927, but two candles in a window had been a Finnish nationalist signal for decades before that: lit on the poet Runeberg's birthday in the 1800s as a quiet protest against Russian rule, and during 1916–17 reportedly used to mark safe houses for jäger volunteers slipping out to Sweden and Germany for military training. Walk through any Finnish neighbourhood after dark on December 6 and the streetscape is a thousand pairs of small flames in the windows. Most families also light candles at the graves of war veterans; cemeteries glow.",
+      "The capital adds two big set pieces. In the late afternoon the Helsinki student unions assemble at Hietaniemi cemetery — at the Sankariristi war memorial and Marshal Mannerheim's grave — and march in a torchlight procession through the city, white student caps on, flags out front, ending at Senate Square. The route, established in 1951, follows Mannerheim's funeral cortège in reverse. From 7pm the President hosts the Independence Day Reception at the Presidential Palace on the Esplanade — the Linnan juhlat, \"the Castle Ball.\" Two thousand guests are invited: parliamentarians, ambassadors, Olympic medallists, scientists, artists, military officers, anyone who has had a notable year. They all queue up to shake the President's hand on live television.",
+      "Linnan juhlat is the country's media event of the year. Yle's broadcast routinely pulls 2.0–2.7 million viewers — out of a population of 5.6 million — and the most-watched stretch is the entrance: a single steady camera, every guest announced, every gown and uniform commented on by the country watching from sofas. Most Finns aren't particularly invested in who got invited and yet absolutely will tell you, the next morning, what so-and-so wore. It's a uniquely Finnish piece of pageantry — stiff, formal, slightly solemn, completely unironic. Yle's other Independence Day fixture, broadcast every year since 2000, is Edvin Laine's 1955 black-and-white film Tuntematon sotilas (The Unknown Soldier), Väinö Linna's bleak and beloved Continuation War story. Visitors should plan accordingly: museums and many restaurants close, the city is quiet, and the country is, for one evening, watching itself together.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Presidential_Palace_Finland_Independece_day_2011.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Linnan_juhlat_Kaimu.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Tynkkynen_612-soihtukulkueessa.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Suonionkatu_Kallio_Helsinki_Finland_06_Dec_2008.jpg",
+    ],
+  },
+  {
+    slug: "midnight-sun",
+    title: "Midnight Sun",
+    aliases: ["midnight sun", "nightless night", "polar day", "yötön yö"],
+    shortDescription:
+      "A quarter of Finland sits north of the Arctic Circle, where the sun simply doesn't set for up to 73 days each summer. Even Helsinki, 1,000 km south, never gets properly dark in June.",
+    longDescription: [
+      "The midnight sun — yötön yö in Finnish, literally \"nightless night\" — is the Arctic summer phenomenon where the sun stays above the horizon for a full 24 hours. It happens because Earth's axis is tilted 23.5° relative to its orbit, and during the northern summer that keeps everything inside the Arctic Circle (66°33′ N) permanently turned toward the sun for weeks at a stretch. Above that line, midnight just looks like late afternoon: golden, oblique, slightly disorienting. Below it, the sun technically dips below the horizon for an hour or two but never goes far — twilight bleeds straight into the next dawn.",
+      "The further north you go, the longer the show runs. At Nuorgam, Finland's northernmost village near the Norwegian border, the sun does not set for about 73 days — roughly mid-May to late July — and \"true night\" doesn't return until mid-September. At Utsjoki and Inari it's about two months. At Rovaniemi, sat right on the Arctic Circle and famous for Santa Claus Village, the unbroken midnight-sun window is a tidy 32 days, June 6 to July 7 (atmospheric refraction pushes it slightly past the geometric line). On the exact latitude of the Arctic Circle, you'd see the sun set for about 30 seconds and rise immediately; in practice refraction means it doesn't even do that.",
+      "Even southern Finland gets a softened version of the same effect. Helsinki sits at 60°N — about the same latitude as Anchorage or the southern tip of Greenland — and around the summer solstice the city has roughly 19 hours of direct daylight and another two-and-a-half hours of dawn-blurring-into-dusk on either side of midnight. The sun dips below the horizon but only barely, and the sky stays that pale, pre-dawn blue all night. Locals call it valkoinen yö, the white night. People run marathons at 1am, eat dinner at 10pm and pretend it's 6pm, and sleep — when they sleep — behind blackout blinds bought specifically for the season.",
+      "For visitors, the practical bits matter. The midnight sun changes how you plan a day: hike or paddle through the small hours when the light is best, sleep through the heat of mid-afternoon, and budget a dark room or an eye mask because hotels north of Oulu often don't bother with proper blackout curtains. Mosquitoes peak in June and early July across the same belt, especially near lakes — bring repellent. And the season is shorter than people expect: by mid-August even Lapland has restored a real nighttime, and by September Finland is on the rapid slide toward winter, which has the inverse phenomenon (kaamos — the polar night) waiting at the other end of the calendar.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Midnight_landscape_from_Oratunturi_towards_west,_Sodankylä,_Lapland,_Finland,_2019_June.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Half_past_midnight_at_the_Finnish_Gulf.JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Lake_Kenesjärvi_in_summer_night.JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Midnight_sun_and_Jatkankynttila_bridge_2020.jpg",
     ],
   },
 ];
