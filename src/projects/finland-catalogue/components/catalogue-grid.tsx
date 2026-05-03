@@ -46,7 +46,7 @@ export function CatalogueGrid({
 
   return (
     <div className="min-h-screen bg-surface-primary">
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1600px] px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-8 flex flex-col gap-4">
           <Link
             href="/"
@@ -119,7 +119,7 @@ export function CatalogueGrid({
             {visibleIdeas.length === 0 ? (
               <EmptyState mode={mode} hasFilters={activeCount > 0} basePath={basePath} />
             ) : (
-              <div className="columns-1 gap-5 sm:columns-2 xl:columns-3">
+              <div className="columns-1 gap-5 sm:columns-2 xl:columns-3 2xl:columns-4">
                 {visibleIdeas.map((idea) => (
                   <div key={idea.slug} className="mb-5 break-inside-avoid">
                     <IdeaCard idea={idea} basePath={basePath} />
