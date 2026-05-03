@@ -2215,4 +2215,275 @@ export const IDEAS: Idea[] = [
     website: "https://lapinlahdenlahde.fi/en/",
     tags: ["museum", "historical"],
   },
+  {
+    slug: "helsinki-city-museum",
+    title: "Helsinki City Museum",
+    shortDescription:
+      "Finland's second most visited museum, free every day, threaded across five connected old buildings off Senate Square — including Sederholm House (1757, the oldest building in Helsinki) and its hands-on Children's Town.",
+    longDescription: [
+      "Helsinki City Museum (Helsingin kaupunginmuseo) tells the story of the city itself — how a fishing town founded in 1550 became a Russian-empire capital, an industrial port, and the modern Finnish capital — through five connected historic buildings on Aleksanterinkatu just off Senate Square. The main entrance is at Aleksanterinkatu 16 in a pair of stitched-together 19th-century merchant houses; the complex extends west into Sederholm House, the oldest building in Helsinki, completed in 1757 by merchant Johan Sederholm and the only stone civilian building to survive the fires that repeatedly swept through wooden Helsinki.",
+      "The permanent exhibitions rotate but always sit in the same register: scale models of vanished neighbourhoods, photographs of street corners then-and-now, recreated 1930s shop interiors, and personal objects donated by Helsinkians. Exhibitions running through 2026 include \"The Unknown Suburb\" (the post-war ring of concrete-slab estates that house most of the city's population) and \"In the Quarters of Kruununhaka\" (the patrician district immediately around the museum). A new main exhibition opens in summer 2026.",
+      "The unmissable piece if you're visiting with kids is Children's Town inside Sederholm House — a hands-on indoor playground threaded through the 18th-century rooms. Children climb into a horse-drawn carriage, steer a wooden ship, play shopkeeper in a recreated Sederholm-era store, sit at desks in a 1930s schoolroom while a stern schoolmaster looms in projection, and explore Grandma's 1970s flat with the period TV running cartoons of the day. It's calibrated for roughly ages 3–10 and works in any weather.",
+      "Free entry to everything, all the time, no ticket needed. From Lauttasaari, take the metro to Helsinki Central (~6 min), then walk 8–10 minutes east through Senate Square — the museum is on the north side of Aleksanterinkatu. Pair it naturally with the Cathedral, the Old Market Hall (10 min walk south), or Uspenski (10 min east). Allow 1–2 hours, more with kids in Children's Town.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Kaupunginmuseo2.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/New_Helsinki_City_Museum,_enter.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Kaupunginmuseo_sisäpiha.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Aleksanterinkatu_near_Helsinki_City_Museum_on_a_sunny_evening_in_July_2023.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Sederholmin_talo.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Sederholm_House_-_Sederholmin_talo_2008_C_HPIM0721.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Sederholmin_talon_seinä.jpg",
+    ],
+    availability: {
+      suitableMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      weeklySchedule: "Mon–Fri 11:00–19:00, Sat–Sun 11:00–17:00. Closed on most public holidays — check the site before holiday-week visits.",
+      notes:
+        "Year-round, indoor, weather-proof. Especially welcome on a cold or rainy day, and a natural pair with other Senate Square sights that are also walkable in any season.",
+    },
+    location: {
+      region: ["Helsinki", "Uusimaa"],
+      address: "Aleksanterinkatu 16, 00170 Helsinki",
+    },
+    accessFromLauttasaari: {
+      complexity: "simple",
+      duration: "~20 min",
+      notes:
+        "Metro from Lauttasaari east to Helsinki Central (~6 min), then 8–10 min walk east via Aleksanterinkatu through Senate Square. Sederholm House is two doors further east at no. 18.",
+    },
+    cost: {
+      perPersonEur: 0,
+      notes: "Always free entry to all five museum buildings.",
+    },
+    booking: {
+      leadTime: "same-day",
+      notes: "Walk-in. No reservations needed.",
+    },
+    suitableAgeRange: { min: 0 },
+    childrenNotes:
+      "Children's Town in Sederholm House is the headline draw for kids — calibrated for roughly ages 3–10, hands-on and interactive throughout. Stroller-friendly entrances and lifts in the main museum; the 18th-century Sederholm House has a few uneven thresholds but accommodates buggies. Free family bathrooms and a quiet baby-feeding nook.",
+    indoorOutdoor: "indoor",
+    physicalIntensity: "low",
+    duration: "1-3h",
+    website: "https://www.helsinginkaupunginmuseo.fi/en/",
+    tags: ["museum", "historical"],
+  },
+  {
+    slug: "designkaverit-christmas-pop-up",
+    title: "Designkaverit Christmas Pop-Up at Forum",
+    shortDescription:
+      "Six weeks each winter, the second floor of Forum shopping centre fills with 140+ Finnish design brands selling under one roof — homewares, prints, jewellery, kids' clothes, ceramics, chocolate — at Designkaverit's annual Iloinen Joulukauppa.",
+    longDescription: [
+      "Designkaverit (\"design buddies\") is a Finnish design community that runs pop-up shops, fairs, and design events around the country. Their flagship event is Iloinen Joulukauppa — the \"Happy Christmas Shop\" — a six-week pop-up that takes over the second floor of Forum, the shopping centre on Mannerheimintie at the heart of Helsinki. Over 140 small Finnish design brands and independent makers share the space: ceramics studios, textile-printers, jewellers, illustration brands, candle-makers, soap-makers, small-batch chocolatiers, and clothing labels you wouldn't otherwise find under one roof. The pop-up celebrated its 10th edition in 2025.",
+      "The format is what makes it work as a Christmas-shopping experience rather than a craft fair you grind through. Every brand has a tidy curated shelf or stand; the staff at the central till handle payment for everything in one transaction; and the ratio of \"actually want this\" to \"polite glance and move on\" is unusually high because Designkaverit has been refining the brand list for ten years. Price points run from €5 postcards to €200+ ceramics, with a sweet spot around €20–60 — the gift bracket. If you're shopping for someone who already has a kitchen full of Iittala, this is the place to find the up-and-coming makers Iittala will be partnering with in five years.",
+      "It runs roughly mid-November through 23 December every year. Mall hours apply: Mon–Fri 10:00–20:00, Sat 10:00–18:00 or 19:00, Sun 12:00–18:00. Free to browse — you only pay if you find something. Take the metro from Lauttasaari one stop east to Kamppi (~3 min), then walk underground through the Kamppi mall and surface inside Forum, or walk up Mannerheimintie. Plan an hour minimum; you'll spend two if you start picking things up. There are cafés on the same floor of Forum if you need to regroup.",
+      "Outside the November–December window there is no Designkaverit pop-up at Forum — the rest of the year that floor is regular tenanted retail. Forum itself is fine to wander through (140 mainstream shops, food court, the Amos Anderson art museum upstairs) but it's not why this entry exists. Come for the Christmas pop-up, or skip it.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Forum_shopping_center,_Helsinki.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Forum_interior_-_Helsinki_-_DSC03803.JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Forum_Helsinki.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Mannerheimintie_-_panoramio_(11).jpg",
+    ],
+    availability: {
+      suitableMonths: [11, 12],
+      events: [{ from: "11-15", to: "12-23", name: "Iloinen Joulukauppa" }],
+      weeklySchedule: "Mon–Fri 10:00–20:00, Sat 10:00–19:00, Sun 12:00–18:00",
+      notes:
+        "Date-locked: only runs roughly 15 November through 23 December each year. Exact dates shift slightly — confirm via designkaverit.fi before planning a special trip. Outside this window the second-floor space reverts to ordinary mall retail.",
+    },
+    location: {
+      region: ["Helsinki", "Uusimaa"],
+      address: "Forum, 2nd floor, Mannerheimintie 20, 00100 Helsinki",
+    },
+    accessFromLauttasaari: {
+      complexity: "simple",
+      duration: "~10 min",
+      notes:
+        "Metro one stop east from Lauttasaari to Kamppi (~3 min), then 3-min walk surfacing into Forum via the underground passage from Kamppi mall, or a 5-min walk above ground up Mannerheimintie. The pop-up is on the 2nd floor — escalators or lifts from any entrance.",
+    },
+    cost: {
+      perPersonEur: 0,
+      notes:
+        "Free to browse. You'll spend if you buy — typical gift-bracket prices €20–60, with a long tail of postcards and prints under €10 and statement ceramics above €100.",
+    },
+    booking: {
+      leadTime: "same-day",
+      notes:
+        "Walk-in. Busiest on the last two weekends before Christmas; weekday mornings and Sunday afternoons are quietest.",
+    },
+    suitableAgeRange: { min: 0 },
+    childrenNotes:
+      "Stroller-friendly throughout the mall — wide aisles, lifts on every floor, family bathrooms in Forum. Several kids' brands among the vendors so the under-10 crowd has something to look at, but it's still a shopping pop-up and small kids will lose interest after 30–40 minutes.",
+    indoorOutdoor: "indoor",
+    physicalIntensity: "low",
+    duration: "1-3h",
+    website: "https://www.designkaverit.fi/",
+    tags: [],
+  },
+  {
+    slug: "muji-kamppi-community-market",
+    title: "MUJI Kamppi — Local Design Village & Community Market",
+    shortDescription:
+      "Inside the largest MUJI in Europe (the entire 4th floor of Kamppi mall), a permanent Finnish-makers shop-in-shop runs year-round and a bi-weekly community market expands it into a Friday–Saturday craft-fair drop-in.",
+    longDescription: [
+      "MUJI's Kamppi flagship is unusual for the chain: rather than a clean grid of MUJI's own household goods, a meaningful slice of the floor is given over to local Finnish makers. The whole top floor of the Kamppi shopping centre — about 3,500 m², the largest MUJI store in Europe — has been split into a Japanese-house aesthetic surrounding a Finnish-design pocket. Two pieces of that pocket are why this entry exists: the year-round Local Design Village shop-in-shop, and the bi-weekly MUJI Community Market that turns Fridays and Saturdays into a small craft fair inside the store.",
+      "The Local Design Village is a permanent counter and shelving area on the 4th floor that rotates dozens of small Finnish brands. It's a way to find the maker-scale ceramics, illustration prints, jewellery, candles, kids' clothes, wooden goods, and small-batch food that would otherwise mean tracking down ten different studios in the Design District. Sits alongside a Local Food Store with products from over 100 small Finnish producers — coffee, rye bread, jams, beverages, Karelian pastries — and a Small Gallery that hosts rotating exhibitions by Finnish artists.",
+      "The Community Market is the every-other-Friday-and-Saturday version: independent makers physically come into the store with their tables and their goods, and you can talk to them while you shop. Schedule is published on the MUJI Kamppi Instagram (@mujikamppi); roughly two weekends a month, daytime hours. If you've ever walked through a craft fair and wished you could fold it into a bigger shopping run rather than committing to a Saturday on the cobblestones, this is that.",
+      "Free to browse all of it. Mall hours: Mon–Fri 10:00–20:00, Sat 10:00–19:00, Sun 12:00–18:00 (Sundays the Community Market itself isn't running; the Local Design Village stays open). MUJI Ravintola — the on-site restaurant, also Europe's first MUJI restaurant — does Japanese-leaning lunches and deli food daily, plus authentic dinner service Thu–Sat evenings. From Lauttasaari, the metro stops directly at Kamppi (~3 min, no walk needed); take the lift to the 4th floor.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Diagonal_view_of_Narinkkatori_with_Kamppi_Center_on_a_sunny_afternoon_in_May_2024.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Entrance_to_Kamppi_Center_on_an_evening_in_February_2025.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Helsinki_KamppiCenter_01.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Kamppi_shopping_centre_on_an_August_evening.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Narinkkatori_in_June_2024.jpg",
+    ],
+    availability: {
+      suitableMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      weeklySchedule:
+        "Mall: Mon–Fri 10:00–20:00, Sat 10:00–19:00, Sun 12:00–18:00. Community Market: every other Fri–Sat — confirm the next dates via @mujikamppi on Instagram.",
+      notes:
+        "Local Design Village runs year-round during mall hours. Community Market is bi-weekly Fri–Sat — pick a market weekend if you want the maker-fair experience, otherwise the Local Design Village still gives you the curated Finnish-design selection.",
+    },
+    location: {
+      region: ["Helsinki", "Uusimaa"],
+      address: "Kamppi Shopping Centre, 4th floor, Urho Kekkosen katu 1, 00100 Helsinki",
+    },
+    accessFromLauttasaari: {
+      complexity: "simple",
+      duration: "~10 min",
+      notes:
+        "M1 or M2 metro one stop east from Lauttasaari direct to Kamppi (~3 min). The Kamppi metro station opens directly into the shopping centre — take the lift or escalators to the 4th floor for MUJI.",
+    },
+    cost: {
+      perPersonEur: 0,
+      notes:
+        "Free to browse. Local Design Village price points vary — postcards and small prints under €10, ceramics and jewellery typically €30–150. Community Market vendors set their own prices, often slightly cheaper than at retail.",
+    },
+    booking: {
+      leadTime: "same-day",
+      notes:
+        "Walk-in. No reservations for the market or the store. MUJI Ravintola dinner service Thu–Sat evenings benefits from a same-day reservation.",
+    },
+    suitableAgeRange: { min: 0 },
+    childrenNotes:
+      "Stroller-friendly throughout — wide aisles, lifts directly to the 4th floor. MUJI's children's section and a few kids' brands at Local Design Village give younger visitors something to look at, but a craft-shopping pop-up still lands better with under-10s for ~30 minutes than for a full hour.",
+    indoorOutdoor: "indoor",
+    physicalIntensity: "low",
+    duration: "1-3h",
+    website: "https://www.muji.com/flagship/kamppi-helsinki/en/",
+    tags: [],
+  },
+  {
+    slug: "andante",
+    title: "Andante",
+    shortDescription:
+      "A florist-turned-specialty-café on Fredrikinkatu in Punavuori, named for the musical \"moderately, slow\" — a rotating list of Nordic and European award-winning roasters, hand-brew filter, scones and Basque cheesecake, and exposed-brick light all afternoon.",
+    longDescription: [
+      "Andante opened in a former Punavuori flower shop that had been on the same Fredrikinkatu block since 1990, and the bones of the old place — exposed red brick, reclaimed wood, plants still tucked along the windows — became the bones of the café. The name is musical: andante, \"moderately, slow.\" That's the pace of the room and the philosophy of the bar; nothing is rushed, hand-brews are pulled at filter temperature, conversation runs long, and the staff are happy to talk you through the day's beans without making it feel like a quiz.",
+      "The coffee programme is rotational rather than house-roast. On any given visit there are two or three filter options and one or two espressos drawn from a list of European award-winning roasters that has included Kawa (Paris), La Cabra (Copenhagen), Manhattan Coffee (Rotterdam), Dak (Amsterdam), and Helsinki's own Samples — the kind of line-up that Helsinki coffee-people rotate through over a weekend and Andante curates into a single bar. Filter is the move; if you order one drink, make it the V60.",
+      "Pastry is the other reason to stay. Daily-baked scones, matcha tiramisu, Basque cheesecake, and a strong carrot cake — all baked in-house, all available until they sell out (which happens earlier than you'd expect on weekends). The kitchen also runs raw and vegan options, a holdover from the early concept. House-made granola and drip-bag coffee are sold to take home; merchandise is light but tasteful.",
+      "Open Mon–Fri 09:00–18:00 and Sat 11:00–18:00, closed Sundays. Coffee €4–6, pastries €5–8, the typical sit-down stop is €10–12. Walk-in only — no reservations, and no hot food beyond pastry, so it's a coffee-and-cake stop rather than a meal. From Lauttasaari, the easiest route is bus 21 to Erottaja or the metro to Kamppi and a 10-minute walk south through the Design District. Pair naturally with a wander through Punavuori's small design shops on the same afternoon.",
+    ],
+    thumbnailUrl:
+      "https://andantecoffee.com/cdn/shop/files/IMG_6108.jpg",
+    galleryUrls: [
+      "https://andantecoffee.com/cdn/shop/files/IMG_4967.jpg",
+      "https://andantecoffee.com/cdn/shop/files/IMG_5142.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Fredrikinkatu_on_an_afternoon_in_August_2024.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Fredrikinkatu_from_Ratakatu.JPG",
+    ],
+    availability: {
+      suitableMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      weeklySchedule: "Mon–Fri 09:00–18:00, Sat 11:00–18:00, closed Sundays",
+      notes:
+        "Year-round. Especially welcome on a winter afternoon — the room is bright, the brick walls absorb the cold, and the brew time matches the pace you'd want anyway.",
+    },
+    location: {
+      region: ["Helsinki", "Punavuori", "Uusimaa"],
+      address: "Fredrikinkatu 20, 00120 Helsinki",
+    },
+    accessFromLauttasaari: {
+      complexity: "simple",
+      duration: "~15 min",
+      notes:
+        "Bus 21 from Lauttasaari to Erottaja stop (~12 min) puts you a 3-min walk away. Alternative: M1/M2 metro to Kamppi (~3 min), then a 10-min walk south through the Design District along Fredrikinkatu.",
+    },
+    cost: {
+      perPersonEur: 8,
+      notes:
+        "Filter coffee €4–5, espresso drinks €4–6, pastries €5–8. A typical sit-down coffee-and-cake stop is €10–12.",
+    },
+    booking: {
+      leadTime: "same-day",
+      notes:
+        "Walk-in only, no reservations. Busiest weekend afternoons — go before 11:00 on Saturday or any weekday morning to be sure of a table and the full pastry case.",
+    },
+    suitableAgeRange: { min: 0 },
+    childrenNotes:
+      "Stroller-accessible — single ground-floor room, no steps. Quiet, conversational atmosphere; older kids do fine, toddlers may find the slow pace boring. No high chairs guaranteed but a low bench seat works for sharing.",
+    indoorOutdoor: "indoor",
+    physicalIntensity: "low",
+    duration: "<1h",
+    website: "https://andantecoffee.com/",
+    tags: ["food"],
+  },
+  {
+    slug: "cafetoria",
+    title: "Cafetoria Café & Shop",
+    shortDescription:
+      "Finland's second-oldest specialty micro-roastery, founded by a Peruvian-Finnish couple in 2002 and still roasting on a 1970s German Probat — their Runeberginkatu café in a 1925 Art Deco corner serves the full 16-coffee menu and the espresso of someone who places at the national roasting championships.",
+    longDescription: [
+      "Cafetoria is what happens when a Peruvian agronomist-turned-roaster (Ivan Ore) marries a Finnish coffee professional (Mia Nikander-Ore) and they decide to import beans from his family's region of Peru rather than just drink them. They started roasting in 2002, making Cafetoria the second-oldest still-active micro-roastery in Finland in its current form. More than two decades in, the operation is still small, still family-run, and still pulls beans direct from the same Peruvian cooperatives Ivan started with — a relationship now well over fifteen years old.",
+      "The Runeberginkatu café is the public face of the operation. It sits in a 1925 Art Deco corner building in Etu-Töölö, about ten minutes' walk north of Kamppi, and it's the kind of room that rewards staying for two cups: high ceilings, big windows, the murmur of a small international barista team (Spain, Chile, Portugal, the US, Finland), and the bag wall behind the counter showing every coffee they currently roast. The permanent menu runs to sixteen coffees across the full roast spectrum — including, unusually for the third-wave scene, a deliberately well-roasted organic Robusta. Ivan placed second at the 2025 Finnish Roasters Challenge, so the bar is operating at competition-roaster level even on a quiet Tuesday afternoon.",
+      "Order whatever filter is brewed that morning — the line-up rotates weekly — or ask the barista to walk you through the espresso menu. Pastries and paninis are solid but secondary; the coffee is the headline, and people come specifically for it. Beans, drip bags, and brewing equipment are sold from the shelves at the back. The roasting itself happens out at their countryside roastery in Lohja on a 1970s Probat UG22 they bought used from Switzerland, but you'll see the freshly-roasted bags on display at the café within days.",
+      "Open weekday daytimes (roughly Mon–Fri 08:00–18:00, hours vary slightly week to week — confirm via the website if it matters), generally closed Sundays. Coffee €4–6, pastries €4–6. Walk-in. From Lauttasaari, metro to Kamppi (~3 min), then either a 10-minute walk north up Runeberginkatu or two stops on tram 1 / 2 / 4 to Caloniuksenkatu. Cafetoria also runs a smaller café on the Aalto University campus in Otaniemi, Espoo — same beans, different room — if your day already takes you out that way.",
+    ],
+    thumbnailUrl:
+      "https://cafetoria.fi/wp-content/uploads/2021/08/toolo-slider-1-768x432.png",
+    galleryUrls: [
+      "https://www.slurp.coffee/wp-content/uploads/2017/06/Cafetoria-Cafe-Team-e1498717391664-602x800.jpg",
+      "https://www.slurp.coffee/wp-content/uploads/2017/06/Cafetoria-Probat-Roasting-800x800.jpg",
+      "https://www.slurp.coffee/wp-content/uploads/2017/06/Cafetoria-Roasting-Team-800x533.jpg",
+    ],
+    availability: {
+      suitableMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      weeklySchedule:
+        "Roughly Mon–Fri 08:00–18:00, closed Sundays. Saturday hours vary — check cafetoria.fi/en/locations.",
+      notes:
+        "Year-round, weekday-leaning. Quietest mid-morning and after 14:00. Holiday breaks around Christmas/New Year and Midsummer — the locations page is the canonical schedule.",
+    },
+    location: {
+      region: ["Helsinki", "Uusimaa"],
+      address: "Runeberginkatu 31, 00100 Helsinki",
+    },
+    accessFromLauttasaari: {
+      complexity: "simple",
+      duration: "~15 min",
+      notes:
+        "M1/M2 metro from Lauttasaari to Kamppi (~3 min), then either a 10-min walk north up Runeberginkatu, or 2 stops on tram 1 / 2 / 4 to Caloniuksenkatu and a 2-min walk. Cafetoria sits on the corner of Runeberginkatu and Caloniuksenkatu.",
+    },
+    cost: {
+      perPersonEur: 8,
+      notes:
+        "Filter coffee €4–5, espresso drinks €4–6, pastries and paninis €4–8. Whole beans €15–25 / 250g if you want to take some home.",
+    },
+    booking: {
+      leadTime: "same-day",
+      notes:
+        "Walk-in. No reservations. Tables fill at lunchtime on weekdays — go before 11:30 or after 14:00 for a calm seat.",
+    },
+    suitableAgeRange: { min: 0 },
+    childrenNotes:
+      "Stroller-accessible — corner café with ground-floor entry. Quiet, conversational atmosphere; older kids do fine, very young children may find a coffee-focused stop boring after a few minutes. Pastry case usually has something kid-friendly.",
+    indoorOutdoor: "indoor",
+    physicalIntensity: "low",
+    duration: "<1h",
+    website: "https://cafetoria.fi/en/",
+    tags: ["food"],
+  },
 ];
