@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { ImageOff } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 
@@ -33,6 +33,17 @@ export function HotlinkImage({
 }: HotlinkImageProps) {
   const [status, setStatus] = useState<"loading" | "loaded" | "error">("loading");
 
+  // If the browser serves the image from cache before React attaches
+  // onLoad/onError, those events fire before the listeners exist and
+  // status stays stuck at "loading" forever (skeleton never clears,
+  // image stays at opacity-0). A ref callback runs the moment the img
+  // is attached to the DOM, so we can check `complete` at that exact
+  // instant and resolve status manually for the cache-hit case.
+  const imgRef = useCallback((img: HTMLImageElement | null) => {
+    if (!img || !img.complete) return;
+    setStatus(img.naturalWidth > 0 ? "loaded" : "error");
+  }, []);
+
   if (fit === "natural") {
     return (
       <div className={cn("relative w-full overflow-hidden", className)}>
@@ -47,6 +58,7 @@ export function HotlinkImage({
         )}
         {/* eslint-disable-next-line @next/next/no-img-element -- catalogue images are user-curated hotlinks from arbitrary hosts; per-host remotePatterns config is impractical and Next's optimizer is intentionally bypassed for these external URLs */}
         <img
+          ref={imgRef}
           src={src}
           alt={alt}
           onLoad={() => setStatus("loaded")}
@@ -80,6 +92,7 @@ export function HotlinkImage({
       )}
       {/* eslint-disable-next-line @next/next/no-img-element -- catalogue images are user-curated hotlinks from arbitrary hosts; per-host remotePatterns config is impractical and Next's optimizer is intentionally bypassed for these external URLs */}
       <img
+        ref={imgRef}
         src={src}
         alt={alt}
         loading="lazy"
