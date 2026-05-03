@@ -505,4 +505,192 @@ export const TOPICS: Topic[] = [
       "https://commons.wikimedia.org/wiki/Special:FilePath/Ukko-Luosto_fell_as_seen_from_the_east,_Sodankylä,_Lapland,_Finland,_2021_September.jpg",
     ],
   },
+  {
+    slug: "finnish-food",
+    title: "Finnish Food",
+    aliases: [
+      "Finnish food",
+      "Finnish foods",
+      "Finnish cuisine",
+      "Finnish cooking",
+      "makkara",
+      "saunamakkara",
+      "grillimakkara",
+    ],
+    shortDescription:
+      "Finnish cooking is what happens when a country with a four-month growing season decides everything good comes from the forest, the lake, or the smokehouse — earthy, ingredient-led, and unapologetically uncomplicated.",
+    longDescription: [
+      "Finnish food is honest, ingredient-led cooking shaped by a brutally short growing season and an enormous, productive wilderness. There is almost no native tradition of the heavy butter-cream-and-flour sauces that define French cuisine, very little southern Mediterranean stewing or spice work, and only a thin layer of Russian and Swedish influence borrowed and quietly modified. What's left is what the country actually grows, catches, picks, and smokes — preserved when needed, eaten fresh in season, and put on the plate without much in the way of decoration. \"Earthy\" and \"hardy\" are the words foreign visitors reach for and they're roughly right.",
+      "The shape of it comes from geography. North of the Baltic, with a growing season of 100–185 days depending on latitude, Finland for most of its history fed itself on what survived a long winter — root vegetables, dairy, dense rye and barley breads, smoked and salted fish, game, plus berries and mushrooms gathered in volume during a few intense autumn weeks and put up for the cold months. Scarcity bred a culture of preservation and zero-waste cooking — pickling, smoking, salting, drying, fermenting — and ingredients are still where Finnish cooks compete: the produce arrives twice as good as the recipe, and the recipe knows to get out of the way.",
+      "The four headline ingredients — mushrooms, berries, fish, and makkara — are the parts of the pantry every visitor meets fastest. Forest mushrooms (kantarelli, suppilovahvero, herkkutatti) appear on every menu from August through October and are picked by half the country under jokamiehenoikeus. Berries are everywhere in everything — lingonberry jam beside meatballs, blueberry pie at every café, sea buckthorn juice at breakfast, cloudberry liqueur on the after-dinner trolley. Fish — salmon, perch, pike, the small Baltic herring (silakka), the smoked vendace (muikku) sold by the bag at market squares — is the protein the country never had to import. And makkara, the Finnish sausage, is the everyday meat staple: roughly a third of all meat eaten in Finland goes into a sausage, and grilling it at the lakeside cottage or wrapping a saunamakkara in foil to cook on the sauna stove is as close to a national pastime as eating gets.",
+      "As a visitor, the easiest way in is to eat where Finns eat. The market halls (Vanha kauppahalli, Hakaniemi, Hietalahti) carry the full pantry under one roof — smoked fish counters, charcuterie, berries and mushrooms in season, rye breads. The weekday lounas buffets are where home cooking ends up. Cafés do the cinnamon bun, the salmon soup, the rice pie classics. And if someone hands you a pointed stick and points you at a campfire with a pack of sausages on it, that's the lesson — there's no fancier version, this is the version, and it's better than it has any right to be.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Cantharellus_cibarius_Kanttarelli_VIII04_C_3798.JPG",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Kalakauppias_Kauppatorin_rannassa_IM8092_C.JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Lingonberries_Finland.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Suutarinlohi_blue.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Grilled_sausages_at_home.jpg",
+    ],
+  },
+  {
+    slug: "korvapuusti",
+    title: "Korvapuusti",
+    aliases: [
+      "korvapuusti",
+      "korvapuustit",
+      "korvapuusteja",
+      "Finnish cinnamon bun",
+      "Finnish cinnamon buns",
+      "Finnish cinnamon roll",
+      "Finnish cinnamon rolls",
+      "cinnamon bun",
+      "cinnamon buns",
+      "cinnamon roll",
+      "cinnamon rolls",
+    ],
+    shortDescription:
+      "The Finnish cinnamon bun — \"slap on the ear\" in literal translation — distinguished from its Swedish cousin by a triangular pinwheel shape, a generous hit of cardamom in the dough, and a heavy snowfall of pearl sugar on top.",
+    longDescription: [
+      "Korvapuusti — literally \"slap on the ear\" — is the Finnish cinnamon bun. The name describes the shape: roll the dough flat, spread it with butter and cinnamon-sugar, log it up tight, slice it on a diagonal, then press the cut end firmly down with a thumb so the layers fan out into something that looks roughly like a stylised human ear. Bakeries in Finland have been calling it that for well over a century; the Swedish equivalent, örfil (\"box on the ear\"), uses the exact same metaphor for the same shape.",
+      "Wheat pastries first reached Finland from Germany via Sweden in the 18th century, but they were an upper-class luxury for nearly a hundred years before they reached ordinary kitchens — common enough by the late 1800s, properly mass-popular only after the Second World War when sugar, butter, and wheat flour all came off rationing. The cardamom in the dough is the giveaway that the recipe travelled north through Stockholm rather than west from Vienna; cardamom moved into Scandinavia along the old spice routes and stayed. The pearl sugar on top — coarse, white, deliberately uneven — is the other tell, and Finnish bakers use a noticeably heavier hand with it than the Swedes do.",
+      "It has its own national day. Korvapuusti Day falls on October 4 (established mid-2000s) and most cafés mark it with discounts and seasonal variants. The recipe is printed on most Finnish flour bags, every grandmother has her own version, and almost every kahvila (café) in the country keeps a fresh tray through the day, baked on site. The standard order is one bun and one black coffee for somewhere between €4 and €7. Café Regatta on Taivallahti bay, Ekberg in Punavuori, the Stockmann food-hall counter, and any of the K-Supermarket in-store bakeries will all hand you a respectable one. Eat it warm, ideally still steaming from the oven, and don't overthink the coffee.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Korvapuusti.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Korvapuustit_uunista_IMG_2811_C.JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Cinnamon_rollsKorvapuusteja_DSC08061_C.JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Korvapuusti1.jpg",
+    ],
+  },
+  {
+    slug: "riisipiirakka",
+    title: "Riisipiirakka (Karelian Pie)",
+    aliases: [
+      "riisipiirakka",
+      "riisipiirakat",
+      "karjalanpiirakka",
+      "karjalanpiirakat",
+      "Karelian pie",
+      "Karelian pies",
+      "Karelian pasty",
+      "Karelian pasties",
+      "Karelian pastry",
+      "Karelian pastries",
+      "munavoi",
+      "egg butter",
+    ],
+    shortDescription:
+      "A small oval pastry with a paper-thin rye crust crimped around a creamy rice-porridge filling, served warm with a smear of munavoi (mashed hard-boiled egg whipped with butter). Sold in every supermarket; eaten at every breakfast.",
+    longDescription: [
+      "Riisipiirakka — the rice version of the broader karjalanpiirakka, or \"Karelian pie\" — is a small, palm-sized, open-faced pastry with a paper-thin rye crust folded around a creamy rice-porridge filling. The crust is rolled out almost translucent, the rice is cooked slowly in milk until it's the texture of thick custard, and the dough's edges are pinched up around the rice in characteristic crimped folds, leaving the centre exposed. They come out of the oven glossy with butter and are served, in the canonical form, with munavoi — mashed hard-boiled egg whipped with soft butter, spread on top. One is a snack, three is a meal.",
+      "The dish originates from Karelia, the historical region straddling modern eastern Finland and Russia. The earliest written record of Karelian pies dates to 1686, when the filling was barley porridge or talkkuna (a roasted-grain meal); rice came in only in the 19th century, once Finnish trade routes made it cheap enough for everyday baking. After the Winter and Continuation Wars, Finland ceded most of Karelia to the Soviet Union and over 400,000 Karelian evacuees were resettled across the rest of the country, bringing the recipe with them. By the 1950s it had crossed from a regional speciality to a national staple. The EU granted karjalanpiirakka Traditional Speciality Guaranteed (TSG) status in 2003 — outside the official method (rye-flour crust, traditional fillings, traditional shape), you're not allowed to call it that.",
+      "As a visitor: every supermarket (S-market, K-market, Lidl, Prisma) sells them in plastic packs of 10, and every market hall has a fresh-baked counter doing them better. Reheat for ten minutes at 200°C, brush with butter while still hot, top with munavoi, eat with strong coffee. They appear at every Finnish breakfast buffet, every brunch, every funeral, every Independence Day reception, every kahvila lunch counter. The Helsinki Old Market Hall (Vanha kauppahalli) and Hakaniemi do the best fresh ones in the city; for the full eastern-Finland version, head to Joensuu or Kuopio, where the rye crusts are slightly thicker and the rice slightly looser.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Karjalanpiirakka_with_egg_butter.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Karjalanpiirakat.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Munavoi_(egg_butter)_and_Karelian_pasties.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/18-08-24-Karjalanpiirakka_RRK6538.jpg",
+    ],
+  },
+  {
+    slug: "lounas",
+    title: "Lounas (Buffet Lunch)",
+    aliases: [
+      "lounas",
+      "lounaat",
+      "lunch buffet",
+      "lunch buffets",
+      "buffet lunch",
+      "buffet lunches",
+      "weekday lunch",
+      "lunch voucher",
+    ],
+    shortDescription:
+      "The Finnish weekday lunch buffet — €12–16 for an all-you-can-eat hot meal between 11 and 14 on weekdays, sustained by a 50-year-old payroll-tax subsidy that quietly shapes how the entire country eats.",
+    longDescription: [
+      "Lounas — the Finnish weekday lunch buffet — is the way most working Finns eat their main hot meal of the day. The format is consistent across the country: an all-you-can-eat hot table with one or two main dishes (a fish, a stew, a vegetarian), a salad bar, soup, bread, water and coffee, served from roughly 11:00 to 14:00 Monday through Friday at a fixed price between €12 and €16 per person. You pay at the till, take a tray, fill it as many times as you like, and you're back at your desk in 35 minutes. About 65% of working Finns eat at a restaurant at least once a day, and roughly 70% prefer the buffet format when they do.",
+      "The whole system works because it is quietly subsidised. In 1974, the credit-card company Luottokunta launched Lounari, a paper-voucher scheme modelled on the French Ticket Restaurant of 1962; employers could buy the vouchers at face value and give them to staff as a partially tax-free benefit. Fifty years later the paper is gone but the structure remains: today's lunch benefit (lounasetu) is a digital balance loaded onto a card or phone, with a tax-free ceiling of €14.00 per working day in 2026. Employees pay 25% of the cost themselves and the employer covers the rest within the cap, so a €13 lunch costs the worker around €3.25. Roughly 15,000 restaurants — from corporate cafeterias to sit-down lunch spots in every neighbourhood — accept the cards, and weekday menus are priced almost universally to slot under the daily ceiling. The infrastructure is now self-reinforcing: lounas restaurants exist because the benefit exists, and the benefit makes sense because lounas restaurants exist.",
+      "As a visitor, lounas is one of the best deals in Finnish dining — €12–16 buys a full hot meal at restaurants where the same kitchen does à la carte mains for €25–35 at dinner. You don't need a benefit card; cash and credit work fine, the price is the same. The format is the same in every neighbourhood: walk in any time between 11 and 14 on a weekday, look for a chalkboard outside listing today's mains, queue for a tray, help yourself. Don't linger past 13:30 if you want the full spread; the trays start emptying as the kitchen winds down. Almost any sit-down restaurant with the word lounas in the window will be doing a respectable version, and Finland's annual Best Lunch competition is a real industry award worth checking the winner of (edenred.fi/best-lunch).",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Buffet_at_Caverna_in_January_2023.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Buffet_lunch_at_restaurant_Fregatti.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Asian_buffet_at_restaurant_Kung_Food_Panda.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Museoravintola_Valssi.jpg",
+    ],
+  },
+  {
+    slug: "lohikeitto",
+    title: "Lohikeitto (Salmon Soup)",
+    aliases: ["lohikeitto", "salmon soup", "salmon soups"],
+    shortDescription:
+      "Finland's national soup — a clean, gently creamy chowder of salmon, leek, carrot, potato, and a load-bearing pile of fresh dill. Eaten with rye bread, ordered everywhere, almost impossible to ruin.",
+    longDescription: [
+      "Lohikeitto — literally \"salmon soup\" — is the dish you'll be served when you order salmon soup anywhere in Finland. It's a clean, gently creamy chowder of salmon chunks, leek, carrot, potato, dill, fish stock, and a finishing pour of cream, eaten with a slice of rye bread on the side. Nothing else: no tomato, no rice, no lemon, no aromatics beyond white pepper and salt. The fresh dill is the load-bearing flavour and is non-negotiable — every recipe in the country specifies a generous bunch of it (50–70 grams for a four-person pot), and dried isn't considered an acceptable substitute.",
+      "Variants of lohikeitto appear in Finnish cookbooks from the 1800s, descended from the same broad family of Northern European fisherman's soups — peasant cooking built around whatever came out of the lake or sea. The original version was leaner: water, fish, potato, leek. Cream entered the recipe later, as Finnish dairy farming industrialised in the early 20th century, and stuck. The modern restaurant version is essentially the home version with a few extra grams of butter and more careful knife work on the salmon. A smoked variant (savulohikeitto) is common in Helsinki kitchens, and a leaner Lapland version (Lapin lohikeitto) often omits or reduces the cream and substitutes Arctic char or trout from a Lappish river for the salmon.",
+      "Where to get it: almost every Helsinki market hall has a counter doing one. The orange-tarp stalls at Kauppatori sell it by the bowl in summer (€10–12), Hakaniemi market hall has two or three sit-down spots doing a fancier version, and Café Regatta's hatch-window version is a classic of the genre. The default sit-down expectation: €12–15 for a generous bowl, two slices of rye bread, butter, water. It travels well — packs into a thermos for a day skiing or a long ferry crossing — and reheats fine. Don't ask for a spicy version; there isn't one, and the kitchen will look at you like you've just suggested they ruin it.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Lohikeitto.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Finnish_salmon_soup.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Salmon_soup_at_Löyly,_Helsinki_(52890138067).jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Finland_salmonsoup_01.jpg",
+    ],
+  },
+  {
+    slug: "kotikalja",
+    title: "Kotikalja",
+    aliases: ["kotikalja", "kalja"],
+    shortDescription:
+      "Finland's low-alcohol home-brewed rye drink — malty, faintly fizzy, around 1% ABV, classified as a soft drink, drunk by children at the school canteen, the default holiday-table beverage for a thousand years.",
+    longDescription: [
+      "Kotikalja — literally \"home beer\" — is a traditional Finnish low-alcohol fermented rye drink, somewhere between a soft drink and a beer in alcohol content (typically around 1% ABV or less) but firmly on the soft-drink side of the cultural divide. Children drink it, schools have historically served it with lunch, the supermarket sells it in litre cartons in the soft-drink aisle, and it's a default beverage at the Finnish holiday table — Christmas, Easter, Midsummer — alongside the same dishes the grandparent generation grew up with. The taste is malty, lightly bready, slightly sweet, and faintly carbonated; a distant cousin to Russian kvass, though kvass is bread-based and kalja is malt-based.",
+      "The drink is medieval. Farmhouse Finland brewed it weekly out of leftover grain — typically two parts unmalted rye and one part rye malt, with whatever sweetener (sugar, syrup, honey) and yeast came to hand, fermented for a day or two in wooden tubs until it was lightly bubbly but had not yet developed real alcohol. The same rye-and-water tradition produced Finland's strong farmhouse beer (sahti) at the upper end and the everyday small drink (kalja) at the lower end. Industrialisation flattened the regional recipes into a few national brands by the mid-20th century — today's supermarket cartons (Mallasjuoma, Sinebrychoff, Pirkka, Rainbow house brands) ferment dark rye malt, sugar, and baker's yeast for under a day, finish under 1% ABV, and are classified as non-alcoholic in Finnish law.",
+      "As a visitor: try a glass with a meal at any traditional Finnish restaurant — Saaga, Lappi, Savotta, Sea Horse — where it will be on the menu beside the meatballs and the reindeer, or pour yourself a glass from the dispenser at a weekday lounas buffet, where it sits between the water jug and the milk. Supermarkets stock cartons in the soft-drink aisle at around €1.50 per litre. It pairs with everything the Finnish home cook makes — rye bread, Karelian pies, fish dishes, salty meats — and is the canonical wash-down for the winter Christmas table where ham and root casseroles want something that isn't water and isn't wine. Don't expect a hop-forward beer; the point is malt, bread-like sweetness, and gentle fizz. If you like kombucha or a low-ABV kvass, you'll like kalja.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Lasillinen_kotikaljaa.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Sahtia_valmistetaan_Hollolan_Noitalan_Hottolassa_1900-luvun_alussa.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Sahdin_tekoa.jpg",
+    ],
+  },
+  {
+    slug: "pea-soup-thursdays",
+    title: "Pea Soup Thursdays (Hernekeitto-torstai)",
+    aliases: [
+      "hernekeitto",
+      "pea soup",
+      "pea soups",
+      "pannukakku",
+      "Finnish pancake",
+      "Finnish pancakes",
+      "oven pancake",
+      "oven pancakes",
+      "Pea Soup Thursday",
+      "Thursday pea soup",
+      "hernekeitto-torstai",
+    ],
+    shortDescription:
+      "One day a week, the same meal lands on tables across Finland: thick yellow split-pea soup with ham followed by oven pancake with jam and cream. Schools, the army, and traditional restaurants have served it on Thursdays for several hundred years.",
+    longDescription: [
+      "One Thursday a week, the same meal lands on tables across Finland: hernekeitto — a thick yellow split-pea soup with chunks of ham — followed by pannukakku, a slab of oven-baked egg-and-milk pancake served warm with whipped cream and jam. School cafeterias serve it. The Finnish Defence Forces serve it. Hospital canteens serve it. Most traditional Finnish restaurants feature it on Thursday lunch and dinner menus, often as a fixed-price special. The combination has been the de facto Thursday meal of the country for several hundred years and still produces a small national wave of food posts on Finnish social media every week.",
+      "The tradition is medieval. Pre-Reformation Finland followed the Catholic Friday fast — abstaining from meat one day a week — so Thursday became the deliberate pre-fast meal: a heavy, protein-rich, energy-dense plate that would carry a working person through Friday's lighter eating. Hernekeitto fit the brief: inexpensive dried yellow split peas simmered for hours with a ham bone left over from earlier in the week, into a thick almost-stew. The pannukakku followed as a use-up dish for the milk and eggs that wouldn't keep. Finland's 16th-century shift to Lutheranism formally ended Friday fasting, but the Thursday menu had already embedded itself in the rhythm of the week and never left. The Finnish Defence Forces formalised it during the Second World War — it appears on the official military menu calendar every Thursday to this day, almost without exception.",
+      "As a visitor: walk into any Finnish lounas restaurant on a Thursday and you'll find both. The classic pairing — a deep bowl of hernekeitto with a streak of strong Finnish mustard on the side, a square of warm pannukakku with strawberry jam and whipped cream after — runs around €10–14. Saaga, Lappi, and Sea Horse in Helsinki keep the tradition seriously; school and university cafeterias do an honest student version for under €5; the army version is allegedly the truest, but you have to enlist for that one. The mustard with the soup is not optional — Finnish hernekeitto without a streak of yellow Sinappi is the wrong dish, and any Finn at the next table will tell you so.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Hernekeitto.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Pea_soup_in_Loviisa.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Pea_soup_in_Lohja.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/DSC04510_Pancake_and_strawberries_C.JPG",
+    ],
+  },
 ];
