@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, SlidersHorizontal, Star } from "lucide-react";
+import { BookOpen, SlidersHorizontal, Star } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { IDEAS } from "../ideas";
 import {
@@ -15,6 +15,7 @@ import {
 import { useFavorites } from "../store";
 import { FilterPanel } from "./filter-panel";
 import { IdeaCard } from "./idea-card";
+import { PageHeader } from "./page-header";
 
 type GridMode = "all" | "favorites";
 
@@ -47,33 +48,23 @@ export function CatalogueGrid({
   return (
     <div className="min-h-screen bg-surface-primary">
       <div className="mx-auto max-w-[1600px] px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-8 flex flex-col gap-4">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1.5 self-start text-sm text-text-secondary transition-colors hover:text-brand-pink"
-          >
-            <ArrowLeft size={16} />
-            Back to Novelty World
-          </Link>
-
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
-                <span className="text-brand-blue">Finland</span>{" "}
-                <span className="text-text-primary">Catalogue</span>
-              </h1>
-              <p className="mt-2 text-text-secondary">
-                Hand-picked things to do in Finland — for friends, family, and anyone planning a visit.
-              </p>
+        <PageHeader
+          backHref="/"
+          backLabel="Back to Novelty World"
+          titlePrimary="Finland"
+          titleSecondary="Catalogue"
+          subhead="Hand-picked things to do in Finland — for friends, family, and anyone planning a visit."
+          rightActions={
+            <div className="flex flex-wrap gap-3 sm:flex-nowrap">
+              <TopicsLink basePath={basePath} />
+              <FavoritesSwitch
+                mode={mode}
+                basePath={basePath}
+                favoriteCount={favoriteSlugs.length}
+              />
             </div>
-
-            <FavoritesSwitch
-              mode={mode}
-              basePath={basePath}
-              favoriteCount={favoriteSlugs.length}
-            />
-          </div>
-        </div>
+          }
+        />
 
         <div className="lg:grid lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-8">
           <aside className="mb-6 lg:mb-0">
@@ -131,6 +122,18 @@ export function CatalogueGrid({
         </div>
       </div>
     </div>
+  );
+}
+
+function TopicsLink({ basePath }: { basePath: string }) {
+  return (
+    <Link
+      href={`${basePath}/topics`}
+      className="inline-flex shrink-0 items-center gap-2 rounded-full border border-border-default bg-surface-secondary px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:border-border-hover"
+    >
+      <BookOpen size={16} className="text-brand-blue" />
+      <span>Learn about Finland</span>
+    </Link>
   );
 }
 

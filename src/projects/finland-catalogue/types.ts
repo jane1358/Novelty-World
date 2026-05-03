@@ -204,3 +204,56 @@ export interface Idea {
    *  them ad-hoc. */
   tags: string[];
 }
+
+/**
+ * Finland Catalogue — schema for cultural & educational Topics.
+ *
+ * Topics are short explainers about Finland itself: language quirks, social
+ * norms, historical moments, food traditions, natural phenomena. They sit
+ * alongside Ideas — Ideas tell you what to do, Topics tell you what you're
+ * looking at while you do it. A Topic doesn't need a price, a season, or a
+ * bus route; it needs a clear hook, a few good paragraphs, and the trigger
+ * phrases that let it auto-link from any Idea text that mentions it.
+ */
+
+/** A catalogued cultural/educational concept about Finland. */
+export interface Topic {
+  /** URL-safe identifier, kebab-case. Used in the detail page route. */
+  slug: string;
+
+  /** Display name. Concrete and specific — "Sauna culture" beats "Saunas",
+   *  "Sisu" beats "Finnish grit". One line. */
+  title: string;
+
+  /** Trigger phrases that auto-link this Topic when they appear in an
+   *  Idea's `longDescription`. Match is case-insensitive and whole-word.
+   *  Include the natural variants prose actually uses (singular, plural,
+   *  common adjective form). e.g. for the Sauna topic:
+   *    ["sauna", "saunas", "sauna culture"]
+   *  Keep aliases narrow and unambiguous — don't add generic words like
+   *  "Finland" or "winter", and don't include phrases that overlap with
+   *  another Topic's aliases. The renderer links only the first match per
+   *  paragraph to avoid a sea of blue. Empty array is allowed for topics
+   *  without a clean prose trigger — they'll still appear on the Topics
+   *  page, just not auto-linked from Ideas. */
+  aliases: string[];
+
+  /** One sentence that fits on a card. The hook — what's interesting or
+   *  surprising about this, in plain language. */
+  shortDescription: string;
+
+  /** Detail-page paragraphs. Cover what it is, where it comes from, why a
+   *  visitor benefits from knowing it, and any modern-day caveats. Each
+   *  array entry is one paragraph. Aim for 2-4 paragraphs. */
+  longDescription: string[];
+
+  /** Hotlinked URL of the headline image. Shown on the card and again as
+   *  the first image on the detail page. Pick something evocative — even
+   *  abstract topics deserve a visually appealing image. */
+  thumbnailUrl: string;
+
+  /** 1-3 additional hotlinked images for the detail page carousel —
+   *  historical photos, infographics, scene-setters. Up to 5 only when the
+   *  shots are genuinely great. */
+  galleryUrls: string[];
+}

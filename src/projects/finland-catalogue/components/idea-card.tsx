@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import {
   CalendarDays,
   Clock,
@@ -14,7 +13,7 @@ import {
 } from "lucide-react";
 import type { Idea } from "../types";
 import { summarizeMonths } from "../months";
-import { HotlinkImage } from "./hotlink-image";
+import { EntryCard } from "./entry-card";
 import { StarButton } from "./star-button";
 
 const DURATION_LABELS: Record<Idea["duration"], string> = {
@@ -94,26 +93,21 @@ export function IdeaCard({ idea, basePath }: { idea: Idea; basePath: string }) {
   const events = idea.availability.events;
 
   return (
-    <Link
+    <EntryCard
       href={`${basePath}/${idea.slug}`}
-      className="group flex flex-col overflow-hidden rounded-lg border border-border-default bg-surface-secondary transition-colors hover:border-brand-pink"
-    >
-      <div className="relative w-full bg-surface-tertiary">
-        <HotlinkImage src={idea.thumbnailUrl} alt={idea.title} fit="natural" />
-        <StarButton slug={idea.slug} size="sm" className="absolute right-2 top-2" />
-      </div>
-
-      <div className="flex flex-1 flex-col gap-3 p-4">
-        <div className="flex flex-col gap-1">
-          <h3 className="line-clamp-2 min-h-[2lh] text-lg font-semibold leading-tight text-text-primary group-hover:text-brand-pink">
-            {idea.title}
-          </h3>
-          <p className="text-sm text-text-secondary">
-            {idea.shortDescription}
-          </p>
-        </div>
-
-        <div className="mt-auto flex flex-wrap gap-1.5 pt-2">
+      thumbnailUrl={idea.thumbnailUrl}
+      alt={idea.title}
+      title={idea.title}
+      shortDescription={idea.shortDescription}
+      imageOverlay={
+        <StarButton
+          slug={idea.slug}
+          size="sm"
+          className="absolute right-2 top-2"
+        />
+      }
+      footer={
+        <>
           <Chip>
             <Euro size={13} />
             {formatCost(idea.cost)}
@@ -125,8 +119,8 @@ export function IdeaCard({ idea, basePath }: { idea: Idea; basePath: string }) {
           <MonthsChip months={idea.availability.suitableMonths} />
           {events && events.length > 0 && <EventsChip events={events} />}
           <IndoorOutdoorChip value={idea.indoorOutdoor} />
-        </div>
-      </div>
-    </Link>
+        </>
+      }
+    />
   );
 }
