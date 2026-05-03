@@ -174,7 +174,7 @@ export const IDEAS: Idea[] = [
     physicalIntensity: "moderate",
     duration: "1-3h",
     website: "https://turunlinna.fi/en/",
-    tags: ["museum", "landmark", "historical"],
+    tags: ["museum", "landmark", "historical", "castle"],
   },
   {
     slug: "forum-marinum",
@@ -616,7 +616,7 @@ export const IDEAS: Idea[] = [
     physicalIntensity: "moderate",
     duration: "1-3h",
     website: "https://www.kansallismuseo.fi/en/haemeenlinna",
-    tags: ["museum", "landmark", "historical"],
+    tags: ["museum", "landmark", "historical", "castle"],
   },
   {
     slug: "uiva-flytande",
@@ -1301,7 +1301,7 @@ export const IDEAS: Idea[] = [
     physicalIntensity: "moderate",
     duration: "multi-day",
     website: "https://www.kansallismuseo.fi/en/olavinlinna",
-    tags: ["museum", "landmark", "historical"],
+    tags: ["museum", "landmark", "historical", "castle"],
   },
   {
     slug: "cafe-regatta",
@@ -1548,7 +1548,7 @@ export const IDEAS: Idea[] = [
       notes: "Open year-round. Midweek lunch is the quietest window.",
     },
     location: {
-      region: ["Helsinki", "Uusimaa"],
+      region: ["Helsinki", "Lauttasaari", "Uusimaa"],
       address: "Vattuniemenkatu 13, 00210 Helsinki (Lauttasaari)",
     },
     accessFromLauttasaari: {
@@ -1791,7 +1791,7 @@ export const IDEAS: Idea[] = [
         "Year-round; the path is plowed in winter. May–September is the warm-and-busy window; October–April is quieter, often more atmospheric (sea smoke, low light, ice swimmers).",
     },
     location: {
-      region: ["Helsinki", "Uusimaa"],
+      region: ["Helsinki", "Lauttasaari", "Uusimaa"],
       address:
         "Lauttasaari, Helsinki — start anywhere on the shoreline. Convenient access points: Lauttasaarensilta (north end), Kasinonranta beach (east), Vattuniemi (south tip).",
     },
@@ -2983,5 +2983,289 @@ export const IDEAS: Idea[] = [
     duration: "1-3h",
     website: "https://www.itis.fi/en",
     tags: ["mall", "food"],
+  },
+  {
+    slug: "haltia-lake-lodge",
+    title: "Haltia Lake Lodge",
+    shortDescription:
+      "A 20-room boutique hotel and 5-tent year-round glamping camp on the shore of Lake Pitkäjärvi inside Nuuksio National Park — 35 minutes from central Helsinki, with morning sauna, lakeside bistro, and kayaks at the dock. Named Best Sustainable Hotel in Europe.",
+    longDescription: [
+      "Haltia Lake Lodge sits on a wooded ridge above Lake Pitkäjärvi, fifteen kilometres into Nuuksio National Park's 53 km² of forest, lakes, and bog. It opened as a small boutique hotel and glamping camp built in collaboration with the Reuse Centre — every room shaped from reclaimed Finnish materials, low-carbon Unikulma beds, no televisions, no ostentation. The 20 hotel rooms are deliberately compact (15–16 m² \"bird nests\") and the 5 glamping tents (18 m², set fifty to a hundred metres into the woods from the main lodge) run year-round, with electric heating that holds them comfortable in deep-winter cold. The whole operation has won the Best Sustainable Hotel in Europe award and Tourism Cares' Meaningful Travel certification, and you feel it in the small things — the breakfast is local, the bistro menu Finnish-seasonal, and the morning sauna is included with every stay.",
+      "What you actually do here is slow down. Eight marked hiking trails leave from the park's Haukkalampi entrance a short drive away, ranging from 2 km lake loops to the 17 km Korpinkierros that crosses the spine of the park. Closer to the lodge, the dock has kayaks and stand-up paddleboards (free for guests) on Pitkäjärvi, fat bikes for the forest tracks, and a Scenic Hut opened in 2025 for an outdoor sit with the lake view. The wood-fired sauna with a panoramic window onto the water is the centrepiece — separate men's and women's morning sessions are included; private evening bookings cost extra and are the way locals do it. Lake Lodge Bistro is open to non-guests and worth the drive even without a stay; the menu leans Finnish and seasonal (reindeer, lake fish, foraged mushrooms in autumn, pickled summer vegetables) and the dining room overlooks the lake.",
+      "It works in every season but feels different in each. Summer is the long-evening, swim-from-the-dock, paddle-until-midnight version. Autumn is the foraging, mist-on-the-lake, warm-bistro version. Winter is the snow-blanketed, sauna-then-snow-roll, northern-quiet version (no aurora here — Helsinki is too far south for reliable lights — but the cold-air sauna ritual is the draw). The 35-minute distance from Helsinki is the trick: it's close enough for a one-night stay tacked onto a city trip, far enough to feel genuinely off-grid.",
+      "Hotel rooms run roughly €180–280 per night double occupancy depending on date; glamping tents land closer to €300–330 (a recent reviewer paid €660 for two glamping nights). Both rates include lodge breakfast and the morning sauna session. From Lauttasaari without a car: M2 metro to Helsinki Central (~6 min), commuter train (Y, U, E, L, X) to Espoon Keskus (~25 min), then HSL bus 245 (or 245A in summer) to the Solvalla stop directly in front of the lodge (~25 min) — about 1h 15m end to end, two transfers, and the bus runs roughly hourly so plan ahead. Booking ahead matters in summer and on holiday weekends; weekday low-season is the easy window. Check-in 15:00, check-out 12:00. Pet-friendly rooms available (€28 pet package). Address: Solvallanrinne 2, 02820 Espoo.",
+    ],
+    thumbnailUrl:
+      "https://haltialakelodge.com/static/09ce10a6da3a345083c355d0078116e7/37d86/DJI_20250902180053_0004_D.jpg",
+    galleryUrls: [
+      "https://haltialakelodge.com/static/79c8ff32e81acfb3ba220c3037ebf44d/37d86/DSC02445-Enhanced-NR.jpg",
+      "https://haltialakelodge.com/static/42630c822a60815f85efcb1f7f154e95/37d86/sauna-42630c822a60815f85efcb1f7f154e95.jpg",
+      "https://haltialakelodge.com/static/3068b5def657d62dba1ef0a9614136b9/37d86/DSC03180-Enhanced-NR.jpg",
+      "https://haltialakelodge.com/static/7e415a3adf8f69bfa678d5a2b9d7d335/37d86/DJI_0279.00_00_52_45.Still002_SUO.jpg",
+      "https://haltialakelodge.com/static/5fcf08d3dd047560c8de7fe5ccad7f6a/37d86/hotel-rooms-12.jpg",
+      "https://haltialakelodge.com/static/2b5c8146134990ceb7a8d0df373651ab/37d86/2022_04_01_kristaylinen_152.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Mustalampi_Lake_in_Nuuksio.jpg",
+    ],
+    availability: {
+      suitableMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      weeklySchedule:
+        "Reception staffed for check-in from 15:00; check-out by 12:00. Bistro hours vary by season — confirm at booking.",
+      notes:
+        "Year-round. Each season is a genuinely different visit: summer is paddle-and-swim, autumn is foraging-and-mist, winter is sauna-and-snow. Mid-summer weekends and the December holiday window book out earliest; weekday low-season is easy walk-in territory.",
+    },
+    location: {
+      region: ["Espoo", "Uusimaa"],
+      address: "Solvallanrinne 2, 02820 Espoo",
+    },
+    accessFromLauttasaari: {
+      complexity: "moderate",
+      duration: "~1h 15m",
+      notes:
+        "M2 metro from Lauttasaari to Helsinki Central (~6 min), HSL commuter train (Y, U, E, L or X) from Helsinki Central to Espoon Keskus (~25 min), then HSL bus 245 (or 245A in summer) to the Solvalla stop directly in front of the lodge (~25 min). The bus runs roughly hourly, so check the timetable before you commit. A taxi from Espoon Keskus is the back-up if you miss the bus (~€25). Driving is faster (~35 min from central Helsinki) but the lodge encourages the public-transit route.",
+    },
+    cost: {
+      perPersonEur: 130,
+      notes:
+        "Hotel rooms run roughly €180–280 per night for two; glamping tents €300–330 — both include breakfast and morning sauna. Per-person here assumes two adults sharing a hotel room. Bistro dinner adds ~€30–50 per person. Private evening sauna €50/session. Pet package €28. Kayaks, paddleboards, and fat bikes are free for guests.",
+    },
+    booking: {
+      leadTime: "weeks",
+      notes:
+        "Book 2–4 weeks ahead for weekends, longer in summer (Jun–Aug) and the December holiday window — the lodge is small (only 20 rooms and 5 tents) and books out completely on peak dates. Weekday low-season often available a few days out. Reserve directly via haltialakelodge.com for the best rate; private evening sauna and bistro tables can be added at the time of booking.",
+    },
+    suitableAgeRange: { min: 0 },
+    childrenNotes:
+      "Family-friendly: small children share a parent bed at no extra charge, adjoining rooms available for older kids by inquiry. The lake, the forest trails, and the tents themselves are a hit with kids 4+ who can hike a little. Glamping tents have one main bed only — best for one kid per parent. Strollers fit on most lodge paths but the wider Nuuksio trails run on roots and rock, so bring a carrier for under-3s.",
+    indoorOutdoor: "mixed",
+    physicalIntensity: "low",
+    duration: "multi-day",
+    website: "https://haltialakelodge.com/en-US/",
+    tags: ["nature", "sauna"],
+  },
+  {
+    slug: "helsinki-central-park",
+    title: "Helsinki Central Park (Keskuspuisto)",
+    shortDescription:
+      "A nearly ten-kilometre wedge of forest cutting straight through Helsinki from Töölönlahti bay up to Haltiala farm and the Vantaanjoki river — bike, hike, ski, mushroom-pick, or visit the Highland-style cows. Two million visits a year, all free.",
+    longDescription: [
+      "Keskuspuisto is the spine of green that runs nearly the whole length of Helsinki, north–south, from Töölönlahti bay just behind Parliament up to the Vantaanjoki river at the city's northern border. About ten kilometres long and a kilometre wide at its broadest, it weaves together coniferous forest, meadows, fields, lakes, ponds, and old-growth stands that survived the city growing around them. The southern third is genuinely park-like — manicured, jogger-paced, easy walking from Töölö or Pasila. The middle third (Maunula, Pirkkola, Ruskeasuo) thickens into proper forest with ski trails, the Paloheinä outdoor lodge and downhill ski slope, and the Pirkkola sports park. The northernmost third (Haltiala) is the wildest part — old-growth pine, the Pitkäkoski rapids on Vantaanjoki, and Haltiala farm with its herd of cows kept outside year-round.",
+      "By bike, the park is a real ride. The City of Helsinki's marked 16 km mountain bike trail (red waymarks on the trees, open 1 May – 30 November, ridable in either direction) starts behind the Laakso riding arena, threads through the central forest, loops Pitkäkoski and Haltiala, and ends at the Paloheinä lodge. Add the urban approach and return and you have a 25–30 km half-day loop that never leaves the city limits. The trail is single-track in places, gravel and forest road in others; a regular hybrid bike handles most of it, an MTB or gravel bike is more comfortable on the technical sections. The flatter Vantaanjoki riverside path along the north end is stroller- and trailer-friendly. On foot, AllTrails catalogues a dozen-plus walking and hiking loops; the Haltiala nature trail from Paloheinä to Pitkäkoski is the picturesque short walk if you only have an hour.",
+      "Haltiala farm at the north end is the family destination of the park. It's free, open daily, and run by Vihreät Sylit — a working farm with sheep, goats, hens, and a herd of cows that includes Eastern Finncattle and Highland-cross cattle, all kept outdoors year-round and visible from early morning to evening. Café Pikku-Haltiala beside it does coffee, buns, and porridge. Combine farm + Pitkäkoski rapids + a riverside picnic for an easy half-day. The southern entry, by contrast, is the urban one: Töölönlahti bay, the meadow behind Finlandia Hall, joggers and pram-pushers, an espresso cart in summer.",
+      "The park is open year-round and shifts function with the season: bike, run, and forage in summer and autumn (mushroom and berry picking is permitted in the everyman's-right tradition outside the small protected zones); cross-country ski the maintained tracks in winter (Paloheinä grooms loops and rents skis); skate the Paloheinä outdoor rink on cold weeks. Lit routes are on 06:00–23:00 in winter. From Lauttasaari the easiest entry is by bike: ride east across the Lauttasaari bridge, north through Töölö, and pick up the trail at Töölönlahti — about 25 minutes to the start. By transit, M1/M2 metro to Pasila or bus 21/24 to Töölö gets you to a southern entry; bus 66 or 67 from the city centre runs up to Paloheinä for the central or northern entries.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Helsingin_keskuspuisto_in_Laakso_2022-09-19_09.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Helsingin_keskuspuisto_in_Laakso_2022-09-19_02.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Helsingin_keskuspuisto_in_Länsi-Pasila_2022-09-19_07.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Helsingin_keskuspuisto_in_Länsi-Pasila_2022-09-19_01.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Tower_in_Helsingin_keskuspuisto_in_Laakso_2022-09-19_01.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Haltiala_1_Karjaa_laitumella_(2019).jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/View_over_Pitkäkoski_of_Vantaanjoki,_Haltiala,_Helsinki,_2021_September.jpg",
+    ],
+    availability: {
+      suitableMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      weeklySchedule:
+        "Always open; lit routes on 06:00–23:00 in winter. Marked mountain bike trail open 1 May – 30 November.",
+      notes:
+        "Year-round but the experience changes hard with the season. May–Oct is hike, run, bike, swim, mushroom-pick. Dec–Mar is cross-country ski (Paloheinä grooms tracks reliably from January through early March). Late October when the leaves turn is the photographic peak; early November mud is the worst stretch.",
+    },
+    location: {
+      region: ["Helsinki", "Uusimaa"],
+      address: "Helsinki Central Park (entries at Töölönlahti, Laakso, Pasila, Paloheinä, Haltiala)",
+    },
+    accessFromLauttasaari: {
+      complexity: "simple",
+      duration: "~20–35 min depending on entry",
+      notes:
+        "Easiest by bike: ride east across the Lauttasaari bridge, north through Töölö, and pick up the trail at Töölönlahti behind Finlandia Hall — ~25 min from central Lauttasaari. By transit: M1/M2 metro to Helsinki Central + 5-min walk for the southern entry; or metro to Pasila for the central entry; or bus 66 or 67 from the city centre to Paloheinä for the central/northern entries (Haltiala farm). For Haltiala farm specifically, allow ~50 min total each way.",
+    },
+    cost: {
+      perPersonEur: 0,
+      notes:
+        "Free. Bike rentals (Helride, city bikes) €5–25/day if you don't bring your own. Paloheinä cross-country ski rental ~€20/day in winter. Haltiala farm café and Pikku-Haltiala café are pay-as-you-go.",
+    },
+    booking: {
+      leadTime: "same-day",
+      notes:
+        "No booking — walk or ride straight in. Paloheinä ski rental in winter is first-come; show up before 11am on a sunny Saturday or expect a queue.",
+    },
+    suitableAgeRange: { min: 0 },
+    childrenNotes:
+      "The Vantaanjoki riverside path and the Haltiala farm end of the park are stroller-friendly. The mountain bike trail is single-track in places and not stroller-passable; pick the wider Kuninkaantammentie route from Pitkäkoski lodge to Haltiala farm if you have a stroller or trailer. Haltiala farm itself is a kid-magnet — cows, sheep, goats, hens, all visible from the path. Bring snacks; the farm café is small and busy on weekends.",
+    indoorOutdoor: "outdoor",
+    physicalIntensity: "moderate",
+    duration: "half-day",
+    website: "https://www.hel.fi/en/culture-and-leisure/outdoor-activities-parks-and-nature-destinations/outdoor-recreation-areas/central-park",
+    tags: ["nature"],
+  },
+  {
+    slug: "paseo",
+    title: "Paseo Cafe, Grill & Sauna",
+    shortDescription:
+      "Lauttasaari's seaside café-restaurant-sauna at the wooded southern tip of the island, sat directly on the sand at Vattuniemi beach — a sunset terrace in summer, a winter-swimmers' warming room in February, and the local case for spending a little more on dinner with the sea right there.",
+    longDescription: [
+      "Paseo sits at the very end of Itälahdenpolku, on the small headland of Veijarivuori at the southern tip of Lauttasaari, where the wooded park meets the sand of Vattuniemi swimming beach. The location is the entire pitch: the dining room and terrace look straight out over the open Gulf of Finland, with the rocks and sand of the public beach a few metres from the table. It functions simultaneously as a café (morning coffee and gelato off the terrace counter), a grill restaurant (lunch through dinner inside), and a private sauna venue (the cabin behind the building rents to groups of up to twenty). On a sunny summer evening it's the closest thing in Helsinki to a Mediterranean seaside lunch; in February it's the warming refuge for the ice-swimmers paddling off the same beach.",
+      "The menu is unfussy seaside-bistro: burgers, toast skagen, mussels, gambas pil pil, and a rotating fish dish are the year-round classics, alongside salads, pasta, risotto, and a children's menu. The terrace adds gelato (Italian-style, half a dozen flavours) through the warm months. Weekday lunch (Mon–Fri 11:00–14:30, table service) is the value play — soups, pastas, salads, and a main fish — and the relative quiet of a midday weekday is the time to actually enjoy the view. Dinner mains run €18–25, full meal with a drink €35–45 per person; afternoon coffee and gelato is €5–10. It is not a cheap restaurant, and people will tell you it costs a little more than it should — but the location is genuinely the location, and the food is consistently good rather than spectacular.",
+      "Open year-round, with hours that flex with the season: roughly Mon–Thu 09:30–20:00, Fri 09:30–22:00, Sat 10:00–22:00, Sun 10:00–19:00 in the warm months; tighter winter hours posted week to week (check the website). The terrace is the summer experience; the indoor dining room with the picture windows is the winter one. Family-friendly — children's menu, highchairs, the beach right there for kids who lose interest in the meal. Booking matters on summer weekends and any sunny evening from late May through August (the terrace is the limiting factor); walk-ins fine on weekday lunches and through the colder months.",
+      "From central Lauttasaari it's a 15-minute walk south down Lauttasaarentie and through Vattuniemi residential blocks to the beach. From Lauttasaari metro: 15–20 min walk, or bus 21 to Vattuniemenpuisto and a 5-min walk through the park. From elsewhere in Helsinki: M1/M2 metro to Lauttasaari and the same walk south. The private sauna can be booked separately for groups (email myynti@paseo.fi) and is a way to combine a sauna evening with dinner in one venue — the standard local move for celebrating something. Address: Itälahdenpolku 2, 00210 Helsinki.",
+    ],
+    thumbnailUrl:
+      "https://dynamic-media-cdn.tripadvisor.com/media/photo-o/13/83/96/1d/paseo-cafe-grill.jpg",
+    galleryUrls: [
+      "https://dynamic-media-cdn.tripadvisor.com/media/photo-o/13/83/96/37/the-restaurant-is-situated.jpg",
+      "https://dynamic-media-cdn.tripadvisor.com/media/photo-o/14/05/37/9f/what-a-view-and-salad.jpg",
+      "https://www.myhelsinki.fi/wp-content/uploads/2025/08/9e29debb-ee42-4755-a1db-bcba47d86389.jpg",
+      "https://img3.restaurantguru.com/r799-Restaurant-Paseo-Cafe-Grill-and-Sauna-interior.jpg",
+      "https://img02.restaurantguru.com/c782-Restaurant-Paseo-Cafe-and-Grill-design.jpg",
+      "https://img02.restaurantguru.com/c8a1-Restaurant-Paseo-Cafe-and-Grill-Helsinki-meals.jpg",
+    ],
+    availability: {
+      suitableMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      weeklySchedule:
+        "Roughly Mon–Thu 09:30–20:00, Fri 09:30–22:00, Sat 10:00–22:00, Sun 10:00–19:00 in summer; tighter in winter — confirm at paseo.fi. Lunch Mon–Fri 11:00–14:30.",
+      notes:
+        "Open year-round but the experience splits hard by season: summer terrace is the headline use; winter is the warming-room-with-a-view for ice-swimmers and a quieter indoor dinner. Late spring through early autumn is when bookings are tightest.",
+    },
+    location: {
+      region: ["Helsinki", "Lauttasaari", "Uusimaa"],
+      address: "Itälahdenpolku 2, 00210 Helsinki (Lauttasaari, southern tip)",
+    },
+    accessFromLauttasaari: {
+      complexity: "simple",
+      duration: "~15–20 min walk",
+      notes:
+        "Same island. From Lauttasaari metro station, ~15-min walk south down Lauttasaarentie and into Vattuniemi to Itälahdenpolku at the south end of the beach. Bus 21 from Lauttasaarentie to Vattuniemenpuisto cuts the walk to ~5 min. By bike, ~5–8 min from anywhere in central Lauttasaari.",
+    },
+    cost: {
+      perPersonEur: 35,
+      notes:
+        "Lunch ~€15–20 weekday menu; dinner mains €18–25, full meal with a drink €35–45 per person. Coffee and gelato €5–10 off the terrace counter. Children's menu €30 (3-course) on Mother's Day; weekday children's mains cheaper. Sauna cabin rental priced separately for groups — email for quote.",
+    },
+    booking: {
+      leadTime: "few-days",
+      notes:
+        "Walk-ins fine on weekday lunches and through the cold months. Book a few days ahead for summer weekend dinners or any sunny evening May–Aug — the terrace is small and fills fast. Sauna cabin needs to be booked weeks ahead for weekend groups (myynti@paseo.fi or +358 50 351 5449).",
+    },
+    suitableAgeRange: { min: 0 },
+    childrenNotes:
+      "Children's menu, highchairs, easy stroller access to the indoor room. The beach itself is right outside the door — bring swimwear in summer and a kid who loses patience with the meal can decamp to the sand. Terrace seating is on a deck, fine for older kids; under-3s sometimes climb the railing — keep an eye out.",
+    indoorOutdoor: "mixed",
+    physicalIntensity: "low",
+    duration: "1-3h",
+    website: "https://www.paseo.fi/",
+    tags: ["food", "café"],
+  },
+  {
+    slug: "persilja-lounas",
+    title: "Ravintola Persilja (lounas)",
+    shortDescription:
+      "Lauttasaari's Mediterranean-leaning neighbourhood restaurant doing one of the best lunch buffets in Helsinki — €14 for an all-you-can-eat hot main, the meze-style salad bar, soup, rice and potatoes, Mon–Thu 11–15. The local-favourite weekday lounas, walked into without a reservation.",
+    longDescription: [
+      "Persilja sits on the corner of Tallbergin puistotie just north of Lauttasaari metro station, an unflashy storefront among the residential Lauttasaari blocks. It's been there long enough to be a local fixture — the kind of place Lauttasaari residents bring out-of-town family for an easy lunch and where the after-school football crowd ends up on a Friday evening. The à la carte menu spans Mediterranean and European staples: pizzas, pastas, risottos, burgers, fish and chicken, a kasvisruoat (vegetarian) section, and a children's menu — everything you'd want from a competent neighbourhood restaurant. But the lunch buffet is the move, and the reason to put this on a list.",
+      "The lunch buffet runs Mon–Thu 11:00–15:00 (Friday is à la carte only — note that). €14 gets you the hot main of the day plus access to the meze-style salad bar, soup, rice, potatoes, and bread; €12.90 buys just the salad-and-soup option if you don't want a hot plate. Seniors €12.80. The hot mains rotate daily — chicken tikka masala one day, ground-beef-and-cheese the next, a fish dish later in the week, ratatouille for the vegetarian — and the salad bar is the quietly excellent part: olives, marinated peppers, feta, beans, hummus, fresh greens, dressings, the kind of mezze spread that turns a basic Finnish lunch into actually-good eating. Bread, water, coffee, and a small piece of dessert are included.",
+      "It's the price-quality ratio that earns the regulars. €14 for an all-you-can-eat lunch with a meze-quality salad bar is one of the best deals in Helsinki — many central-city lunches now run €15–17 for à-la-carte single-plate, no salad refills. Weekday lunch is also the calmest window in the room: business lunchers and locals between meetings, families with babies in tow, the occasional retiree. You walk in without a reservation, take a tray from the stack, queue maybe two minutes at the buffet line, and sit down with a full plate. Coffee at the espresso machine when you're done, no rush to leave, no upselling. It's the lunch a long-time Lauttasaari resident takes you to when they want to show you the neighbourhood at its everyday best.",
+      "Open Mon–Thu 10:30–21:00, Fri 10:30–22:00, Sat 12:00–22:00, Sun 12:00–20:00. Lunch buffet Mon–Thu 11:00–15:00 only (Friday and weekend = à la carte). The Sunday brunch (~€30, prosecco and several courses included) is also locally well-regarded but is a different beast from the weekday lounas. Walk-in for lunch; book a table for Friday/Saturday dinner. From elsewhere in Lauttasaari, 5–10 min walk from Lauttasaari metro station; bus 21 stops on Lauttasaarentie a 3-min walk away. From central Helsinki, M1/M2 metro to Lauttasaari and out the north exit. Address: Tallbergin puistotie 1, 00200 Helsinki.",
+    ],
+    thumbnailUrl:
+      "https://img.restaurantguru.com/r324-Ravintola-Persilja-interior-2022-09.jpg",
+    galleryUrls: [
+      "https://img02.restaurantguru.com/cbc6-Restaurant-Ravintola-Persilja-interior.jpg",
+      "https://dynamic-media-cdn.tripadvisor.com/media/photo-o/29/59/ec/3c/caption.jpg",
+      "https://dynamic-media-cdn.tripadvisor.com/media/photo-o/0b/d2/bb/c9/photo0jpg.jpg",
+      "https://ravintolapersilja.fi/wp-content/uploads/2025/12/Buffet-1.jpg",
+      "https://ravintolapersilja.fi/wp-content/uploads/2025/12/Buffet-3.jpg",
+      "https://ravintolapersilja.fi/wp-content/uploads/2025/12/Buffet-5.jpg",
+    ],
+    availability: {
+      suitableMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      weeklySchedule:
+        "Mon–Thu 10:30–21:00, Fri 10:30–22:00, Sat 12:00–22:00, Sun 12:00–20:00. Lunch buffet Mon–Thu 11:00–15:00 only — Friday and weekend are à la carte (no buffet).",
+      notes:
+        "Year-round, weekday lunch is the headline use. Quietest 11:00–11:45 (just-opened) and after 14:00 (tail end). Busiest noon–13:00 with the local office crowd. Closed for some public holidays — confirm via the website.",
+    },
+    location: {
+      region: ["Helsinki", "Lauttasaari", "Uusimaa"],
+      address: "Tallbergin puistotie 1, 00200 Helsinki (Lauttasaari)",
+    },
+    accessFromLauttasaari: {
+      complexity: "simple",
+      duration: "~5–10 min walk",
+      notes:
+        "Same island. ~5–10 min walk from Lauttasaari metro station out the north exit and along Tallbergin puistotie. Bus 21 from Lauttasaarentie stops a 3-min walk south. From central Helsinki, M1/M2 metro to Lauttasaari (~3 min from Kamppi).",
+    },
+    cost: {
+      perPersonEur: 14,
+      notes:
+        "Lunch buffet €14 (Mon–Thu 11:00–15:00) including salad bar, soup, hot main, rice/potatoes, bread, water, coffee, small dessert. Salad-and-soup-only option €12.90. Seniors €12.80. À la carte mains in the dinner menu run €14–25. Sunday brunch ~€30 with prosecco. Children's menu cheaper.",
+    },
+    booking: {
+      leadTime: "same-day",
+      notes:
+        "Walk-in for lunch — no reservations needed even at the noon peak; the room is large enough to absorb the rush. Book a table for Friday/Saturday dinner or Sunday brunch via poytavaraus on the website (or +358 400 169 078).",
+    },
+    suitableAgeRange: { min: 0 },
+    childrenNotes:
+      "Family-friendly: dedicated children's section on the à la carte menu, highchairs available, easy stroller access. The buffet format is unusually kid-friendly — picky eaters can build a plate of plain rice, bread, and salad; adventurous ones can try the hot main. Quiet enough at 11:00 to bring a baby without stress.",
+    indoorOutdoor: "indoor",
+    physicalIntensity: "low",
+    duration: "<1h",
+    website: "https://ravintolapersilja.fi/lounas/",
+    tags: ["food"],
+  },
+  {
+    slug: "puhuri-teemu-aura",
+    title: "Puhuri by Patisserie Teemu Aura (\"The Red Café\")",
+    shortDescription:
+      "A pastry café run by celebrated Helsinki pâtissier Teemu Aura inside the Red Villa — Lauttasaari's oldest building (1792) and the third-oldest wooden house in Helsinki — serving handmade viennoiserie, seasonal breakfast and lunch, and rotating Kone Foundation art exhibitions on the walls. The local-favourite weekend morning stop.",
+    longDescription: [
+      "The Red Villa (Punainen Huvila) sits in the courtyard of the 1837 Lauttasaari Manor, behind a small park three minutes' walk from the metro station. It was built around 1792 — the oldest building on Lauttasaari and the third-oldest wooden structure in Helsinki, originally the manor's main residence and one of the small handful of buildings that predate the city's growth around the island. The Kone Foundation bought the manor and its grounds in 2015 and has run the Red Villa as a leased café space ever since, alternating tenants every few years (Tartine until 2021, Patisserie Teemu Aura since January 2022). The current incarnation is the most accomplished food the building has ever housed.",
+      "Patisserie Teemu Aura is one of the small group of Helsinki pâtissiers operating at competition-level — Aura himself trained classically and the shop turns out the kind of viennoiserie (kouign-amann, croissants laminated 81 times, cardamom buns, brioche), gateaux, tarts, and seasonal cakes that the third-wave-coffee crowd shows up for on Saturday morning with a paperback. Puhuri is the all-day version of the patisserie: the full pastry case is augmented by a seasonal breakfast menu (eggs, toast, granola, salmon dishes, the classic ruisleipä-and-cheese breakfast plate) and a tight lunch list — typically a salmon soup and two rotating weekly mains served with house bread, all in the €6–16 range. Coffee is from a quality roaster, and a piece of cake plus a cortado in the bright front room with the antique tile stove is the easiest possible way to spend forty-five minutes on Lauttasaari.",
+      "What makes it more than a good café is the building and the curation. The Red Villa is itself worth the visit — log construction, glass porch, original tile stoves, the kind of room where a coffee tastes better just by being in it — and the Kone Foundation rotates contemporary art exhibitions through the walls (recent shows have included photography, painting, and small sculpture by emerging Finnish artists, all free to view). In the warm months, a summer terrace opens onto the manor courtyard, well-behaved dogs welcome, and the whole place becomes the centre of gravity of a Lauttasaari weekend morning. Locally — including the kid-vocabulary in this household — it's just \"the Red Café,\" which is what most regulars actually call it.",
+      "Open Mon–Wed 10:00–16:00 (kitchen 10:00–14:00), Thu–Fri 10:00–18:00 (kitchen 10:00–14:00), Sat 9:00–17:00 (kitchen 9:00–14:00), closed Sundays. No reservations — walk in, queue at the counter, find a table. Saturday morning is the busiest window (expect a 5–10 minute counter queue and a wait for a window seat); Wednesday afternoon is the quietest. Coffee €4–5, pastries €5–7, breakfast plates €10–14, lunch €12–16. From elsewhere in Lauttasaari, ~5 min walk from Lauttasaari metro station via Kauppaneuvoksentie. Address: Kauppaneuvoksentie 18, 00200 Helsinki.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Punainen_huvila.jpg",
+    galleryUrls: [
+      "https://patisserieteemuaura.fi/wp-content/uploads/2022/01/3nKGYQI0-2-e1731578540496-1185x1500.jpeg",
+      "https://koneensaatio.fi/wp-content/uploads/2021/12/Image-from-iOS-2-1060x795.jpg",
+      "https://www.lauttasaari.fi/content/uploads/2019/03/Punainenhuv_pieni-800x0-c-default.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Lauttasaaren_kartano.jpg",
+    ],
+    availability: {
+      suitableMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      weeklySchedule:
+        "Mon–Wed 10:00–16:00 (kitchen 10:00–14:00), Thu–Fri 10:00–18:00 (kitchen 10:00–14:00), Sat 9:00–17:00 (kitchen 9:00–14:00), closed Sundays.",
+      notes:
+        "Year-round. Saturday morning is the busiest and most atmospheric window — expect a brief counter queue and a wait for a window seat. Quietest mid-week afternoons. Summer terrace open roughly May–September weather permitting; the indoor room with the antique tile stove is the winter draw.",
+    },
+    location: {
+      region: ["Helsinki", "Lauttasaari", "Uusimaa"],
+      address: "Kauppaneuvoksentie 18, 00200 Helsinki (Red Villa, Lauttasaari Manor courtyard)",
+    },
+    accessFromLauttasaari: {
+      complexity: "simple",
+      duration: "~5 min walk",
+      notes:
+        "Same island. ~5 min walk from Lauttasaari metro station along Kauppaneuvoksentie — the Red Villa sits behind the larger 1837 manor building in the small park. Bus 21 along Lauttasaarentie also stops nearby. From central Helsinki, M1/M2 metro to Lauttasaari (~3 min from Kamppi).",
+    },
+    cost: {
+      perPersonEur: 12,
+      notes:
+        "Coffee €4–5, pastries €5–7, breakfast plates €10–14, lunch dishes €12–16. A coffee-and-pastry stop runs about €10; a full breakfast or lunch closer to €15–18. Cash and card. The art exhibitions are always free to view.",
+    },
+    booking: {
+      leadTime: "same-day",
+      notes:
+        "No reservations — walk-in only. Saturday 10:00–12:30 is the peak; arrive at opening (9:00) for the calmest window with the full pastry case still intact. Pastries sell out by mid-afternoon on busy weekends.",
+    },
+    suitableAgeRange: { min: 0 },
+    childrenNotes:
+      "Family-friendly: stroller-accessible front entrance, the broad pastry case is a hit with kids, and the manor courtyard has open green space for a child to escape to between bites. No high-chair guarantee but the bench seating works fine for sharing. Well-behaved dogs allowed too.",
+    indoorOutdoor: "mixed",
+    physicalIntensity: "low",
+    duration: "<1h",
+    website: "https://patisserieteemuaura.fi/myymalat/puhuri-by-patisserie-teemu-aura/",
+    tags: ["food", "café", "historical"],
   },
 ];

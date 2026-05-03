@@ -39,6 +39,8 @@ export const TOPICS: Topic[] = [
       "ice-swimming",
       "ice swimmer",
       "ice swimmers",
+      "ice-swimmer",
+      "ice-swimmers",
       "avantouinti",
       "avanto",
       "ice hole",
@@ -314,6 +316,80 @@ export const TOPICS: Topic[] = [
       "https://commons.wikimedia.org/wiki/Special:FilePath/Half_past_midnight_at_the_Finnish_Gulf.JPG",
       "https://commons.wikimedia.org/wiki/Special:FilePath/Lake_Kenesjärvi_in_summer_night.JPG",
       "https://commons.wikimedia.org/wiki/Special:FilePath/Midnight_sun_and_Jatkankynttila_bridge_2020.jpg",
+    ],
+  },
+  {
+    slug: "paivakoti",
+    title: "Päiväkoti",
+    aliases: ["päiväkoti", "päiväkodit", "varhaiskasvatus", "Finnish daycare"],
+    shortDescription:
+      "Finland's daycare system runs on the conviction that childhood is intrinsically valuable, not a runway to literacy — kids learn through play, no formal reading until age seven, and outside two or three times a day in any weather.",
+    longDescription: [
+      "A päiväkoti is a Finnish daycare centre, but the Finnish daycare centre is something distinctive enough that it deserves a name in English too. Children from about nine months to six years spend their days there learning through play — not preparing for school but learning *as* children, with the explicit conviction that childhood is intrinsically valuable rather than a runway to literacy and numeracy. Reading is not formally taught in Finland until age seven. Until then, the päiväkoti's job is to make sure kids play hard, eat well, are outside in every weather, and feel that the adults around them are paying attention.",
+      "The system is anchored in the Act on Early Childhood Education and Care (540/2018) and a binding National Core Curriculum updated in 2022. Every child has a legal right to a place — a \"subjective right\" that kicks in at the end of parental leave around nine or ten months — and parents pay a sliding-scale fee that runs from €0 to €311 per month depending on family income, with a sibling discount on top. The state covers the rest; Finnish parents pay roughly fourteen percent of the actual cost of care. Pedagogy is led by university-trained ECE teachers under staff-to-child ratios of 1:4 for under-3s and 1:7 for ages three to five.",
+      "The official term for the approach is the \"educare\" model — education and care woven together with pedagogy emphasised. In practice that means a guided-play curriculum (free play and structured play, both with learning goals), no grades, no homework, no standardised tests, and the famous Finnish refrain *ei ole huonoa säätä, on vain huonoja vaatteita* — there's no bad weather, only bad clothing. Kids are outside two or three times a day in -15°C with proper kit; rain in October doesn't move anyone indoors. The visible Finnish traits — calm with strangers, comfortable in silence, comfortable in nature — are largely seeded here.",
+      "Walk past a päiväkoti at any point in the day and the surface evidence is consistent: a fenced yard with kids in matching reflective vests, three or four adults watching them rather than entertaining them, a row of prams under a roof for naps. Don't be surprised by toddlers chewing sticks, climbing trees with no one rushing to catch them, or napping outside in February. That's not negligence — it's the system, and it's the foundation under the same education pipeline that produces Finland's PISA scores a decade later.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Lapsia_leikkikentällä_Tokoinrannassa_-_N213302_-_hkm.HKMS000005-000011y9.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Päiväkoti_Taikurinhattu.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Lassin_päiväkoti_Tuiranpuisto_Oulu_20251130.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Playground_carousel_under_snow.jpg",
+    ],
+  },
+  {
+    slug: "outdoor-baby-naps",
+    title: "Outdoor Baby Naps",
+    aliases: [
+      "outdoor nap",
+      "outdoor naps",
+      "outdoor napping",
+      "outdoor pram nap",
+      "outdoor pram naps",
+      "napping outdoors",
+    ],
+    shortDescription:
+      "Walk past a Helsinki café in February and you'll see prams parked along the front window — babies asleep inside under wool blankets at -10°C while their parents drink coffee on the other side of the glass. Finnish babies sleep better outside, and they have done since their grandparents were born.",
+    longDescription: [
+      "Walk past a Helsinki café in February and you'll see them: prams parked along the front window, babies inside under wool blankets, asleep, while their parents sit indoors with a coffee on the other side of the glass. Or no glass at all — the pram on the apartment balcony, the pram in the garden, the pram in the snow at -10°C with a baby inside. To non-Nordic visitors this is alarming. To Finns it's the most ordinary thing in the world: babies nap better outside, and they have done since around the time their grandparents were born.",
+      "The practice began as a public-health campaign in the early twentieth century. Nordic maternity clinics, contending with infectious-disease wards and cramped urban housing, urged parents to give infants as much fresh air as possible — preferably year-round, preferably outside, preferably in serious cold. Cold air was thought (correctly, more or less) to lower infection risk and to support stronger lungs. The advice stuck. By the late twentieth century outdoor napping was simply what Finnish, Swedish, Norwegian, Icelandic, and Danish parents did, and the maternity nurses still recommended it.",
+      "The numbers from Oulu, in northern Finland, are striking. A 2008 study found that about 95% of local families let their babies nap outside, often starting around two weeks old and sometimes as early as three days. Parents reported -6°C as the ideal napping temperature, with many comfortable down to -15°C and a few going below -27°C — provided the baby is in the right gear: a thick wool layer, a snowsuit, a wind-tight pram cover, no loose blankets near the face. A 2021 University of Oulu follow-up found that infants who napped outdoors slept 30 to 90 minutes longer than indoors-nappers, and 88% of parents said their baby clearly preferred it.",
+      "The pram-on-the-pavement scene — left outside a café while a parent eats inside — also tells you something about Finnish public trust. It is unusual abroad and unremarkable here. As a visitor: don't intervene if you see it; the parent is paying attention through the window, the baby is fine. If you're travelling with an infant and want to try it, the rule of thumb most Finns will give you is *if the baby's cheeks and nose are warm and pink rather than cold and white, they're fine* — hands and feet always feel cold and aren't a useful signal.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Old-fashioned_pram_in_pine_woods.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Old-fashioned_pram_in_pine_woods_2.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Mother_and_child_1948_(JOKAUAS2_151-4).jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Sauvosaari-1968.jpg",
+    ],
+  },
+  {
+    slug: "moomins",
+    title: "Moomins",
+    aliases: [
+      "Moomin",
+      "Moomins",
+      "Moomintroll",
+      "Moomintrolls",
+      "Tove Jansson",
+      "Moominhouse",
+    ],
+    shortDescription:
+      "A family of round, friendly hippopotamus-shaped trolls living in a blue house in the Finnish archipelago — Tove Jansson's 1945 invention is now the most identifiable Finnish cultural export, with Japan as its second home and Naantali as its summer theme park.",
+    longDescription: [
+      "The Moomins are a family of round, gentle, hippopotamus-shaped creatures who live in a tall blue house in a wooded valley somewhere in the Finnish archipelago, get into low-stakes adventures, and host a rotating cast of philosophical hangers-on — the wandering musician Snufkin, the anarchic Little My, the romantic Snork Maiden, the unsettling Hattifatteners. They are, depending who you ask, the most beloved children's characters in twentieth-century Nordic literature, the most identifiable Finnish cultural export, or the strangest set of melancholy-philosophical creatures ever marketed to under-tens. All three are correct.",
+      "Their author, Tove Jansson (1914–2001), was a Helsinki-born painter, illustrator, and writer from Finland's Swedish-speaking minority — the books were originally written in Swedish — and the spiritual landscape of the Moomins is the small, rocky, forested archipelago east of Helsinki where she spent her childhood summers and, later, thirty summers with her partner Tuulikki Pietilä on a tiny island called Klovharu. The first book, *The Moomins and the Great Flood*, appeared in 1945 and barely sold. The second and third picked up steam, and by the time Jansson agreed to draw a Moomin comic strip for the *London Evening News* in 1952 — then the world's largest daily paper at twelve million copies — the Moomins were on their way to becoming a global brand.",
+      "Today the books have been translated into over sixty languages, an astonishing reach for an author writing in Swedish about Finnish trolls. Japan is the largest market by a wide margin and has been since Fuji TV broadcast a 65-episode anime adaptation in 1969 — partly storyboarded by the young Hayao Miyazaki — which gave the Moomins a second cultural home. A 2014 fan poll there ranked Little My first, Snufkin second, and Moomintroll only third; Japanese fans tend to gravitate toward the introverted, free-spirited, slightly prickly characters rather than the central family. Finland and Japan are now the two countries where you can reliably find Moomin Cafés, Moomin shops, Moomin-branded planes (Finnair has flown a few), and Moomin festival days.",
+      "In Finland itself you can encounter the Moomins as serious art and as serious commerce, often at the same time. The Moomin Museum in Tampere — the only one in the world — holds about 2,000 of Jansson's original Moomin illustrations and a remarkable collection of three-dimensional tableaux that Jansson, Pietilä, and engineer Pentti Eistola built by hand over years. Moomin World, a summer-only theme park on Kailo island next to Naantali, is in this catalogue under Ideas. Iittala glassware in Moomin patterns is in every souvenir shop. And if you're reading Jansson cold as an adult, start with *The Summer Book* (her quiet adult novel about an old woman and her granddaughter on an archipelago island) or with *Moominland Midwinter* — both are stranger and sadder than the merchandise might lead you to expect.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Tove_Jansson_1956b.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Muumimuseon_sisäänkäynti_Tampere-talossa.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Tuulikki_Pietilä_Tove_Jansson_and_Signe_Hammarsten-Jansson_1956.jpeg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Moomin_Coffee_at_Helsinki-Vantaa_Airport_in_Finland,_2021.jpg",
     ],
   },
 ];
