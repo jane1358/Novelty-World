@@ -977,10 +977,10 @@ export const IDEAS: Idea[] = [
     thumbnailUrl:
       "https://commons.wikimedia.org/wiki/Special:FilePath/Science_centre_Heureka_in_Tikkurila,_Vantaa,_Finland,_2022_June.jpg",
     galleryUrls: [
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Heureka_(8001).jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Cubes_at_Heureka,_optical_illusion.jpg",
       "https://commons.wikimedia.org/wiki/Special:FilePath/Smilodon_model_at_Heureka.jpg",
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Heureka_Tiedekeskus.jpg",
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Heureka_planetarium_2.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Heureka,_Tiedepuisto_Galilei.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Heureka_bedrock_exhibition_in_Vantaa.jpg",
     ],
     availability: {
       suitableMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
