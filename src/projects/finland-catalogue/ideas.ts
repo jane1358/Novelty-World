@@ -2046,7 +2046,7 @@ export const IDEAS: Idea[] = [
     physicalIntensity: "low",
     duration: "1-3h",
     website: "https://www.isoomena.fi/en/kieppi-second-hand-market/",
-    tags: [],
+    tags: ["mall"],
   },
   {
     slug: "tapiola-ice-garden",
@@ -2321,7 +2321,7 @@ export const IDEAS: Idea[] = [
     physicalIntensity: "low",
     duration: "1-3h",
     website: "https://www.designkaverit.fi/",
-    tags: ["design"],
+    tags: ["design", "mall"],
   },
   {
     slug: "muji-kamppi-community-market",
@@ -2376,7 +2376,7 @@ export const IDEAS: Idea[] = [
     physicalIntensity: "low",
     duration: "1-3h",
     website: "https://www.muji.com/flagship/kamppi-helsinki/en/",
-    tags: ["design"],
+    tags: ["design", "mall"],
   },
   {
     slug: "andante",
@@ -2758,5 +2758,230 @@ export const IDEAS: Idea[] = [
     duration: "1-3h",
     website: "https://www.kotiharjunsauna.fi/",
     tags: ["sauna", "historical"],
+  },
+  {
+    slug: "iso-omena",
+    title: "Iso Omena",
+    shortDescription:
+      "Finland's award-winning mega-mall at the western terminus of the M2 metro — 220 shops, the M.E.E.T. food world, a public library, a health centre and a chapel under one 108,700 m² roof in Matinkylä, Espoo.",
+    longDescription: [
+      "Iso Omena (\"Big Apple\") opened in 2001 in Matinkylä, was extended in two phases through 2017, and now runs to 108,700 m² of leasable space across three or four floors — about 220 shops, more than 50 restaurants and cafés, K-Citymarket and Prisma hypermarkets as anchors, 2,600 parking bays underneath, and the western end of Helsinki's M2 metro line built straight into the south end of the building. Around 17 million people pass through every year. Citycon, the Nordic mall operator, has been awarded both Best Shopping Centre in Finland and Best Shopping Centre in the Nordics for it, and the design intent shows: skylit corridors, generous escalator wells, and a much higher density of public seating than a typical Finnish mall.",
+      "The thing that makes Iso Omena unusual isn't the size, it's the mix. Tucked into the second floor alongside fashion retail is Palvelutori — a city service hub combining Kirjasto Omena (the Espoo public library, a destination in its own right), a maternity and child health clinic, an employment service, the Espoo Citizen's Office, and a small Lutheran chapel. You can return library books, see a nurse, and have lunch at the M.E.E.T. food world without leaving the mall. The food court itself is the best in greater Helsinki: 50+ counters spanning Korean, Japanese, Vietnamese, Lebanese, Indian, Mexican, burgers, pizza, and a strong contingent of Finnish casual chains, all eaten at shared tables in a daylit central hall.",
+      "Beyond the obvious shopping, the things worth seeking out: the Kieppi second-hand corridor (five charity thrift chains in a row, see the dedicated entry); Kirjasto Omena for an hour of architecture and reading; the Friends & Brgrs counter for one of the best fast-burgers in the country; and the Finnkino multiplex on the top floor when the weather kills outdoor plans. Mall doors are open daily 06:00–24:00; most shops 10:00–21:00 weekdays and reduced on weekends. Free for the mall itself; budget €15–25 if you're stopping for lunch.",
+      "From Lauttasaari, the M2 metro runs direct to Matinkylä in about 15 minutes — the train surfaces inside the mall, no walk required. Combine with EMMA at the WeeGee complex one stop back at Tapiola, or with the Tapiola Ice Garden in winter. A rainy-day saver: even if you arrive with no shopping plan, two hours pass easily here between the library, the food hall, and a coffee.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Iso_Omena_shopping_centre,_Matinkylä,_Espoo_(March_2019).jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Entrance_to_Iso_Omena_on_an_afternoon_in_October_2024.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Interior_of_Iso_Omena_in_November_2023.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Corridor_at_Iso_Omena_with_escalators_on_an_afternoon_in_December_2022.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/M.E.E.T_Iso_Omena.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Iso_Omena_christmas_2025.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Piispansilta_near_Iso_Omena_on_an_evening_in_October_2023.jpg",
+    ],
+    availability: {
+      suitableMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      weeklySchedule:
+        "Mall doors daily 06:00–24:00. Stores Mon–Fri 10:00–21:00, Sat 10:00–19:00, Sun 12:00–18:00 (2nd-floor stores close at 20:00 weekdays). M.E.E.T. food world Mon–Thu 11:00–21:00, Fri–Sat 11:00–22:00, Sun 12:00–20:00. Grocery stores daily 06:00–24:00.",
+      notes:
+        "Year-round. Especially valuable on rainy or sub-zero winter days when an outdoor plan falls apart and you need a warm, walkable indoor afternoon. Quietest weekday mornings; busiest Saturday afternoons.",
+    },
+    location: {
+      region: ["Espoo", "Uusimaa"],
+      address: "Piispansilta 11, 02230 Espoo",
+    },
+    accessFromLauttasaari: {
+      complexity: "simple",
+      duration: "~15 min",
+      notes:
+        "M2 metro from Lauttasaari direct to Matinkylä (~15 min, no transfer — Matinkylä is the M2 western terminus). The Matinkylä station opens directly into the south end of the mall; escalators surface you inside Iso Omena.",
+    },
+    cost: {
+      perPersonEur: 0,
+      notes:
+        "Free to enter and browse. Budget €10–25 for a meal at the M.E.E.T. food world, €4–6 for a café coffee. Cinema tickets €13–17 if you catch a film at Finnkino on the top floor.",
+    },
+    booking: {
+      leadTime: "same-day",
+      notes:
+        "Walk-in. Individual restaurants in M.E.E.T. are counter-service (no reservations); a couple of full-service restaurants in the mall take same-day bookings.",
+    },
+    suitableAgeRange: { min: 0 },
+    childrenNotes:
+      "Stroller-friendly throughout — wide aisles, lifts on every floor, family bathrooms, and Kirjasto Omena's children's section is a genuinely good kid-reset destination on the same level. Several kids' clothing shops (Lillipop, Reima) and a kids' play area near the food world.",
+    indoorOutdoor: "indoor",
+    physicalIntensity: "low",
+    duration: "1-3h",
+    website: "https://www.isoomena.fi/en",
+    tags: ["mall", "food"],
+  },
+  {
+    slug: "kamppi-center",
+    title: "Kamppi Center",
+    shortDescription:
+      "Helsinki's downtown shopping-and-transit hub built directly over the central bus terminal: 7 floors of shops above 17 city-bus and 32 long-distance bus platforms, the metro 30 metres beneath, and Europe's largest MUJI on the top floor.",
+    longDescription: [
+      "Kamppi Center is the four-year, 37,000 m² complex at the western edge of Helsinki's central business district, built between 2002 and 2006 as the largest single construction project in Finnish history. Architect Juhani Pallasmaa led the design; the result stacks the city's busiest transport node and a seven-floor shopping centre on top of each other. Below ground sit the city bus terminal (17 platforms, ~900 city buses daily) and long-distance bus terminal (32 platforms, ~700 intercity buses daily, open 24/7), reached via the ceramic-tiled \"Gekko\" capsule entrance in the lobby. The metro station is 30 metres further down. Above ground, you walk straight off Mannerheimintie into the mall.",
+      "The shopping is mainstream rather than design-led — H&M, Stadium, Lindex, the standard Finnish chains, a Lidl in the basement, a couple of supermarkets, and a flag-and-cinema scattering of cafés and quick-service restaurants. The reason the mall earns its own entry rather than functioning as just commute scenery is the top floor: MUJI Kamppi is the largest MUJI in Europe (3,500 m²), and it includes a permanent Local Design Village shop-in-shop, a Local Food Store with 100+ small Finnish producers, a Small Gallery hosting rotating Finnish-artist shows, and a sit-down MUJI restaurant — see the dedicated entry for the bi-weekly community market that runs there. Forum, the older shopping centre across Mannerheimintie, is connected via an underground passage and worth pairing with Kamppi for a complete downtown indoor afternoon.",
+      "The square out front, Narinkkatori, is the social side of the building: a large plaza that hosts food trucks in summer, a Christmas market in December, occasional pop-ups and demonstrations, and the wooden Kamppi Chapel of Silence at its eastern edge — a small, unstaffed silent room open to anyone who wants to sit for a moment. Worth stepping into, even (especially) if you don't think you have time.",
+      "Kamppi is one stop east of Lauttasaari on the metro — about three minutes, no transfer, and the train surfaces directly into the building. Mall hours are Mon–Fri 10:00–20:00, Sat 10:00–19:00, Sun 12:00–19:00. Free to enter. If you only have a couple of hours and want a feel for everyday downtown Helsinki shopping, plus the MUJI flagship, plus the bus terminal that ties the whole capital region together, this is the single best stop.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Diagonal_view_of_Narinkkatori_with_Kamppi_Center_on_a_sunny_afternoon_in_May_2024.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Kamppi_Center_on_an_evening_in_February_2025.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Entrance_to_Kamppi_Center_on_an_evening_in_February_2025.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Kamppi_shopping_centre_on_an_August_evening.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Narinkkatori_with_Kamppi_Center_in_April_2023.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Kamppi_bus_station_on_an_afternoon_in_August_2024.jpg",
+    ],
+    availability: {
+      suitableMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      weeklySchedule:
+        "Shops Mon–Fri 10:00–20:00, Sat 10:00–19:00, Sun 12:00–19:00. Long-distance bus terminal open 24/7. Restaurants and cafés set their own hours, generally 09:00–22:00.",
+      notes:
+        "Year-round. The clear winter visit is December for Narinkkatori's Christmas market on the square out front. Quietest weekday mornings; commuter peaks around 08:00 and 17:00 if you're sensitive to crowds.",
+    },
+    location: {
+      region: ["Helsinki", "Kamppi", "Uusimaa"],
+      address: "Urho Kekkosen katu 1, 00100 Helsinki",
+    },
+    accessFromLauttasaari: {
+      complexity: "simple",
+      duration: "~5 min",
+      notes:
+        "M1 or M2 metro one stop east from Lauttasaari direct to Kamppi (~3 min). The metro station opens directly into the shopping centre — no walk needed. Bus 21 from Lauttasaari also stops at the city bus terminal underneath.",
+    },
+    cost: {
+      perPersonEur: 0,
+      notes:
+        "Free to enter and browse. Budget €8–15 for café/quick-service lunch, €15–30 for a sit-down restaurant on the upper floors. The Lidl in the basement is the cheapest grocery stop in central Helsinki.",
+    },
+    booking: {
+      leadTime: "same-day",
+      notes:
+        "Walk-in for everything in the mall. Long-distance bus tickets (Matkahuolto, OnniBus) book online via matkahuolto.fi or onnibus.com.",
+    },
+    suitableAgeRange: { min: 0 },
+    childrenNotes:
+      "Stroller-friendly throughout — wide aisles, lifts on every floor, family bathrooms. The Kamppi Chapel of Silence on Narinkkatori is a useful five-minute reset for tired toddlers (silent room, soft lighting). Kids' clothing brands on the lower floors.",
+    indoorOutdoor: "indoor",
+    physicalIntensity: "low",
+    duration: "1-3h",
+    website: "https://www.kamppihelsinki.fi/en",
+    tags: ["mall"],
+  },
+  {
+    slug: "ainoa-tapiola",
+    title: "Ainoa (Tapiola)",
+    shortDescription:
+      "The shopping centre at the heart of Tapiola, Finland's flagship 1950s garden city — five floors of mostly-Finnish shops in a light, plant-filled interior, with Stockmann as anchor and the modernist Tapiola plaza, fountain pool and Ice Garden right outside.",
+    longDescription: [
+      "Tapiola is one of the most studied planned communities in 20th-century Europe — a 1950s garden city laid out by Aarne Ervi and a roster of leading Finnish modernist architects (Aalto, Blomstedt, Ervi, Ruusuvuori) as a vision of how Finns should live: low slabs and point blocks set in pine forest, a pedestrian centre around a reflecting pool, schools and churches and shops within walking distance of every home. Ainoa is the modern shopping heart of that plan. The mall opened in three phases between 2013 and 2019, replacing an aging 1979 Sokos department store, and now runs to 50,000 m² across five floors with about 100 shops. The interior leans deliberately into Tapiola's garden-city DNA: light Nordic timber, hanging plants, generous daylight, and atrium voids that connect the floors visually rather than stacking them anonymously.",
+      "Stockmann is the anchor — moved into Ainoa's second phase in 2017 from its old standalone Tapiola building (1981, demolished in 2017) and now occupies the upper floors. The rest of the tenant mix is heavily Finnish: K-supermarket, Alko (state liquor monopoly), Clas Ohlson, Lindex, Marimekko, Iittala, the standard cluster — plus a strong restaurant ring on the ground and second floors. It's a quieter, more local-feeling mall than Iso Omena or Itis: fewer people, more Espoo families, no aggressive food-court atmosphere. Tapiola residents treat it as their living room.",
+      "The reason to come isn't the shopping itself, it's the surrounding plaza. Step out of Ainoa onto Tapionaukio and you're in the centrepiece of Tapiola: the long fountain pool that becomes the Tapiola Ice Garden in winter (see the dedicated entry), the cultural centre, the Espoo museum of modern art (EMMA) at the WeeGee complex one metro stop further west, and the original 1950s residential blocks worth a slow walking loop in any season. A typical visit is shop for an hour, then walk the plaza for another hour, then coffee at one of Ainoa's cafés.",
+      "From Lauttasaari, M2 metro direct to Tapiola (~10 minutes, no transfer) — the station is directly under the mall. Mall hours: Mon–Fri 10:00–20:00, Sat 10:00–19:00, Sun 12:00–18:00. Free to enter. In December, pair with the Tapiola Ice Garden and the small Christmas market on the plaza. In summer, pair with a walk through Aalto's nearby Otaniemi campus, two stops further west.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Exterior_of_Ainoa_in_May_2024.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Ainoa_in_December.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Interior_of_Ainoa_in_May_2024.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Interior_of_floor_1_of_Ainoa_shopping_centre_with_escalators_in_March_2023.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Entrance_to_Ainoa_on_New_Year's_Eve_2023.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Ainoa_viewed_from_Tapionpuisto_on_a_snowy_afternoon_in_January_2025.jpg",
+    ],
+    availability: {
+      suitableMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      weeklySchedule:
+        "Shops Mon–Fri 10:00–20:00, Sat 10:00–19:00, Sun 12:00–18:00. K-supermarket and Alko have separate hours; restaurants generally run later than the mall floor.",
+      notes:
+        "Year-round. Best paired with outdoor plaza time — December for the Ice Garden, late spring/summer for the fountain pool and the Aalto-era residential walking loop. Quietest weekday afternoons; busiest Saturdays.",
+    },
+    location: {
+      region: ["Espoo", "Uusimaa"],
+      address: "Tapiontori 3, 02100 Espoo",
+    },
+    accessFromLauttasaari: {
+      complexity: "simple",
+      duration: "~15 min",
+      notes:
+        "M2 metro from Lauttasaari direct to Tapiola (~10 min, no transfer). The Tapiola metro station is built directly under Ainoa — escalators surface inside the mall.",
+    },
+    cost: {
+      perPersonEur: 0,
+      notes:
+        "Free to enter and browse. Budget €10–20 for café/lunch, €20–40 for a Stockmann department-store browse where you actually buy something.",
+    },
+    booking: {
+      leadTime: "same-day",
+      notes:
+        "Walk-in. A couple of the sit-down restaurants take same-day reservations.",
+    },
+    suitableAgeRange: { min: 0 },
+    childrenNotes:
+      "Stroller-friendly throughout — wide aisles, lifts on every floor, family bathrooms. Quieter than the larger Helsinki/Espoo malls, which makes it a less overwhelming option for under-5s. Stockmann's children's department on the upper floor is a destination if you're shopping for kids.",
+    indoorOutdoor: "indoor",
+    physicalIntensity: "low",
+    duration: "1-3h",
+    website: "https://www.ainoatapiola.fi/en",
+    tags: ["mall", "design"],
+  },
+  {
+    slug: "itis",
+    title: "Itis",
+    shortDescription:
+      "Originally Itäkeskus, opened in 1984 and renamed in 2012 — Finland's fourth-largest mall and the largest enclosed mall in the Nordics, with 150+ shops, an IMAX cinema, a 2024 market hall, and the Itäkeskus metro built directly into it.",
+    longDescription: [
+      "Itis (officially renamed from Itäkeskus in March 2012) is the original mega-mall of East Helsinki, opened in 1984 and expanded in 1992 (Bulevardi) and 2001 (Piazza). Today it runs to 81,218 m² of leasable retail across five floors and three connected sections — Pasaasi, Bulevardi, and Piazza — making it Finland's fourth-largest shopping centre, the largest enclosed mall in the Nordics, and the place 18 million people pass through each year. It's the mall built around the Itäkeskus metro station: the M1 and M2 lines stop directly under the building, the Itäväylä motorway runs alongside, and 3,000 parking spaces sit underneath for everyone arriving by car from greater Helsinki and the eastern suburbs.",
+      "Itis is the workhorse mall — broader and more affordable than the Kamppi/Forum tier, less curated than Ainoa, more multicultural than any other Finnish mall by some distance. The tenant list is the proof: Stockmann, S-market, Lidl, H&M, Lindex, Tokmanni, Halonen, Budget Sport, the standard Finnish chain spread, plus an unusually strong cluster of small ethnic groceries and restaurants reflecting the eastern districts' immigrant communities. Finland's first H&M store opened here in 1997; Finland's first KFC in 2021; the country's first commercial IMAX screen at Finnkino Itis in November 2018; and the new market hall (Kauppahalli) opened in July 2024, modelled on Helsinki's downtown Vanha kauppahalli but with stalls leaning more international (Middle Eastern, South Asian, East African). The food side is genuinely interesting in a way the more-polished suburban malls aren't.",
+      "Things worth doing besides shopping: the IMAX screen at Finnkino Itis is one of only three commercial IMAX screens in Finland (the other two are the Olympia premiere screen at Finnkino Tennispalatsi and Finnkino Kuopio); the new market hall for lunch from a small stallholder you'd never find downtown; the Halonen department store for cheap Finnish basics; and the metro plaza outside, which hosts seasonal pop-ups. The mall doesn't have the architectural draw of Iso Omena or Ainoa — it's a 1980s shopping centre with three additions stitched on, and it looks the part — but the trade-off for the size and the affordable, multicultural mix is worth a visit if you want a different slice of Helsinki shopping.",
+      "From Lauttasaari, M1 or M2 metro east through Helsinki Central to Itäkeskus (~25 minutes, no transfer required — both lines run there). The metro station opens directly into the mall. Hours: Mon–Sat 10:00–21:00, Sun 11:00–18:00. Free to enter; pair with a stop at the market hall or a film at the IMAX. Worth bundling with a walk in nearby Uutela nature reserve or a swim at the Itäkeskus swimming hall a short walk away.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Itäkeskus_shopping_centre.JPG",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Itäkeskus_Citymarket_2014_1.JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Tallinnanaukio_2024-01-03.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Interior_of_Itis_shopping_centre_on_an_afternoon_in_July_2025.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Itis_kauppahalli.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Restaurant_world_in_Itis.jpg",
+    ],
+    availability: {
+      suitableMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      weeklySchedule:
+        "Shops Mon–Sat 10:00–21:00, Sun 11:00–18:00. Grocery stores (Prisma, S-market, Lidl) open earlier and close later. Finnkino IMAX runs evening showtimes daily.",
+      notes:
+        "Year-round. Particularly useful as a wet-weather indoor afternoon — the size means you can spend three hours without retracing steps. Quietest weekday mornings; busiest Saturday afternoons.",
+    },
+    location: {
+      region: ["Helsinki", "Uusimaa"],
+      address: "Itäkatu 1-7, 00930 Helsinki",
+    },
+    accessFromLauttasaari: {
+      complexity: "simple",
+      duration: "~25 min",
+      notes:
+        "M1 or M2 metro from Lauttasaari east through Helsinki Central to Itäkeskus (~22 min, no transfer — both lines serve it). The Itäkeskus metro station opens directly into the mall.",
+    },
+    cost: {
+      perPersonEur: 0,
+      notes:
+        "Free to enter and browse. Budget €8–15 for a market-hall lunch, €13–20 for an IMAX ticket, €15–30 if you stop for a sit-down meal. Tokmanni and Lidl are cheap; Stockmann is not.",
+    },
+    booking: {
+      leadTime: "same-day",
+      notes:
+        "Walk-in for the mall and the market hall. IMAX showings worth pre-booking on opening weekends — finnkino.fi handles ticketing.",
+    },
+    suitableAgeRange: { min: 0 },
+    childrenNotes:
+      "Stroller-friendly throughout — wide aisles, lifts on every floor, family bathrooms. Several kids' clothing chains and a small play area near the food court. The size can overwhelm under-3s; pick one wing and don't try to cross the entire 81,000 m² in one visit.",
+    indoorOutdoor: "indoor",
+    physicalIntensity: "low",
+    duration: "1-3h",
+    website: "https://www.itis.fi/en",
+    tags: ["mall", "food"],
   },
 ];
