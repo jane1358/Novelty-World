@@ -49,15 +49,18 @@ export interface IdeaAvailability {
 
 /** Where the idea takes place. */
 export interface IdeaLocation {
-  /** Broad region. The filter UI derives its region chips from whatever
-   *  values appear here across IDEAS, so a new region added to an idea
-   *  surfaces as a filter chip automatically. Reuse existing region
-   *  strings when an idea genuinely fits one (a Porvoo day trip can be
-   *  `"Helsinki"` with the specifics in `address`); only introduce a new
-   *  region when an idea genuinely doesn't belong in any existing one.
-   *  Use "Anywhere in Finland" for ideas with no place at all (e.g. "go
-   *  foraging"). */
-  region: string;
+  /** Broad regions this idea belongs to. The filter UI derives its
+   *  region chips from whatever values appear here across IDEAS, so a
+   *  new region added to an idea surfaces as a filter chip automatically.
+   *  An idea can authentically belong to more than one region — a venue
+   *  inside a named district that itself functions as a destination, an
+   *  activity that crosses cities, or a specific place that also sits
+   *  inside a broader region whose own chip is meaningful for planners.
+   *  Reuse existing region strings when an idea genuinely fits one; only
+   *  introduce a new region when an idea genuinely doesn't belong in any
+   *  existing one. Use `["Anywhere in Finland"]` for ideas with no place
+   *  at all (e.g. "go foraging"). */
+  region: string[];
   /** Street address if it's a specific venue. Skip for region-wide
    *  activities or events that move year to year. */
   address?: string;

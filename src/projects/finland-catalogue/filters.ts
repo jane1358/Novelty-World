@@ -38,7 +38,7 @@ export const KNOWN_TAGS: readonly string[] = [
 /** Region vocabulary, derived from whatever values appear in IDEAS. Same
  *  pattern as KNOWN_TAGS — adding a new region to an idea grows the list. */
 export const KNOWN_REGIONS: readonly string[] = [
-  ...new Set(IDEAS.map((i) => i.location.region)),
+  ...new Set(IDEAS.flatMap((i) => i.location.region)),
 ].sort();
 
 export function bucketCost(eur: number): CostBucket {
@@ -58,7 +58,10 @@ export function applyFilters(ideas: Idea[], filters: Filters): Idea[] {
     }
 
     if (filters.regions.length > 0) {
-      if (!filters.regions.includes(idea.location.region)) return false;
+      const overlap = idea.location.region.some((r) =>
+        filters.regions.includes(r),
+      );
+      if (!overlap) return false;
     }
 
     if (filters.costs.length > 0) {

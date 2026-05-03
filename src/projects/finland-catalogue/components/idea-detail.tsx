@@ -143,7 +143,7 @@ export function IdeaDetail({ idea, basePath }: { idea: Idea; basePath: string })
 
           <aside className="rounded-lg border border-border-default bg-surface-secondary px-5 py-2">
             <MetaRow icon={<MapPin size={14} />} label="Location">
-              <div>{idea.location.region}</div>
+              <div>{idea.location.region.join(" · ")}</div>
               {idea.location.address && (
                 <a
                   href={googleMapsUrl(`${idea.title}, ${idea.location.address}`)}

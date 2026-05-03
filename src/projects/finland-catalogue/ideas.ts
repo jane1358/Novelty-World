@@ -36,7 +36,7 @@ export const IDEAS: Idea[] = [
         "Especially welcome in winter as a warm, free, all-day refuge in the city centre.",
     },
     location: {
-      region: "Helsinki",
+      region: ["Helsinki", "Uusimaa"],
       address: "Töölönlahdenkatu 4, 00100 Helsinki",
     },
     accessFromHelsinki: {
@@ -90,7 +90,7 @@ export const IDEAS: Idea[] = [
         "Closed entirely outside summer. Park dates shift slightly each year — check the official site before booking transport.",
     },
     location: {
-      region: "Turku",
+      region: ["Turku"],
       address: "Kailo Island, Naantali (next to Naantali old town, ~16 km west of Turku)",
     },
     accessFromHelsinki: {
@@ -148,7 +148,7 @@ export const IDEAS: Idea[] = [
         "Closed 1 May, 19–21 Jun (Midsummer), 6 Dec (Independence Day), and 24–25 & 31 Dec. Last admission 30 min before closing.",
     },
     location: {
-      region: "Turku",
+      region: ["Turku"],
       address: "Linnankatu 80, 20100 Turku",
     },
     accessFromHelsinki: {
@@ -202,7 +202,7 @@ export const IDEAS: Idea[] = [
         "The museum ships outdoors are only boardable May–September. Indoor exhibitions are open all year.",
     },
     location: {
-      region: "Turku",
+      region: ["Turku"],
       address: "Linnankatu 72, 20100 Turku",
     },
     accessFromHelsinki: {
@@ -255,7 +255,7 @@ export const IDEAS: Idea[] = [
         "Boarding is summer-only. The Forum Marinum indoor exhibition about the ship is open year-round, and winter guided tours can be arranged on request.",
     },
     location: {
-      region: "Turku",
+      region: ["Turku"],
       address: "Linnankatu 72, 20100 Turku (moored at Forum Marinum dock)",
     },
     accessFromHelsinki: {
@@ -313,7 +313,7 @@ export const IDEAS: Idea[] = [
         "It's a working Lutheran church — Sunday morning services, weddings, and concerts close it to general entry. Check the official site if timing matters.",
     },
     location: {
-      region: "Helsinki",
+      region: ["Helsinki", "Uusimaa"],
       address: "Unioninkatu 29, 00170 Helsinki (Senate Square)",
     },
     accessFromHelsinki: {
@@ -363,7 +363,7 @@ export const IDEAS: Idea[] = [
         "Best from May to September when the trees are out and the Espa Stage runs free concerts. Pleasant in winter for a short walk between cathedrals/market hall but you won't linger.",
     },
     location: {
-      region: "Helsinki",
+      region: ["Helsinki", "Uusimaa"],
       address: "Esplanadi park, between Erottaja and Market Square, 00130 Helsinki",
     },
     accessFromHelsinki: {
@@ -423,7 +423,7 @@ export const IDEAS: Idea[] = [
         "Market stalls scale way back in winter — a few year-round vendors and a coffee tent rather than a full square of food. The square stays walkable but the experience is in summer.",
     },
     location: {
-      region: "Helsinki",
+      region: ["Helsinki", "Uusimaa"],
       address: "Kauppatori, 00170 Helsinki (South Harbour)",
     },
     accessFromHelsinki: {
@@ -476,7 +476,7 @@ export const IDEAS: Idea[] = [
         "Individual stalls set their own hours — some close at 17:00, a few at 16:00 on Saturday. Sunday closure is firm.",
     },
     location: {
-      region: "Helsinki",
+      region: ["Helsinki", "Uusimaa"],
       address: "Eteläranta, 00130 Helsinki (South Harbour, beside Kauppatori)",
     },
     accessFromHelsinki: {
@@ -536,7 +536,7 @@ export const IDEAS: Idea[] = [
         "Genuine year-round destination but the experience flips: summer is the postcard version, winter is empty ramparts and ice. Late spring (May) and early autumn (Sept) hit the sweet spot — open museums, no crowds.",
     },
     location: {
-      region: "Helsinki",
+      region: ["Helsinki", "Uusimaa"],
       address: "Suomenlinna islands, 00190 Helsinki (15-min ferry from Kauppatori)",
     },
     accessFromHelsinki: {
@@ -591,7 +591,7 @@ export const IDEAS: Idea[] = [
         "Closed 1 Jan, Good Friday, Easter Monday, 1 May, Midsummer Eve, and 15 Dec – 1 Jan (Christmas closure).",
     },
     location: {
-      region: "Hämeenlinna",
+      region: ["Hämeenlinna"],
       address: "Kustaa III:n katu 6, 13100 Hämeenlinna (~100 km north of Helsinki)",
     },
     accessFromHelsinki: {
@@ -652,7 +652,7 @@ export const IDEAS: Idea[] = [
         "Four-day annual event in mid-August. Exact weekend shifts a day or two each year — check uiva.fi before booking flights around it.",
     },
     location: {
-      region: "Helsinki",
+      region: ["Helsinki", "Uusimaa"],
       address: "HSK Yacht Club, Vattuniemen puistotie 1, 00210 Helsinki (Lauttasaari)",
     },
     accessFromHelsinki: {
@@ -709,7 +709,7 @@ export const IDEAS: Idea[] = [
         "Year-round but the experience is wildly seasonal. November–January is peak Christmas magic with reliable snow. December queues to meet Santa are heaviest 11:00–14:00 — go right at opening or after 16:00. Summer is open but the village looks bare without snow and most of the appeal evaporates.",
     },
     location: {
-      region: "Lapland",
+      region: ["Rovaniemi", "Lapland"],
       address: "Tähtikuja 1, 96930 Napapiiri (Arctic Circle), Rovaniemi",
     },
     accessFromHelsinki: {
@@ -765,7 +765,7 @@ export const IDEAS: Idea[] = [
         "Citybike season runs 1 April – 31 October — bikes are removed for winter. Mid-May through mid-September is the sweet spot for warmth and dry pavement. You can also bring or rent your own bike outside the city-bike season; the paths are cleared and ridable but cold and often icy.",
     },
     location: {
-      region: "Helsinki",
+      region: ["Helsinki", "Espoo", "Uusimaa"],
       address: "Coastal cycle path — easiest to start at Kauppatori (Market Square) or Kaivopuisto, both with city-bike stations.",
     },
     accessFromHelsinki: {
@@ -824,7 +824,7 @@ export const IDEAS: Idea[] = [
         "Open year-round. Free entry every Friday 15:00–18:00. A handful of public-holiday closures and a few exceptional Mondays (Tampere school holidays) — check the site if your trip lands on a Monday.",
     },
     location: {
-      region: "Tampere",
+      region: ["Tampere"],
       address: "Alaverstaanraitti 5, 33100 Tampere",
     },
     accessFromHelsinki: {
@@ -881,7 +881,7 @@ export const IDEAS: Idea[] = [
         "Summer-only — closed October through April. As of 2026 the tram is on a renovation pause; verify the schedule on raflaamo.fi before turning up. Charter on other vintage trams is available year-round through Kaupunkiliikenne if SpåraKoff is still down.",
     },
     location: {
-      region: "Helsinki",
+      region: ["Helsinki", "Uusimaa"],
       address: "Mikonkatu 17 (Tilausratikan pysäkki), 00100 Helsinki",
     },
     accessFromHelsinki: {
@@ -935,7 +935,7 @@ export const IDEAS: Idea[] = [
         "Old town itself is open and walkable year-round and is especially atmospheric under snow in December. The m/s J.L. Runeberg cruise runs only May–September; outside that window, take the OnniBus from Helsinki Kamppi terminal (~50 min, hourly).",
     },
     location: {
-      region: "Helsinki",
+      region: ["Helsinki", "Porvoo", "Uusimaa"],
       address: "Old Porvoo, 06100 Porvoo (~50 km east of Helsinki)",
     },
     accessFromHelsinki: {
@@ -990,7 +990,7 @@ export const IDEAS: Idea[] = [
         "Closed a few public holidays — verify before Easter weekend or late December. Year-round indoor destination; the outdoor Galileo Science Park is summer-only.",
     },
     location: {
-      region: "Helsinki",
+      region: ["Vantaa", "Uusimaa"],
       address: "Tiedepuisto 1, 01300 Vantaa (Tikkurila district)",
     },
     accessFromHelsinki: {
@@ -1044,7 +1044,7 @@ export const IDEAS: Idea[] = [
         "Fleet boats are in the water roughly 1 May – 30 September; the exact window shifts a week or two with the weather. Mid-June to mid-August is peak — long daylight, warm water — so popular Saturday morning slots get booked a week or two ahead. Outside the season, no boating, just Skipperi Academy theory courses.",
     },
     location: {
-      region: "Helsinki",
+      region: ["Helsinki", "Uusimaa"],
       address: "Multiple Helsinki-area Fleet harbours (Lauttasaari, Vuosaari, Hanasaari, others). Rent boats listed at private berths across the metro area.",
     },
     accessFromHelsinki: {
@@ -1098,7 +1098,7 @@ export const IDEAS: Idea[] = [
         "Strictly summer-season — the buses are off the road from mid-October to late April. Open-top deck is closed in heavy rain; lower deck stays warm and dry.",
     },
     location: {
-      region: "Helsinki",
+      region: ["Helsinki", "Uusimaa"],
       address: "Main boarding point: Senate Square (Senaatintori), 00170 Helsinki. Tickets also sold at Market Square and onboard.",
     },
     accessFromHelsinki: {
@@ -1153,7 +1153,7 @@ export const IDEAS: Idea[] = [
         "Year-round route — ferries run daily through winter. Summer (May–September) is peak: long days, warm cobbles, packed cafés. Winter trips have shorter daylight (Tallinn closes early in December/January) but the Old Town under snow is genuinely beautiful and the December Christmas Market on Raekoja plats is one of the best in Northern Europe.",
     },
     location: {
-      region: "Helsinki",
+      region: ["Helsinki", "Uusimaa"],
       address: "Departure: West Terminal (Länsiterminaali) T2, Tyynenmerenkatu 14, 00220 Helsinki. Arrival: D-Terminal, Lootsi 13, Tallinn.",
     },
     accessFromHelsinki: {
@@ -1209,7 +1209,7 @@ export const IDEAS: Idea[] = [
         "Daily year-round. Summer school-holiday weekends sell out cabins 2–3 months ahead. Winter sailings push through Baltic ice — atmospheric, especially around dawn through the Åland archipelago.",
     },
     location: {
-      region: "Helsinki",
+      region: ["Helsinki", "Uusimaa"],
       address: "Departure: Olympia Terminal, Olympiaranta 1, 00140 Helsinki. Arrival: Värtahamnen, Hamnpirsvägen 10, 11556 Stockholm.",
     },
     accessFromHelsinki: {
@@ -1275,7 +1275,7 @@ export const IDEAS: Idea[] = [
         "Year-round destination but the experience swings hard with the season. July is peak (opera festival, lake at its warmest, 19+ hours of daylight). Snowy lake-and-castle scenery in February is genuinely beautiful but most lake activities pause. Castle closed New Year, Easter, May Day, and 16–26 Dec.",
     },
     location: {
-      region: "Lakeland",
+      region: ["Savonlinna", "Lakeland"],
       address: "Olavinkatu 27, 57130 Savonlinna",
     },
     accessFromHelsinki: {
@@ -1330,7 +1330,7 @@ export const IDEAS: Idea[] = [
         "Genuine year-round destination — the fire pit and cottage charm work just as well in February snow as in July sun. Lunchtime weekend queues in summer are heaviest 11:00–14:00.",
     },
     location: {
-      region: "Helsinki",
+      region: ["Helsinki", "Uusimaa"],
       address: "Merikannontie 8, 00260 Helsinki",
     },
     accessFromHelsinki: {
@@ -1382,7 +1382,7 @@ export const IDEAS: Idea[] = [
         "Beach is at its best mid-June to mid-August, when the Baltic warms to ~18–20°C and the lifeguards are on duty. May and September are still walkable and atmospheric but too cold for most swimmers. Winter sees ice swimmers and the Paseo sauna scene; the Paviljonki café runs reduced hours.",
     },
     location: {
-      region: "Helsinki",
+      region: ["Helsinki", "Uusimaa"],
       address: "Vattuniemenranta 4, 00210 Helsinki (Lauttasaari)",
     },
     accessFromHelsinki: {
@@ -1439,7 +1439,7 @@ export const IDEAS: Idea[] = [
         "Genuine year-round destination — the saunas and heated pool make it work in deep winter, and the experience flips from a sun-deck scene in July to a steaming-pool-against-snow tableau in February. Closed for an annual maintenance week (usually mid-January); check the site if your trip lands then.",
     },
     location: {
-      region: "Helsinki",
+      region: ["Helsinki", "Uusimaa"],
       address: "Katajanokanlaituri 2a, 00160 Helsinki",
     },
     accessFromHelsinki: {
@@ -1497,7 +1497,7 @@ export const IDEAS: Idea[] = [
         "Working cathedral — Sunday morning services, weddings, and funerals close it to general visits. Check the weekly schedule on hos.fi the day before if your timing is tight.",
     },
     location: {
-      region: "Helsinki",
+      region: ["Helsinki", "Uusimaa"],
       address: "Kanavakatu 1, 00160 Helsinki",
     },
     accessFromHelsinki: {
@@ -1548,7 +1548,7 @@ export const IDEAS: Idea[] = [
       notes: "Open year-round. Midweek lunch is the quietest window.",
     },
     location: {
-      region: "Helsinki",
+      region: ["Helsinki", "Uusimaa"],
       address: "Vattuniemenkatu 13, 00210 Helsinki (Lauttasaari)",
     },
     accessFromHelsinki: {

@@ -203,33 +203,38 @@ The skill tells you *how* to think about tags, not which ones exist.
    any new tag introduced, and which existing entries you backfilled.
    The user reviews the diff against the recap.
 
-**Regions** — geographic groupings. The filter UI renders one chip per
-unique region, so the granularity of these chips IS the planner's
-mental model of "where could I go?". Currently used: **`Helsinki`,
-`Turku`, `Tampere`, `Hämeenlinna`, `Lapland`**.
+**Regions** — geographic groupings. `location.region` is a `string[]`:
+an idea can authentically belong to more than one region at once. The
+filter UI renders one chip per unique region appearing across IDEAS,
+and the granularity of those chips IS the planner's mental model of
+"where could I go?".
 
-**Region granularity scales inversely with distance from Helsinki.**
-Close-in trips are independent day-trip decisions, so each destination
-earns its own chip. Far-away trips bundle together, so individual sites
-cluster under a broader region — once you've committed to the
-12-hour journey to Lapland, you're going to do multiple things up
-there, and the chip is the trip.
+**Multiplicity.** List every region a planner filtering by that chip
+would expect this idea to surface under. An idea earns more than one
+region when the place it occupies sits inside a broader area whose own
+chip is meaningful for planners, when the activity itself crosses or
+spans more than one distinct area, or when the venue is contained in a
+named neighbourhood/district that itself functions as a destination
+within a larger one. When none of those apply, a single-element array
+is correct. Don't pad with regions the idea doesn't really belong to —
+each entry in the array should withstand the test "if the user filters
+on this region, would they be glad to see this idea in the result?".
 
-- **Within ~1 hour of Helsinki**: every meaningful destination is its
-  own region (Helsinki, Porvoo, Espoo, etc.). These are distinct
-  decisions a planner makes one-at-a-time.
-- **1–3 hours out**: each city is its own region (Turku, Tampere,
-  Hämeenlinna). Immediate satellites cluster under it (Naantali under
-  Turku — same trip, same base).
-- **3+ hours out**: cluster into broad regions (Lapland). **Exception**:
-  a city substantial enough to be its own destination keeps its own
-  region even when far away — Oulu would not cluster under Lapland.
+**Granularity scales inversely with distance from Helsinki.** Close-in
+destinations are independent day-trip decisions, so each meaningful
+place earns its own chip. Far-away destinations cluster under broader
+regional chips — once a planner has committed to the long journey,
+the trip is the chip and the individual sites within it bundle
+together. Between those extremes, balance: the question to ask is
+whether a planner would decide on this place independently or as part
+of a larger regional trip.
 
-Reuse an existing region where the rules above point to one (typos
-and casing variants create duplicate chips: `"Helsinki"` not
-`"Helsinki, Finland"`). Introduce a new region whenever the rules call
-for one — don't be reluctant; the filter chip is how the user sees
-that destination exists.
+Reuse existing region values where the rules above point to them —
+casing and spelling variants create duplicate chips. Introduce a new
+region when the rules genuinely call for one and no existing region
+fits; the filter chip is how a user discovers that destination exists
+in the catalogue. Survey `ideas.ts` first to see what's already in use
+before deciding whether to reuse or introduce.
 
 In your summary, call out any new tag or region you introduced so the
 user can sanity-check it.
