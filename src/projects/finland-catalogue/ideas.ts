@@ -1993,4 +1993,226 @@ export const IDEAS: Idea[] = [
     website: "https://www.powerpark.fi/en/",
     tags: ["theme park"],
   },
+  {
+    slug: "kieppi-second-hand",
+    title: "Kieppi Second-Hand Market at Iso Omena",
+    shortDescription:
+      "Five of Finland's biggest charity thrift chains — Fida, UFF, iCare, Kierrätyskeskus, and Lillipop — lined up along a single second-floor corridor of the Matinkylä mall, the easiest one-stop secondhand crawl in the metro area.",
+    longDescription: [
+      "Kieppi is Iso Omena's dedicated second-hand corridor, opened in stages from 2023 as the mall's bet on the Finnish thrift boom. Five of the country's biggest charity-run secondhand operators share the same stretch of the second floor: UFF (vintage-leaning clothing, climate-focused charity), Fida (clothing, hobby supplies, and home goods funding international development), iCare (the Salvation Army's shop, 130-plus years in Finland), Kierrätyskeskus — the Recycling Centre — (clothes, tableware, decor, supports environmental work), and Lillipop (children's clothing on consignment). Add Ompun Ompelimo nearby for alterations and you can buy a coat and have it taken in without leaving the floor.",
+      "The appeal is the density. Each shop is its own door, but the layout is a single linear browse — you pop in, find nothing, walk five paces, try the next one. A successful visit can land you a Marimekko dress at UFF, a stack of Iittala ramekins at Kierrätyskeskus, a wool sweater at Fida, and an outgrown ski jacket at Lillipop, in under an hour. Pricing is the genuinely-cheap kind, not curated-vintage-cheap: clothing mostly €3–15, housewares €1–10. Inventory turns over fast and the regulars treat it as a weekly stop — go in the morning if you want first crack at fresh donations.",
+      "Iso Omena itself is the western terminus of the Helsinki metro: the Matinkylä station sits directly under the mall, the M1 line runs there from Lauttasaari in about fifteen minutes with no transfers. Take the escalator up two floors, follow the Kieppi signs, and the five shops are in a row. Combine with Kirjasto Omena (the Espoo public library on the same floor) for a half-day, or with a coffee at one of the food-court counters. Sundays are the quietest browsing day; mid-morning Saturday is the busiest.",
+    ],
+    thumbnailUrl:
+      "https://www.isoomena.fi/app/uploads/sites/13/2026/03/Kieppi_www_desktop-hero_1920x800px.png",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Iso_Omena_shopping_centre,_Matinkylä,_Espoo_(March_2019).jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Ison_Omenan_vanha_puoli.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Entrance_to_Iso_Omena_on_an_afternoon_in_October_2024.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Iso_Omena_christmas_2025.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Piispansilta_near_Iso_Omena_on_an_evening_in_October_2023.jpg",
+    ],
+    availability: {
+      suitableMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      weeklySchedule:
+        "Mall is open daily 06:00–24:00; individual Kieppi shops generally Mon–Fri 10:00–20:00, Sat 10:00–18:00, Sun 12:00–18:00 (each store sets its own hours within that window).",
+      notes:
+        "Inventory turns fast — go mid-morning on a weekday for the freshest racks. Sunday afternoon is the quietest browsing window; mid-morning Saturday is the busiest.",
+    },
+    location: {
+      region: ["Espoo", "Uusimaa"],
+      address:
+        "Iso Omena, 2nd floor (Kieppi corridor), Piispansilta 11, 02230 Espoo",
+    },
+    accessFromLauttasaari: {
+      complexity: "simple",
+      duration: "~20 min",
+      notes:
+        "M1 metro west from Lauttasaari direct to Matinkylä (~15 min, no transfer). The metro station is built into the south end of Iso Omena — exit, take the escalators up two floors, follow the Kieppi signage along the corridor.",
+    },
+    cost: {
+      perPersonEur: 0,
+      notes:
+        "Free to browse. Budget €10–40 for typical finds: clothing mostly €3–15, housewares €1–10. Lillipop's consignment items can run higher than the charity-shop prices next door.",
+    },
+    booking: {
+      leadTime: "same-day",
+      notes: "Walk-in. No reservations for any of the shops.",
+    },
+    suitableAgeRange: { min: 0 },
+    childrenNotes:
+      "Stroller-friendly throughout, family bathrooms on the same floor, and Lillipop is purpose-built for kids' clothing if you're shopping for them. Older kids who like sorting through racks tend to enjoy it; toddlers will get bored fast — pair with a swing through Kirjasto Omena's children's section as a reset.",
+    indoorOutdoor: "indoor",
+    physicalIntensity: "low",
+    duration: "1-3h",
+    website: "https://www.isoomena.fi/en/kieppi-second-hand-market/",
+    tags: [],
+  },
+  {
+    slug: "tapiola-ice-garden",
+    title: "Tapiola Ice Garden",
+    shortDescription:
+      "A free 330-metre artificial ice loop circling Tapiola's central fountain pool — lit at night, hockey sticks banned, and the easiest place west of Helsinki to lace up skates and just glide for an hour.",
+    longDescription: [
+      "Tapiolan Jääpuutarha — the \"Ice Garden\" — is a 330-metre artificial ice track that loops around the central fountain pool in Tapiola's cultural square, with a 1,700m² rink in the middle. The site is professionally maintained, free to use, and turns the centrepiece of Aarne Ervi's 1950s modernist town plan into an open-air winter living room from mid-November through early March. Hockey sticks are banned, which keeps the loop civil and family-paced — this is a place for laps, not pickup games.",
+      "The 330m loop is long enough to actually get a rhythm going. Half a dozen laps and you're warm; twenty and you've earned a coffee. Floodlights stay on after dark, which matters in December when the sun sets at 15:15 and most of your skating happens under the lights. Ice condition is noticeably best the morning after a fresh resurface, and the crowd thins out after dinner. Warm changing rooms and toilets sit alongside the rink, but the on-site café and skate rental (Café Hile) are closed indefinitely — bring your own skates and a thermos.",
+      "Season runs roughly 17 November through 8 March, with cold-snap exceptions at either end; Espoo posts live conditions on ulkoliikunta.fi if you want to check before going. Take the M2 metro from Lauttasaari direct to Tapiola (~10 minutes, no transfer); the Ice Garden is a three-minute walk from the metro exit at Tapionaukio, sitting between the Ainoa shopping centre, the Tapiola swimming hall, and the cultural centre. Combine with the Espoo Museum of Modern Art (EMMA) at the WeeGee complex one stop further west if your legs are ready to be done.",
+    ],
+    thumbnailUrl:
+      "https://static.espoo.fi/cdn/ff/jSa55ugnin12iEjGyJxfMoNbXm9efSV8vxK39BFbFyQ/1690272439/public/2023-07/Tapiolan%20j%C3%A4%C3%A4puutarha.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Fountain_pool_in_Tapiola.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Illuminated_fountain_jets_in_Tapiola_on_New_Year's_Eve_2023.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Illuminated_tree_in_Tapiola.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Mini-Tapiola_in_December.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Kulttuuriaukio_Kulturplatsen_Espoo_Esbo_2023-10-06.jpg",
+    ],
+    availability: {
+      suitableMonths: [11, 12, 1, 2, 3],
+      notes:
+        "Season runs ~17 November to ~8 March, with weather-dependent shifts at either end. Lit until late evening; no formal open/close hours within the season. Café and skate rental are closed indefinitely — bring your own skates.",
+    },
+    location: {
+      region: ["Espoo", "Uusimaa"],
+      address: "Tapionaukio 3, 02100 Espoo",
+    },
+    accessFromLauttasaari: {
+      complexity: "simple",
+      duration: "~15 min",
+      notes:
+        "M2 metro from Lauttasaari direct to Tapiola (~10 min, no transfer — Tapiola is the M2 western terminus). The Ice Garden is a 3-minute walk from the metro exit at Tapionaukio, between the Ainoa shopping centre and the cultural centre.",
+    },
+    cost: {
+      perPersonEur: 0,
+      notes:
+        "Free to skate. Bring your own skates — the on-site rental (Café Hile) is closed indefinitely. No ticket, no entry fee.",
+    },
+    booking: {
+      leadTime: "same-day",
+      notes: "Walk-in. No reservations, no time slots.",
+    },
+    suitableAgeRange: { min: 4 },
+    childrenNotes:
+      "Kids who can stand on skates will enjoy the loop — the no-hockey-stick rule keeps the pace gentle. Strollers stay off the ice but can park alongside the warm changing rooms. Toddlers and unsteady first-timers will tire fast; an hour is plenty.",
+    indoorOutdoor: "outdoor",
+    physicalIntensity: "moderate",
+    duration: "1-3h",
+    website: "https://www.espoo.fi/en/units/tapiola-ice-garden",
+    tags: [],
+  },
+  {
+    slug: "kaffeli-puuro",
+    title: "Puuro at Kaffeli torikahvila",
+    shortDescription:
+      "A bowl of rice puuro with butter and lingonberry jam at one of Hakaniementori's tiny outdoor torikahvilas — Kaffeli, on the open market square in front of the hall, where porridge is on the menu all day every day the square is open.",
+    longDescription: [
+      "Puuro — slow-cooked porridge eaten with a knob of butter melting in the middle and a spoonful of lingonberry jam (puolukkahillo) — isn't a breakfast dish in Finland the way it is elsewhere. It's a meal of its own, eaten any time of day, and the rice version (riisipuuro) in particular is what gets ladled at outdoor market squares from spring through Christmas. Hakaniementori, the open market square in front of Hakaniemi Market Hall, is the easiest place in Helsinki to find one. Kaffeli torikahvila — one of the small wooden cafés that set up tables right on the square — keeps puuro on the menu every day they're open.",
+      "Kaffeli is a torikahvila in the original sense: a little café tent and counter on the cobblestones, a handful of outdoor tables, and a menu that doesn't try to be more than the square deserves. Coffee, pulla, vanilla croissants, sandwiches, and a bowl of puuro for under five euros. Rice porridge runs daily, with a second rotating variety (oat, four-grain, sometimes barley) alongside it; demand peaks at Christmas and Midsummer when the seasonal cinnamon-and-prune crowd shows up. Sister café Kahvisiskot has been working the same square for over fifty years and pours from a similar template — both are worth a stop, both let you sit outside and watch the square's traders set up.",
+      "Hakaniementori itself was filled in from a strait in 1897 and has been a market spot ever since, with a daily produce-and-flowers market, monthly farmers' market on the first Sunday, and the occasional political demonstration spilling over from the labour movement's deep ties to the Kallio district. The square is right outside the renovated 1914 market hall, so a puuro at Kaffeli pairs naturally with a wander through the hall's stalls afterwards.",
+      "Practical: M1 or M2 metro from Lauttasaari direct east to Hakaniemi (~10 min, no transfer), then thirty seconds out the metro exit to the square. Kaffeli runs daytime hours roughly Mon–Sat (closed Sundays); the square's torikahvilas operate from early spring through December and shut down for the deepest winter weeks. Bring cash or card — both work.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Hakaniementori_in_August.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Kahvi_Siskot_Hakaniementori_-_panoramio.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Hakaniementori_on_a_July_morning.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Hakaniementori_in_July.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Riisipuuro.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Finnish_Christmas_rice_porridge.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Hakaniementori,_Helsinki_1907.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Hakaniemen_kauppahalli2008b.jpg",
+    ],
+    availability: {
+      suitableMonths: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      weeklySchedule:
+        "Approximately Mon–Sat daytime (early morning through early afternoon). Closed Sundays. Hours vary by season — confirm via Kaffeli's Instagram (@kahvilakaffeli) before a long detour.",
+      notes:
+        "The torikahvilas run early spring through December and shut for the deepest winter weeks. Kahvisiskot's owner works daily \"early spring through December\" — Kaffeli's window is similar. Demand for puuro peaks at Christmas and around Midsummer.",
+    },
+    location: {
+      region: ["Helsinki", "Uusimaa"],
+      address: "Hakaniementori, 00530 Helsinki",
+    },
+    accessFromLauttasaari: {
+      complexity: "simple",
+      duration: "~15 min",
+      notes:
+        "M1 or M2 metro from Lauttasaari direct east to Hakaniemi (~10 min, no transfer — five stops via Ruoholahti, Kamppi, Rautatientori, and Helsingin yliopisto). Kaffeli is on the open square 30 seconds from the metro exit, in front of the market hall.",
+    },
+    cost: {
+      perPersonEur: 5,
+      notes:
+        "Bowl of puuro €4–5, coffee €2–3, pulla or vanilla croissant under €5. A full sit-down stop is €5–10. Card and cash both fine.",
+    },
+    booking: {
+      leadTime: "same-day",
+      notes: "Walk-up counter service. No reservations.",
+    },
+    suitableAgeRange: { min: 0 },
+    childrenNotes:
+      "Outdoor seating only — a few tables on the cobblestones. Stroller-friendly across the square. Puuro is mild and toddler-friendly; high chairs are scarce, so plan to share a bench.",
+    indoorOutdoor: "outdoor",
+    physicalIntensity: "low",
+    duration: "<1h",
+    website: "https://www.instagram.com/kahvilakaffeli/",
+    tags: ["food"],
+  },
+  {
+    slug: "lapinlahden-lahde",
+    title: "Lapinlahden Lähde",
+    shortDescription:
+      "Helsinki's former 1841 mental hospital — designed by Carl Ludvig Engel and one of Europe's oldest psychiatric institutions — reborn as a free, lived-in centre for arts, culture, and mental wellbeing, with a Mental Museum, lakeside park, sauna, and one of the city's quietest seaside cafés.",
+    longDescription: [
+      "Lapinlahti Hospital opened in 1841 to a design by Carl Ludvig Engel — the same architect behind Helsinki Cathedral and the Senate Square neoclassical core — and was, at its founding, one of the most progressive psychiatric institutions in Europe. The pale-yellow classicist main building sits on a peninsula at the head of Lapinlahti Bay, surrounded by a ten-hectare park shaped by nearly two centuries of patient gardens and old-growth woodland. The hospital ran continuously until 2007. After a long campaign by Pro Lapinlahti and the Lapinlahti Foundation to save the site from sale and demolition, it reopened as Lapinlahden Lähde — \"Lapinlahti's Spring\" — a centre for arts, culture, and mental wellbeing.",
+      "Roughly 200 small organisations now share the building: artists' studios, therapists' rooms, mental-health NGOs, a community gallery, a flower shop staffed by people in mental-health rehabilitation, a sauna (Lähde Sauna), and Café Lähde, whose €9.90 weekday lunch is one of the better cheap meals in central Helsinki. Over 300 cultural events a year run through the old wards — concerts in the Aleksis Kivi Ballroom, exhibitions in the old chapel ruin, urban-allotment gardens out the back. The site is a registered social enterprise, so visitor spending directly funds mental-health programming.",
+      "The free Mental Museum, run by Pro Lapinlahti, threads through the ground-floor lobby of Café Lähde, the first floor of the old Ward 5 corridor, and the second-floor Aleksis Kivi corridor — Aleksis Kivi, Finland's national writer, was a patient here in the 1860s, and his preserved cell-room is the emotional centrepiece of the visit. The exhibits cover the building's architecture, the long arc of treatment history (restraints, insulin shock, lobotomies, modern care), and the patients themselves through letters and photographs. It's small, careful, and moving: half an hour to read everything, more if you let yourself sit in the period rooms.",
+      "Free entry to the grounds, park, and museum. Café Lähde lunch ~€10–12; sauna evenings and ticketed concerts are bookable separately on the website. The site is open every day, with the buildings running daytime hours and occasional evening events. From Lauttasaari it's one M1 or M2 metro stop east to Ruoholahti (~3 min), then a 10-minute walk north along Hietalahdenranta — the white hospital is visible across the bay. Pair the visit with a wander back south to Hietalahti Market Hall for an afternoon, or stretch into a longer seashore walk along the coastal route to the city centre.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Lapinlahti_hospital_seen_from_the_bay.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Lapinlahden_sairaala.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Corridor_at_Lapinlahden_Lähde.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Lapinlahden_sairaalan_sisäpiha.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Lapinlahden_kappelin_raunio.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Lapinlahden_kaivo.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Lapinlahden_viljelyspalstat.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Colourful_circles_at_Lapinlahti_Hospital_at_Lux_Helsinki_2020.jpg",
+    ],
+    availability: {
+      suitableMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      weeklySchedule:
+        "Grounds open daily, all hours. Café Lähde and Mental Museum run daytime hours (roughly 10:00–17:00 weekdays, with weekend variation). Sauna and concerts are evenings.",
+      notes:
+        "Park and grounds are loveliest May–September when the gardens are in. The buildings stay open year-round; cultural programming is concentrated in the autumn–spring season. Lux Helsinki light festival (early January) lights up the façade and is worth a dedicated evening visit.",
+    },
+    location: {
+      region: ["Helsinki", "Uusimaa"],
+      address: "Lapinlahdenpolku 8, 00180 Helsinki",
+    },
+    accessFromLauttasaari: {
+      complexity: "simple",
+      duration: "~20 min",
+      notes:
+        "M1 or M2 metro one stop from Lauttasaari to Ruoholahti (~3 min), then a 10–15 min walk north along Hietalahdenranta — the white classicist hospital is visible across the bay the whole way. Alternative for a walking-day: cross the Lauttasaari bridge and follow the seashore (~30 min total).",
+    },
+    cost: {
+      perPersonEur: 0,
+      notes:
+        "Free entry to the grounds, park, and Mental Museum. Café Lähde lunch ~€9.90 weekday / €11.90 weekend. Sauna sessions and concert tickets priced separately and bookable online.",
+    },
+    booking: {
+      leadTime: "same-day",
+      notes:
+        "Walk-in for the museum, café, and grounds. Sauna sessions and ticketed events need advance booking via lapinlahdenlahde.fi — sauna in particular books out on weekends.",
+    },
+    suitableAgeRange: { min: 8 },
+    childrenNotes:
+      "Park and grounds work for any age — open lawns, allotment gardens, the chapel ruin to scramble around, and a small beach across the road. The Mental Museum's content is gentle but genuinely about psychiatric history (including restraints and historical treatments), so it lands better with older kids who are ready to read about it than with under-eights. Stroller-friendly outdoors; the 19th-century corridors have a few steps and uneven thresholds.",
+    indoorOutdoor: "mixed",
+    physicalIntensity: "low",
+    duration: "1-3h",
+    website: "https://lapinlahdenlahde.fi/en/",
+    tags: ["museum", "historical"],
+  },
 ];
