@@ -108,7 +108,7 @@ export function IdeaCard({ idea, basePath }: { idea: Idea; basePath: string }) {
           <h3 className="line-clamp-2 min-h-[2lh] text-lg font-semibold leading-tight text-text-primary group-hover:text-brand-pink">
             {idea.title}
           </h3>
-          <p className="line-clamp-2 min-h-[2lh] text-sm text-text-secondary">
+          <p className="text-sm text-text-secondary">
             {idea.shortDescription}
           </p>
         </div>
