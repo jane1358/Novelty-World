@@ -116,7 +116,7 @@ export const IDEAS: Idea[] = [
     physicalIntensity: "low",
     duration: "half-day",
     website: "https://www.moominworld.fi/",
-    tags: [],
+    tags: ["theme park"],
   },
   {
     slug: "turku-castle",
@@ -735,7 +735,7 @@ export const IDEAS: Idea[] = [
     physicalIntensity: "low",
     duration: "half-day",
     website: "https://santaclausvillage.info/",
-    tags: [],
+    tags: ["theme park"],
   },
   {
     slug: "helsinki-coastal-bike-ride",
@@ -1819,5 +1819,178 @@ export const IDEAS: Idea[] = [
     website:
       "https://www.hel.fi/en/culture-and-leisure/outdoor-activities-parks-and-nature-destinations/hiking/routes-and-nature-trails",
     tags: ["nature"],
+  },
+  {
+    slug: "linnanmaki",
+    title: "Linnanmäki",
+    shortDescription:
+      "Finland's flagship amusement park: eight roller coasters including the brakeman-operated 1951 wooden Vuoristorata and the launched-steel Taiga (52m, 106 km/h — Finland's tallest, fastest, and longest), all run by a children's-charity foundation right inside Helsinki.",
+    longDescription: [
+      "Linnanmäki has been the heart of Finnish amusement-park culture since 1950. It sits on a hilltop in Alppila, 2.5 km north of Helsinki Central, and packs 42+ rides into a compact site whose layout — coasters threading between food kiosks and trees — feels nothing like a sprawling Six-Flags. Entry is free; you pay for rides via a wristband or a punch card. The whole operation is owned by the Children's Day Foundation, a non-profit, and a portion of every ticket goes to Finnish child-welfare work. Even the rides have run on wind energy since the 2010s.",
+      "The headline coasters cover an unusually wide era-range for one park. Vuoristorata (1951) is the wooden classic, one of only six coasters in the world still operated by a brakeman who stands at the back of the train working the levers — it celebrates its 75th anniversary in July 2026 with special programming. Taiga (2019) is the modern thrill: a launched Intamin steel coaster that is Finland's tallest (52 m), fastest (106 km/h), and longest (1,104 m), with a launch-into-vertical-spike opening that pins riders for a full second. Kirnu, opened 2007, was the first compact 4D coaster in Europe — seats rotate freely as the train moves. Round it out with Salama (a launched roller coaster), Ukko (suspended), Linnunrata eXtra (indoor dark coaster), and the Pikajuna and Tulireki family coasters.",
+      "The non-coaster lineup is just as good: Kingi (75 m drop tower), Hurjakuru rapids, the Panoraama observation tower, the classic Ferris wheel Rinkeli, and a swarm of spinners and family rides. The atmosphere shifts entirely after dark during Carnaval de Lumière in mid-October, when the park reopens for ten illuminated nights with light installations, fire performers, and the autumn theme programming — a visually distinct experience from the daytime summer park, and worth planning around if your trip lands then.",
+      "Practical notes. The park is closed in winter; the 2026 main season runs April 30 to September 6, with the Carnaval de Lumière event a separate window in mid-October. Buy the Isohupi all-rides wristband (€53 adult, €43 kids' Pikkuhupi for the under-120cm rides) online in advance — same-day buys are fine off-peak but lines slow to a crawl in July. Single ride tickets exist if you only want a few rides. Height limits matter: most thrill coasters require 140 cm; Taiga is 130 cm; the kids' rides start at 90 cm. Plan a full day if you intend to ride everything, and bring a rain layer — the park stays open in showers.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Linnanmäki_ilmasta_27.5.2017.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Linnanmäki_Vuoristorata.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Linnanmäki_Roller_Coaster_1.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Linnanmäki_roller_coaster.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Suomi100_Linnanmäki.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Helsinkipyörä_Linnanmäki.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Linnanmäki_360°_2020-03-16.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Illuminated_rows_of_lights_at_Linnanmäki_Lights_Carnival_2015.jpg",
+    ],
+    availability: {
+      suitableMonths: [4, 5, 6, 7, 8, 9, 10],
+      events: [
+        {
+          from: "10-09",
+          to: "10-18",
+          name: "Carnaval de Lumière (Carnival of Light)",
+        },
+      ],
+      notes:
+        "Main season runs late April through early September (2026: Apr 30 – Sep 6); Carnaval de Lumière reopens the park for ~10 evenings in mid-October. Closed entirely Nov–Mar. July is busiest; weekday afternoons in May/June and late August are calmest.",
+    },
+    location: {
+      region: ["Helsinki", "Uusimaa"],
+      address: "Tivolikuja 1, 00510 Helsinki (Alppila)",
+    },
+    accessFromLauttasaari: {
+      complexity: "moderate",
+      duration: "~25 min",
+      notes:
+        "Metro M1/M2 to Kamppi (~10 min), then bus 23 from Kamppi bus terminal to the Linnanmäki stop right at the main gate (~15 min). Alternative: metro to Helsinki Central, then tram 3 or 8 to Alppila — slightly longer but a more scenic walk-up to the South Gate.",
+    },
+    cost: {
+      perPersonEur: 53,
+      notes:
+        "Entry is free; the €53 Isohupi wristband covers all rides for one day. Kids' Pikkuhupi wristband €43 (height-limited rides only). €5 Area Entrance ticket if you don't ride at all (covers six small kids' rides + activity zones). Buy online for a small discount. Food/drinks add ~€10–20 per person.",
+    },
+    booking: {
+      leadTime: "few-days",
+      notes:
+        "Wristbands rarely sell out, but online purchase skips the gate ticket queue. Carnaval de Lumière evenings are timed-entry — book those a week or two ahead.",
+    },
+    suitableAgeRange: { min: 3, max: 16 },
+    childrenNotes:
+      "Excellent for kids 4–14 — the Pikkuhupi wristband covers a full day of family rides for the under-120cm crowd. Under-3s enter free but most rides have a 90 cm minimum; the activity zones and area-entrance areas have plenty for them. Strollers fine throughout. Heights matter: bring a measuring stick mentality — 90 cm, 120 cm, 130 cm, and 140 cm are the thresholds that gate which rides each child can do.",
+    indoorOutdoor: "outdoor",
+    physicalIntensity: "moderate",
+    duration: "full-day",
+    website: "https://www.linnanmaki.fi/en/",
+    tags: ["theme park", "landmark"],
+  },
+  {
+    slug: "sarkanniemi",
+    title: "Särkänniemi",
+    shortDescription:
+      "Tampere's lakeside theme park: five roller coasters (the Intamin inverted Tornado, the Sky Rocket II Hype, and a brand-new 2026 Vekoma family coaster Konect), an aquarium, planetarium, and the 168m Näsinneula tower with a revolving restaurant — all on one wristband.",
+    longDescription: [
+      "Särkänniemi sits on a wooded peninsula on Lake Näsijärvi, a 15-minute walk west of central Tampere. It opened as an amusement park in 1975 alongside the already-iconic Näsinneula tower (1971), and has grown into Finland's second-biggest park behind Linnanmäki. The strength of Särkänniemi is breadth: a single wristband covers rides, the Doghill Fairytale Farm petting zoo, an aquarium with a tropical-fish hall, a planetarium, and an elevator ride up the 168m Näsinneula observation tower with its revolving restaurant on top — so a day here delivers a much wider mix than a pure-coaster park.",
+      "The coaster lineup is small but well-curated. Tornado (Intamin inverted, 2001) is the headline thrill — six inversions, feet dangling, still the only inverted coaster in Finland. Hype (Premier Rides Sky Rocket II, 2017) is the launched-steel one: 0–100 km/h punch into a vertical spike, then airtime over a top hat. MotoGee (Zamperla, 2010) launches motorcycle-style trains for a punchy family ride. Vauhtimato (Zierer, 1984) is the kids' starter coaster. New for summer 2026: Konect, a custom Vekoma family coaster — 525m of track, ~27m peak, ~68 km/h — designed so kids as small as 100cm can ride it with an adult, and threaded along the lake shore for the views. It's the park's biggest investment of the decade and the main reason coaster fans plan a 2026 trip.",
+      "Beyond the rides: Näsinneula's observation deck and revolving Näsinneula Restaurant are both worth queuing for — the deck rotates one full turn every 50 minutes, taking in Lake Näsijärvi, the Pyhäjärvi-Näsijärvi rapids, and a clear view of the Lapland-direction skyline. The aquarium and planetarium are old-school but solid for a rainy day or for younger children needing a break from rides. Doghill Fairytale Farm is genuinely charming for under-8s — animals based on a Finnish children's-book series.",
+      "Practical notes. The park's main season runs early May through mid-September (Sep 13 closing for 2026); the tower, aquarium, and planetarium stay open year-round. The all-inclusive Wristband is ~€33 online, €37 at the gate, covers everything (rides, Doghill, aquarium, planetarium, Näsinneula). Buy online with a date — that version doubles as a day pass on Tampere's Nysse trams and buses, so transit from your hotel is bundled in. Heights cap who rides what (most thrill coasters need 130cm; Konect 100cm with adult; Tornado 140cm). From Helsinki this is a long-day or overnight trip — the ride-heavy crowd usually does an overnight in Tampere to hit Vapriikki the next morning.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Näsinneula_ja_särkänniemi.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Särkänniemi_20150804.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Särkänniemi_collage.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Särkänniemen_sisäänkäynti.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Särkänniemi_Park_Tampere_01.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Näsinneula_view_8.jpg",
+    ],
+    availability: {
+      suitableMonths: [5, 6, 7, 8, 9],
+      notes:
+        "Ride park is May–mid-September (2026: opens early May, closes Sep 13). Näsinneula tower, aquarium, and planetarium stay open year-round. July is busiest; weekday afternoons in May and late August are the calmest ride days.",
+    },
+    location: {
+      region: ["Tampere"],
+      address: "Laiturikatu 1, 33230 Tampere",
+    },
+    accessFromLauttasaari: {
+      complexity: "moderate",
+      duration: "~3 hours one-way",
+      notes:
+        "Metro M1/M2 to Helsinki Central (~10 min), then VR InterCity train Helsinki–Tampere (~1h 30m, hourly), then Tampere tram line 1 from the train station to the Särkänniemi stop right at the gate (~15 min). Realistically a long day trip or overnight; the Tampere wristband (online version) doubles as a Nysse tram/bus pass once you arrive.",
+    },
+    cost: {
+      perPersonEur: 37,
+      notes:
+        "Wristband ~€33 online (cheaper, dated), €37 at the gate. Children under 100cm free. Add-ons: Näsinneula-only ticket ~€10 if you skip the rides. Train tickets Helsinki–Tampere round-trip ~€30–60 depending on advance-purchase tier.",
+    },
+    booking: {
+      leadTime: "few-days",
+      notes:
+        "Wristbands rarely sell out, but online dated tickets are cheaper and skip the gate queue. Book the VR train a week or two ahead for the best fares.",
+    },
+    suitableAgeRange: { min: 3, max: 16 },
+    childrenNotes:
+      "Strong all-ages park: Doghill Fairytale Farm and the aquarium suit toddlers, Vauhtimato and the new Konect (100cm with adult) handle the 4–8 cohort, and the bigger coasters open up at 130–140cm. Strollers fine throughout the park. The revolving restaurant atop Näsinneula is a memorable mid-day reset for kids, but reservations needed.",
+    indoorOutdoor: "mixed",
+    physicalIntensity: "moderate",
+    duration: "full-day",
+    website: "https://sarkanniemi.fi/en",
+    tags: ["theme park", "landmark"],
+  },
+  {
+    slug: "powerpark",
+    title: "Huvivaltio PowerPark",
+    shortDescription:
+      "Finland's biggest amusement park by ride count — 40+ rides including six roller coasters (the GCI wooden Thunderbird, the Gerstlauer Junker, and Pitts Special), plus an FIA-grade karting circuit designed by Mika Salo, all parked in the middle of South Ostrobothnia farmland.",
+    longDescription: [
+      "PowerPark is Finland's largest amusement park by ride count, sat improbably in flat South Ostrobothnia farmland along Highway 19, halfway between Vaasa and Seinäjoki. The rides area opened in 2002 and has grown into a 40-ride compound with six roller coasters, a karting empire, a hotel, cottages, and a campground — closer in feel to a North-American resort park than to the city-bound Linnanmäki and Särkänniemi. For a coaster enthusiast, this is the only park in Finland that warrants a dedicated trip in its own right.",
+      "The coaster lineup is the best in Finland. Thunderbird (GCI, 2006) is the wooden out-and-back — 31m drop, lots of airtime, the only modern wooden coaster in Finland. Junker (Gerstlauer Infinity, 2015) is the modern thrill: 32m vertical lift, ~92 km/h, three inversions including a beyond-vertical drop. Pitts Special (Gerstlauer Infinity Custom, 2020) is the launched newcomer — a low-to-the-ground custom layout themed around a stunt biplane, surprisingly intense. Cobra (Vekoma Boomerang, 2005) is the classic shuttle. Joyride is a smaller family-launch coaster. Neo's Twister is a Fabbri spinning mouse. Add the giga-pendulum Typhoon, the Booster (a 60m sky-flip), the Kwai River water-coaster, and a sprawling kids' area, and a full coaster-focused day actually fills.",
+      "The karting deserves its own callout. The outdoor Mika Salo Circuit was designed by the Finnish ex-F1 driver and has hosted the Karting World and European Championships; the indoor PowerPark Arena is one of the largest indoor karting halls in Europe. Sessions are bookable separately from the wristband and are absolutely the move for an adult-leaning group. The on-site hotel and cottages let you split rides one day and karting the next without commuting; the harness-racing track and trotting events occasionally take over weekends in summer.",
+      "Practical notes. The 2026 ride season is mid-May through August, with daily operations through June and July and weekend-only operations on the shoulders; the season opener is Sat May 9. Standard MAXI wristband (over 130 cm) is ~€46 at the gate, often discounted to ~€32 for early-summer dated tickets bought online. MINI wristband (under 130 cm) is cheaper. The free PowerPark shuttle bus meets every train at Härmä station and runs straight to the gates — no rental car needed. Plan two nights minimum from Helsinki: this is a ~3h train ride each way, and the resort genuinely earns the overnight.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/PowerPark.JPG",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/PowerPark2.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Thunderbird.JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Cobra_Powerpark.JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/PowerPark_Typhoon.JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Booster_in_PowerPark.JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/PowerPark_Karting_Track_20200822.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/PowerPark_area.JPG",
+    ],
+    availability: {
+      suitableMonths: [5, 6, 7, 8],
+      notes:
+        "Rides open mid-May through August (2026 season opener: Sat May 9). Daily operations June–July; weekend-only on the May/August shoulders. Karting and the hotel run year-round. The park is closed entirely in autumn and winter for the rides side.",
+    },
+    location: {
+      region: ["Ostrobothnia"],
+      address: "Jorma Lillbackantie 1, 62300 Härmä (Alahärmä, Kauhava)",
+    },
+    accessFromLauttasaari: {
+      complexity: "moderate",
+      duration: "~3h 30m one-way",
+      notes:
+        "Metro M1/M2 to Helsinki Central (~10 min), then VR InterCity train Helsinki–Härmä (~3h, 2 direct trains/day). PowerPark runs a free dedicated shuttle bus from Härmä station straight to the gates that meets every arriving train — no rental car needed. Realistically a 2-night trip from Helsinki given the journey length.",
+    },
+    cost: {
+      perPersonEur: 46,
+      notes:
+        "MAXI wristband (over 130 cm) ~€46 at the gate, often ~€32 with online dated early-summer tickets. MINI wristband (under 130 cm) cheaper. Karting sessions (Mika Salo outdoor circuit or indoor arena) are extra and bookable separately. Hotel/cottages on-site if you stay overnight. Train Helsinki–Härmä round-trip ~€60–100 depending on advance booking.",
+    },
+    booking: {
+      leadTime: "weeks",
+      notes:
+        "Wristbands themselves rarely sell out — book online for the discount. The trip needs more advance planning: the Härmä-direct train runs only twice a day, the hotel sells out on big-event weekends, and karting sessions especially during championships need weeks of lead time.",
+    },
+    suitableAgeRange: { min: 4, max: 16 },
+    childrenNotes:
+      "Wikipedia notes PowerPark has the largest selection of children's rides of any Finnish park; the under-130cm MINI wristband is cheaper and covers the family rides. Doghill-style attractions and a kids' farm round out the day for the very young. Stroller-friendly across the whole site. Older kids/teens get the most out of the karting circuits — book in advance.",
+    indoorOutdoor: "outdoor",
+    physicalIntensity: "moderate",
+    duration: "multi-day",
+    website: "https://www.powerpark.fi/en/",
+    tags: ["theme park"],
   },
 ];
