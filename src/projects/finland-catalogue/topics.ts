@@ -693,4 +693,61 @@ export const TOPICS: Topic[] = [
       "https://commons.wikimedia.org/wiki/Special:FilePath/DSC04510_Pancake_and_strawberries_C.JPG",
     ],
   },
+  {
+    slug: "finnish-boating-culture",
+    title: "Finnish Boating Culture",
+    aliases: [
+      "Finnish boating culture",
+      "Finnish boating",
+      "boats-per-capita",
+      "veneajelu",
+    ],
+    shortDescription:
+      "Finland has roughly 1.2 million boats for 5.5 million people — about one for every third household — and the boating year is the unofficial second calendar that organises Finnish summers.",
+    longDescription: [
+      "Boating in Finland operates at a scale and a casualness that catches visitors off guard. The country has roughly 1.2 million boats — about one in every third household — for a population of 5.5 million; some 244,000 of those are entered in the official Watercraft Register (boats over 5.5 m or with engines over 15 kW), and the rest are smaller craft: outboard runabouts, sailing dinghies, the rowboat tied to every second pier on every Finnish lake. With 188,000 lakes inland and roughly 50,000 islands in the southwestern Archipelago Sea — the largest archipelago in the world by island count — the country has more navigable water per capita than almost anywhere else on earth, and Finns intend to make use of it.",
+      "The cultural anchor is the mökki, the summer cottage. About half a million of them sit along Finnish lakes and the coastal saaristo, and the classic configuration is small wooden cabin, a lakeside sauna, and a pier with a rowboat. A summer weekend at the cottage is built around water: rowing across to a neighbouring island, motoring out to a fishing spot at sunset, ferrying groceries from the mainland because there's no road. The activity has a Finnish word — veneajelu, literally \"boat-driving\" — that doesn't quite translate to English; it's closer to \"going out for a sit on the water,\" the kind of unhurried float where the destination is incidental and the rauha (peace) is the point.",
+      "The boating year has a rhythm Finns take seriously. April and May are kunnostus — fitting-out — when boats come out of winter storage to be scrubbed, waxed, antifoul-painted, and engine-serviced; the marine retailers along Lauttasaari's Veneentekijäntie are at their busiest, and the spring koeajo (test-drive) weekends are how new boats change hands. The high season runs late May through early September, when daylight stays past 22:00 and every Helsinki harbour fills. By late September boats are pulled, winterised, and shrink-wrapped or hauled to land for the seven-month freeze. A small hardcore keeps sailing dinghies on ice-free patches into October, and an ice-yacht scene operates on the frozen bays through midwinter, but for most Finns the boating year is a sharp half-year that ends with a final autumn cruise.",
+      "What this means for a visitor. Finland requires no boating licence for private craft up to 24 metres — you can charter a 30-foot motorboat without ever proving you can steer one, though responsible operators (Skipperi, the bigger charter companies) require their own short exam. Boats over 5.5 metres or with engines over 15 kW must be registered with Traficom. The easiest ways into the culture: ride the JT-Line water bus from Market Square out to Suomenlinna, charter a Skipperi Fleet boat for a sheltered Helsinki-archipelago outing, walk Veneentekijäntie in spring to see the fitting-out frenzy at full volume, or catch the mid-August Uiva Flytande boat show at HSK in Lauttasaari, where 300 vessels are tied up on floating pontoons and you can step aboard most of them. Finland also builds notable boats — Buster (aluminium runabouts since 1959), Yamarin, Silver, Faster, Sargo, Targa, Bella — and many of these are what you'll see floating in any Finnish harbour.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Boats_at_Haukilahti_marina_on_an_afternoon_in_June_2025.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Saksalainen_purjevene_Saaristomerellä,_2.7.2009..JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Purjehdus_Helsingin_edustalla_1.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Downwind_to_the_north_of_Aland_(14751461681).jpg",
+    ],
+  },
+  {
+    slug: "mokki",
+    title: "Mökki (Summer Cottage)",
+    aliases: [
+      "mökki",
+      "mökit",
+      "mökille",
+      "mökiltä",
+      "kesämökki",
+      "summer cottage",
+      "summer cottages",
+      "mökkielämä",
+      "Finnish cottage",
+      "Finnish cottages",
+    ],
+    shortDescription:
+      "Half a million wooden cabins on lakes for 5.5 million people — the rite of escape from the city to the lake, the sauna, the rowboat, and the deliberate primitivism that Finns spend July relearning every year.",
+    longDescription: [
+      "The mökki is the Finnish summer cottage, and there are roughly half a million of them in a country of 5.5 million people — about one for every eleven Finns, with around half the population visiting one regularly. The classic configuration is small wooden main cabin + lakeside sauna + a pier with a rowboat + an outhouse out the back, intentionally low-tech. The deliberate primitivism is the point. A real mökki has no plumbing, often no electricity (or a single solar panel for lights), no broadband, and no clean way to keep up with email — and that's the frame inside which Finns spend most of July relearning how to chop wood, bake bread in a wood stove, fish without sonar, and sit still.",
+      "Cottage life — mökkielämä — runs on a rhythm older than the country. The bigger cottages are inherited and shared across families; smaller ones are bought, swapped, or rented. Most are within an hour or two of a city by car, on a lake or coastal inlet that the family has been visiting for generations. The summer weekend is built around the body: chopping the week's wood, hauling water, splitting kindling, walking down to the lake to wash, heating the sauna in the late afternoon, eating outside as the light fails (or doesn't, in the deep-summer weeks when it doesn't get dark at all). Berry picking, mushroom foraging, and lake fishing fill the days; the rowboat is the road, the sauna is the bathroom, and rauha — the Finnish word for the kind of quiet that lets you actually hear yourself think — is the deliverable.",
+      "The cultural role is straightforward: it's the escape valve from urban life that the rest of Finnish life is calibrated against. Cities empty out in July when the school holidays land and Finnish summer leave is, by tradition and statute, generous; Helsinki streets in mid-July are visibly thinner. Mökki time is when families reconnect, generations overlap (grandparents teach grandchildren the fish and the firewood), and Finns reset the year. It overlaps in important ways with several other entries here — the sauna ritual, midsummer (Juhannus is overwhelmingly a cottage holiday), Everyman's Right that lets you forage and hike across someone else's land, the Finnish boating culture that puts every cottage on a boat, and the country's deep relationship with luonto (nature).",
+      "Modernisation has changed the picture only at the edges. About a quarter of cottages are now winterised year-round, broadband and electric heat are increasingly common, and a small but growing number of younger Finns are sceptical of the whole enterprise — the maintenance burden is real, and not every grandchild wants to inherit it. But the institution is intact: most Finnish families still measure summer in cottage weeks. As a visitor: rent one. Lomarengas, Nettimökki, and Airbnb all carry thousands of cottages from rustic basics (€50–80/night) to fully-modern lakeside houses with electric saunas and full kitchens (€150–300/night). Late June through August is the heart of the season. Bring food, a book, and the willingness to do without a phone signal for a few days. Most Finns will tell you that's the entire point.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Finnish_summer_cottage_and_a_lake_in_Keuruu.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Finnish_cottage.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Suomalainen_mokki.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Mummonmökki.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Summer_cottage_16.01.2010_-_panoramio.jpg",
+    ],
+  },
 ];
