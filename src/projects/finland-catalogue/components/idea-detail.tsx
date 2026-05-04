@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import type { Idea } from "../types";
 import { formatEventRange, summarizeMonths } from "../months";
+import { AudioPlayButton } from "./audio-play-button";
 import { EntryDetail } from "./entry-detail";
 import { StarButton } from "./star-button";
 
@@ -220,12 +221,15 @@ export function IdeaDetail({ idea, basePath }: { idea: Idea; basePath: string })
       galleryUrls={idea.galleryUrls}
       longDescription={idea.longDescription}
       headerAction={
-        <StarButton
-          slug={idea.slug}
-          size="lg"
-          showLabel
-          className="self-start shrink-0"
-        />
+        <div className="flex shrink-0 flex-col gap-2 sm:items-end">
+          <StarButton
+            slug={idea.slug}
+            size="lg"
+            showLabel
+            className="self-start"
+          />
+          <AudioPlayButton slug={idea.slug} kind="idea" />
+        </div>
       }
       bodyExtras={
         idea.website ? (

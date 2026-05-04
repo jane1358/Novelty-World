@@ -1,4 +1,5 @@
 import type { Topic } from "../types";
+import { AudioPlayButton } from "./audio-play-button";
 import { EntryDetail } from "./entry-detail";
 
 export function TopicDetail({
@@ -20,6 +21,9 @@ export function TopicDetail({
       longDescription={topic.longDescription}
       accent="blue"
       excludeTopicSlug={topic.slug}
+      headerAction={
+        <AudioPlayButton slug={topic.slug} kind="topic" className="shrink-0" />
+      }
     />
   );
 }
