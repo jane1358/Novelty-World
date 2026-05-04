@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import type { Idea } from "../types";
 import { formatEventRange, summarizeMonths } from "../months";
+import { AudioPlayer } from "./audio-player";
 import { EntryDetail } from "./entry-detail";
 import { StarButton } from "./star-button";
 
@@ -227,6 +228,7 @@ export function IdeaDetail({ idea, basePath }: { idea: Idea; basePath: string })
           className="self-start shrink-0"
         />
       }
+      audioPlayer={<AudioPlayer slug={idea.slug} kind="idea" />}
       bodyExtras={
         idea.website ? (
           <a

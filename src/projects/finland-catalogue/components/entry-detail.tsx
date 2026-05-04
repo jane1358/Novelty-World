@@ -26,6 +26,7 @@ export function EntryDetail({
   accent = "pink",
   excludeTopicSlug,
   headerAction,
+  audioPlayer,
   bodyExtras,
   aside,
 }: {
@@ -43,6 +44,8 @@ export function EntryDetail({
    *  pages so a Topic doesn't link to itself. */
   excludeTopicSlug?: string;
   headerAction?: React.ReactNode;
+  /** Optional player rendered between the carousel and the article. */
+  audioPlayer?: React.ReactNode;
   bodyExtras?: React.ReactNode;
   aside?: React.ReactNode;
 }) {
@@ -84,6 +87,8 @@ export function EntryDetail({
         <div className="mb-8">
           <ImageCarousel images={allImages} alt={title} />
         </div>
+
+        {audioPlayer && <div className="mb-6">{audioPlayer}</div>}
 
         <div
           className={
