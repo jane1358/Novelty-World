@@ -3621,4 +3621,231 @@ export const IDEAS: Idea[] = [
     website: "https://korkeasaari.fi/en/",
     tags: ["nature", "landmark"],
   },
+  {
+    slug: "ravintola-plats",
+    title: "Ravintola PLATS",
+    shortDescription:
+      "Modern Nordic fine dining inside the Swedish-Finnish Hanasaari cultural centre — a five-course tasting menu built on coastal-archipelago ingredients, served looking out at the islands the kitchen draws from.",
+    longDescription: [
+      "Ravintola PLATS sits on Hanasaari, the small wooded island off the western edge of Lauttasaari that hosts Hanaholmen — the Swedish-Finnish Cultural Centre, Finland's bilingual institution for everything Sweden-Finland. The dining room looks out over the inner archipelago: birch and pine running down to a rocky shore, sailboats on the water in summer, ice and reeds in winter. The cultural-centre setting means Nordic art and design throughout the room — works on the walls, considered tableware, careful low lighting. \"Plats\" is Swedish for \"place,\" and the name is the philosophy: this place, these waters, this season.",
+      "Head chef Lukas Hemnell builds the menu around what's coming in from Finnish producers and the surrounding archipelago — wild salmon, whitefish, lamb, root vegetables, and the small forest ingredients (lingonberry, sea buckthorn, spruce tip, mushroom) that show up in everything Finnish kitchens take seriously. The cooking is modern Nordic in the proper sense: not traditional grandmother food, but a refined, ingredient-led interpretation of the same Finnish pantry, plated with restraint. The five-course tasting menu (around €68–69, with an optional €60 wine pairing) is the order to make if you're here for the full experience; à la carte starters run €14–16 and mains €26–36. The kitchen won Espoo's Restaurant of the Year 2023, and their cookbook took the 2022 Gourmand World Cookbook Award in the Restaurants category — quiet credentials for a quiet room.",
+      "The atmosphere is calm and slow rather than buzzy — the kind of place where a long dinner unfolds without anyone wanting the table back. It's a natural fit for an anniversary, a milestone, or any evening where the meal is meant to be the thing. Service is warm and bilingual (Swedish, Finnish, and English all work). Dress is smart-casual — nobody will mind a sweater, but jeans-and-trainers will feel slightly off.",
+      "Open Mon–Sat 17:00–22:00 (kitchen closes 21:00), closed Sundays. Reservations are strongly recommended — book a week or two ahead for weekends, longer for special-occasion windows around Christmas, Vappu, and Midsummer. From Lauttasaari, the sweetest piece of luck is bus 105, which runs from Lauttasaari directly across to Hanasaari in about ten minutes; the metro to Keilaniemi plus a 15-minute walk back along the shore is the alternative if 105 isn't running. Pair the dinner with an aperitif at the Hanaholmen hotel bar, or arrive an hour early in summer to walk the shoreline path around the island.",
+    ],
+    thumbnailUrl:
+      "https://cdn.sanity.io/images/qpbhkg5d/production/0793f23fc7e12eabf1f3b0ab5e0a19ee1c11aeed-2048x1535.jpg",
+    galleryUrls: [
+      "https://cdn.sanity.io/images/qpbhkg5d/production/9e143f264ae9c341d82fe7188aafabc665105815-1840x1379.jpg",
+      "https://cdn.sanity.io/images/qpbhkg5d/production/b69de4d578e6daace667d54334b9764be38d7764-2048x1535.jpg",
+      "https://cdn.sanity.io/images/qpbhkg5d/production/bf12c99623b549f535aa5ba1c5d5d742ff08a18e-2882x2160.jpg",
+      "https://cdn.sanity.io/images/qpbhkg5d/production/e493113a3aea7f25922d93f923d1482eb8d67b67-2882x2160.jpg",
+      "https://cdn.sanity.io/images/qpbhkg5d/production/f041262670e21d1c00641f57198d2bb39b60884c-2882x2160.jpg",
+      "https://cdn.sanity.io/images/qpbhkg5d/production/494acd65c57e5bb93311a01b30cd9aab5c1674a0-2882x2160.jpg",
+      "https://cdn.sanity.io/images/qpbhkg5d/production/697890b87dcc2460c84c4241a1b4f7fc05146b39-2048x1535.jpg",
+    ],
+    availability: {
+      suitableMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      weeklySchedule: "Mon–Sat 17:00–22:00 (kitchen closes 21:00). Closed Sundays.",
+      notes:
+        "Year-round, dinner-only. Menus are seasonal — spring (late March–mid June), summer (mid June–end August), and matching autumn/winter rotations. The seasonal turnover is reason enough to come back at different times of year.",
+    },
+    location: {
+      region: ["Espoo", "Uusimaa"],
+      address: "Hanasaarenranta 5, 02100 Espoo (Hanasaari–Hanaholmen Cultural Centre)",
+    },
+    accessFromLauttasaari: {
+      complexity: "simple",
+      duration: "~15 min",
+      notes:
+        "HSL bus 105 runs from Lauttasaari directly to Hanasaari (~10 min). Alternative: M2 metro to Keilaniemi (~5 min from Lauttasaari) and a 15-min walk back along the shoreline path. The island sits a short causeway off the Länsiväylä — once you're there, the restaurant is in the main Hanaholmen building beside the hotel reception.",
+    },
+    cost: {
+      perPersonEur: 100,
+      notes:
+        "Five-course tasting menu €68–69, optional wine pairing €60. À la carte: starters €14–16, mains €26–36, desserts €12. A full evening with tasting menu, wine pairing, and a drink before/after lands around €130–150 per person; à la carte two courses with a glass of wine is closer to €60–80.",
+    },
+    booking: {
+      leadTime: "weeks",
+      notes:
+        "Reservations strongly recommended. A few days ahead is enough on weeknights; book one to two weeks out for weekends, and earlier for Christmas, Vappu, and Midsummer windows. Reserve via the Hanaholmen sales line or their online system.",
+    },
+    childrenNotes:
+      "Designed as an adult evening-dining room — multi-course tastings, low lighting, dinner-only hours. Children are not refused, but the pacing and price point make it a poor fit for under-12s. Save it for a date or anniversary; the cultural centre's daytime café is a better option if you're at Hanasaari with kids.",
+    indoorOutdoor: "indoor",
+    physicalIntensity: "low",
+    duration: "1-3h",
+    website: "https://hanaholmen.fi/en/restaurant-plats",
+    tags: ["food"],
+  },
+  {
+    slug: "helsinki-winter-garden",
+    title: "Helsinki Winter Garden (Talvipuutarha)",
+    shortDescription:
+      "A free 1893 greenhouse just north of Töölönlahti Bay — three glass rooms of cacti, palms, a 130-year-old camellia tree, and the unreasonably warm, plant-scented quiet of a Finnish winter Saturday.",
+    longDescription: [
+      "The Helsinki Winter Garden — Helsingin kaupungin Talvipuutarha — was a gift to the city by the businessman and philanthropist Wilhelm Bäckman, opened to the public in 1893 and free of charge ever since. It sits at the northern end of Töölönlahti Bay, on the slope below the Olympic Stadium tower, in a row of greenhouses that the city still uses to grow flowers for parks and public buildings. The Winter Garden itself is the public-facing one — a long glass house split into three rooms, kept warm year-round, and quietly maintained by Stara, the city's own works department.",
+      "Inside there are more than 200 plant species across three connected halls. The Palm Room is the centrepiece: tall fan palms reaching toward the glass roof, a Magnolia grandiflora, a marble fountain, and the camellia tree that has been alive since the building opened — over 130 years old now and one of the oldest camellias in Finland, blooming with pink flowers around January and February. The Cactus Room next door is a low, dry collection of spiral-ribbed cacti and succulents that flower in two short windows (May–June and November–December). The Western Wing rotates seasonal flowering displays — Easter lilies in spring, autumn chrysanthemums, hyacinths and orchids through the dark months. There are tables and chairs scattered through the rooms; bringing a thermos and a bun is a respectable use of an hour.",
+      "What makes the place so beloved by Helsinki regulars is what it does in February. From the outside it's a small white-and-glass building with snow piled on the roof; you walk in through the heavy door and the air goes from -10°C to humid 22°C, the smell of soil and plants washes over you, and the windows are fogged in a way that feels like a held secret. It's the warmest, greenest, most-alive room in central Helsinki on the worst day of the year, and it costs nothing. The Rose Garden in front of the greenhouse — open separately May 1 to October 31 — is the summer companion, with grouped roses blooming July through September.",
+      "Open Mon–Thu and Sat–Sun 10:00–16:00, closed Fridays, closed entirely on Christmas Eve, Christmas Day, Midsummer Eve, and Midsummer Day. Free entry, coat racks and toilets on site, no café (snacks from home are fine — locals do this constantly). From Lauttasaari, take the M1/M2 metro to Helsinki Central (~6 min) and either walk north through Töölönlahti park (~15 min, scenic past Finlandia Hall and Oodi) or pick up tram 2 northbound to Auroran sairaala stop (~5 min) and walk down. Pair with the Olympic Stadium tower next door for a winter half-day, or with a long lakeside walk around Töölönlahti in summer.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Winter_Garden,_Helsinki_03.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Helsingin_Talvipuutarha_2021_(202169;+G67445).jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Helsingin_Talvipuutarha_2022_(202220;+G70695).jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Winter_Garden,_Helsinki_01.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Cactus_in_Helsinki_Winter_Garden.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Aporocactus_flagelliformis_Käärmekaktus_Ormkaktus_IM5678_C.JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Easter_flowers_in_Talvipuutarha_IM5508_C.JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Talvipuutarha_huhtikuussa_IM5507_C.JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Ruusutarha_Helsinki_2022-09-19_01.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/HelsinkiCityWinterGarden.JPG",
+    ],
+    availability: {
+      suitableMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      weeklySchedule: "Mon–Thu 10:00–16:00, Sat–Sun 10:00–16:00. Closed Fridays.",
+      notes:
+        "Year-round, but the magic is loudest in winter — the contrast between the greenhouse warmth and the cold outside is the experience. Camellia blooms in January–February; cacti flower May–June and November–December. Closed Christmas Eve, Christmas Day, Midsummer Eve, and Midsummer Day.",
+    },
+    location: {
+      region: ["Helsinki", "Töölö", "Uusimaa"],
+      address: "Hammarskjöldintie 1 A, 00250 Helsinki",
+    },
+    accessFromLauttasaari: {
+      complexity: "simple",
+      duration: "~25 min",
+      notes:
+        "M1/M2 metro from Lauttasaari to Helsinki Central (~6 min), then either a 15-min walk north along Töölönlahti past Finlandia Hall and Oodi, or tram 2 northbound from Rautatientori to Auroran sairaala stop (~5 min) and a short walk down toward the bay.",
+    },
+    cost: {
+      perPersonEur: 0,
+      notes:
+        "Free entry. No café on site — bring a thermos if you want to stay for an hour.",
+    },
+    booking: {
+      leadTime: "same-day",
+      notes:
+        "Walk-in. No tickets, no booking, no queues. Mid-afternoon weekends in January–February are the busiest window — locals know.",
+    },
+    suitableAgeRange: { min: 0 },
+    childrenNotes:
+      "Stroller-friendly — single ground floor, wide paths between the rooms. Quiet enough that a sleeping baby will keep sleeping; calm enough that a toddler can wander without breaking anything obvious. Older kids enjoy spotting the spiral cacti and the giant camellia. Don't touch the cacti — that's most of the parental work.",
+    indoorOutdoor: "indoor",
+    physicalIntensity: "low",
+    duration: "<1h",
+    website:
+      "https://www.hel.fi/en/culture-and-leisure/outdoor-activities-parks-and-nature-destinations/parks/the-winter-garden",
+    tags: ["nature", "historical"],
+  },
+  {
+    slug: "veneentekijantie",
+    title: "Veneentekijäntie",
+    shortDescription:
+      "Lauttasaari's \"boat-builders' street\" — a single short block in Vattuniemi where Helsinki's marine retailers cluster: Boat World's showroom of motor yachts up to 45 ft, Marinekauppa, Captain's Shop, and Veneilijän Verkkokauppa, all within an unhurried half-hour browse.",
+    longDescription: [
+      "Veneentekijäntie literally means \"boat-makers' road,\" and it is exactly what it advertises: a short, low-rise block on the southern end of Lauttasaari where the city's serious boating retailers are concentrated within sight of each other. Walk south down the street and the shops line up shoulder to shoulder — Marinekauppa at no. 3 (chandlery, electronics, sailing gear), Boat World at no. 5 (the actual boats — Terhi, Silver, Faster, Alukin, Paragon, Nimbus, with a floating exhibition tied up at their own dock through summer and a year-round showroom of vessels from rubber dinghies up to 45-foot motor yachts), Captain's Shop at no. 11 (Lauttasaari since 1993, the warm welcome-aboard chandlery vibe with apparel, navigation, safety gear), and Veneilijän Verkkokauppa at no. 16 (Mercury in-store shop, thousands of fittings on the wall, rigging and rope by the metre). It's the densest concentration of marine retail in Helsinki and the obvious stop for anyone outfitting a boat, planning one, or just curious about Finnish boating culture.",
+      "As a casual peruse it's a satisfying loop — the kind of slow Saturday-morning browse where you don't intend to buy anything but end up handling a brass cleat and reading a chartplotter spec sheet for fifteen minutes. Boat World's summer floating exhibition is the headliner: gangways out over the Lauttasaarensalmi sound, half a dozen boats moored bow-in, you can step aboard most of them. Veneilijän Verkkokauppa's warehouse-style hall — anchors hanging from the ceiling, a Mercury outboard cutaway on display, walls of foul-weather jackets — is a sensory hit even with no plan to spend a euro. Captain's Shop is the smaller, talkier shop where the staff (Finnish, Swedish, English) will happily walk through what each piece of safety kit actually does. And Marinekauppa rounds it out as the broad-stock generalist. Plan an hour, more if you stop in everywhere; it's the kind of street where a bag of chandlery samples and a coffee disappear an afternoon.",
+      "The reason this cluster exists is industrial-zoning history. Vattuniemi — the southern third of Lauttasaari — was laid out as a manufacturing district from 1942 onward (architect Ole Gripenberg's plan) and built up postwar with radio, plywood, and adhesive factories; the marine trade settled in during the same era because Helsingfors Segelklubb, the 1899 sailing club, sits just around the corner with 700 boat berths and 1,600 members. From the 1970s onwards Vattuniemi has steadily gentrified — most of the old industrial buildings are gone, replaced with apartment blocks, and the peninsula now has 9,000-odd residents at urban density. The boat shops are the surviving thread of the original character: a small commercial pocket of warehouse-fronted brick that you pass through to get to the parks and beaches at the southern tip of the island.",
+      "Practical notes. Most shops keep weekday hours roughly 10:00–18:00 and Saturdays 9:00–15:00; some close Saturdays from November through February. All four are closed Sundays. Spring (April–May) is when this is at its most alive — fitting-out season, displays out on the pavement, demo boats in the water, and the annual koeajo (test-drive) weekend at Boat World. Winter is quieter but the indoor showrooms are still worth a wander, and you can usually have the staff to yourself. From the Lauttasaari metro station / Lauttis shopping centre area it's a 15–20 minute downhill walk south through Vattuniemi, or HSL bus 21 / 21B to a stop near Veneentekijäntie. Combine the loop with the southern stretch of the Lauttasaari coastal walking trail (Vattuniemi tip is five minutes further south) and a coffee at Café Pärlan or one of the Vattuniemenkatu cafés on the way back.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Vattuniemi.JPG",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Vattuniemi.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Vattuniemi1.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Aimo_Tukiaisen_puisto_20240722.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Zebra_crossing_over_Vattuniemenkatu_in_February_2025.jpg",
+    ],
+    availability: {
+      suitableMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      weeklySchedule:
+        "Most shops Mon–Fri ~10:00–18:00, Sat ~9:00–15:00 (some closed Sat Nov–Feb). Closed Sundays.",
+      notes:
+        "Year-round. April–May is the high point — fitting-out season fills the pavements with displays and Boat World's floating exhibition opens on its dock. Summer keeps the floating boats out and the marina busy next door. Winter is quiet but the indoor showrooms stay open. Avoid Sundays — almost everything is shut.",
+    },
+    location: {
+      region: ["Helsinki", "Lauttasaari", "Uusimaa"],
+      address: "Veneentekijäntie 3–16, 00210 Helsinki (Vattuniemi, Lauttasaari)",
+    },
+    accessFromLauttasaari: {
+      complexity: "simple",
+      duration: "~15–20 min walk",
+      notes:
+        "Walk straight from Lauttasaari — the street is on the same island. From the metro station / Lauttis shopping centre, walk south down Lauttasaarentie and Pohjoiskaari, then continue into Vattuniemi via Itälahdenkatu (~15–20 min, all flat, all paved). Alternative: HSL bus 21 or 21B to a Vattuniemi stop and walk a couple of blocks. No transit needed if you're already on the island.",
+    },
+    cost: {
+      perPersonEur: 0,
+      notes:
+        "Free to walk and browse. What you actually spend depends entirely on whether the shopping bug bites — €0 for window shopping, €30–80 for a chandlery item or two, four to six figures if Boat World succeeds.",
+    },
+    booking: {
+      leadTime: "same-day",
+      notes: "No booking needed. Just turn up during shop hours and wander.",
+    },
+    childrenNotes:
+      "Strollers fine throughout — the street and shops are flat and step-free. The appeal is squarely adult (chandlery, marine electronics, browsing showroom boats), so younger kids will lose interest fast; older boat-curious kids will enjoy stepping aboard the floating exhibition at Boat World in summer. Café Pärlan at Kasinonranta or any Vattuniemenkatu café makes a good break stop.",
+    indoorOutdoor: "mixed",
+    physicalIntensity: "low",
+    duration: "1-3h",
+    tags: ["nautical"],
+  },
+  {
+    slug: "ateneum",
+    title: "Ateneum Art Museum (Ateneumin taidemuseo)",
+    shortDescription:
+      "Finland's national art museum, in Theodor Höijer's grand 1887 building directly opposite Helsinki Central Station — home to the Golden Age painters, Simberg's Wounded Angel, Gallen-Kallela's Aino Triptych, and the world's first museum-acquired Van Gogh.",
+    longDescription: [
+      "The Ateneum is the senior of Finland's three national art museums and the place a country full of bookish, contemplative people sends visitors to understand itself. It was built in 1887 to a design by Theodor Höijer — a confident neo-renaissance pile in pale stucco and red sandstone, with caryatids representing painting, sculpture, geometry, and architecture above the main entrance and busts of Bramante, Raphael, and Phidias along the façade. For its first century the building also housed the Finnish Academy of Fine Arts and what became the University of Art and Design; the museum took over the whole structure in 1991 and now operates as one of three institutions of the Finnish National Gallery (alongside Kiasma for contemporary art and the Sinebrychoff Art Museum for old European masters).",
+      "The collection runs from the 1750s to the 1950s — about 4,300 paintings, 750 sculptures, and a substantial works-on-paper holding — but the room everyone comes for is Finland's Golden Age of art, roughly 1880 to 1910. This is when Finnish painters, working out a national identity in a country still under Russian rule, produced an extraordinary run of pictures that Finns now treat as foundational texts. Akseli Gallen-Kallela's Aino Triptych (1891) renders a scene from the Kalevala in three panels with an almost religious weight. Hugo Simberg's The Wounded Angel (1903) — a hooded girl and a serious-faced boy carrying a wing-bandaged angel through a Helsinki springtime landscape — was voted Finland's national painting in 2006 and is genuinely one of the most affecting paintings in any small country's collection. Around them: Albert Edelfelt's society portraits and Parisian gardens, Eero Järnefelt's Under the Yoke (a peasant girl burning brushwood, looking out at the viewer with a face you can't easily forget), Helene Schjerfbeck's increasingly stripped-back self-portraits, the Symbolist work of Magnus Enckell, and the lyrical landscapes of Pekka Halonen. The international wing includes Cézanne, Modigliani, Edvard Munch — and Van Gogh's Street in Auvers-sur-Oise, acquired in 1903, making the Ateneum the first museum collection in the world to own a Van Gogh.",
+      "Two to three hours is the right plan; longer if you want to read every wall card. Allow time for the Sculpture Gallery and the wide central staircase — both worth pausing on as architecture in their own right. The visit rewards a slow approach: the Golden Age paintings are dense with allusion to the Kalevala, to Finnish folklore, to a national project being actively worked out on canvas. The Ateneum publishes a free English audio guide that takes the edge off if you arrive without context, and there's a serviceable café and a deeper-than-average museum shop at street level.",
+      "Adult ticket €23 at the desk / €21 online, €13 concession, under-18s free, free for Museum Card holders. Open Tue 10:00–18:00, Wed–Thu 10:00–20:00 (the late evenings are the locals' tip — far quieter), Fri 10:00–18:00, Sat–Sun 10:00–17:00, closed Mondays. From Lauttasaari, take the M1/M2 metro to Helsinki Central (~6 min) and walk out the south entrance — the Ateneum is the grand stone building directly across the square, less than a 2-minute walk. Pair naturally with Oodi (5 min north), Kiasma (3 min north), or the Helsinki City Museum (10 min east) for a full day of central-Helsinki cultural stops.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Art_museum_Ateneum_in_Kluuvi,_Helsinki,_Finland,_2014.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Ateneum_Art_Museum,_Helsinki_(4213939276).jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Ateneum_Art_Museum,_Helsinki,_Finland_(54371792679).jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Ateneumin_portaikko_2025-2-Marit_Henriksson.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Ateneum_28JUN2025_1401.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/The_Wounded_Angel_-_Hugo_Simberg.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Akseli_Gallen-Kallela_-_Aino_Myth,_Triptych_-_Google_Art_Project.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Raatajat_rahanalaiset.JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Exhibition_of_the_Finnish_Art_Society_in_Ateneum_(24693212572).jpg",
+    ],
+    availability: {
+      suitableMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      weeklySchedule:
+        "Tue 10:00–18:00, Wed–Thu 10:00–20:00, Fri 10:00–18:00, Sat–Sun 10:00–17:00. Closed Mondays.",
+      notes:
+        "Year-round. Wednesday and Thursday evenings (until 20:00) are the locals' tip — the rooms thin out after 17:00 and the late hours give you an art-and-quiet pairing that midday weekends can't match. Weekday mornings 10:00–14:00 are the busiest tour-bus window in spring; arrive at opening or after 14:00 to dodge them.",
+    },
+    location: {
+      region: ["Helsinki", "Uusimaa"],
+      address: "Kaivokatu 2, 00100 Helsinki",
+    },
+    accessFromLauttasaari: {
+      complexity: "simple",
+      duration: "~10 min",
+      notes:
+        "M1/M2 metro from Lauttasaari to Helsinki Central (~6 min), then walk out the south entrance — the Ateneum is the grand stone building directly opposite Rautatientori square, less than 2 minutes from the station doors.",
+    },
+    cost: {
+      perPersonEur: 21,
+      notes:
+        "Adult €23 at the ticket office, €21 booked online. Concession (students, seniors, unemployed) €13. Under-18s free. Free for Museum Card holders. Audio guide free in English. Cloakroom is free; lockers €1 (refundable).",
+    },
+    booking: {
+      leadTime: "same-day",
+      notes:
+        "Walk-in fine year-round. Booking online saves €2 and skips the desk queue. Friday-evening late-opening events and major touring exhibitions (Van Gogh, Schjerfbeck retrospectives) sell timed slots that should be booked a few days ahead.",
+    },
+    suitableAgeRange: { min: 0 },
+    childrenNotes:
+      "Stroller-accessible throughout — lifts to all floors, accessible entrance from Ateneuminkuja. Under-18s free, which makes a quick stop low-stakes. Older kids (8+) engage more — the Kalevala scenes and the Wounded Angel are paintings you can talk about for ten minutes each, and the museum runs free family-activity sheets in English at the desk. For toddlers, expect maybe 30–45 minutes before patience runs out; the Sculpture Gallery is the room they like best.",
+    indoorOutdoor: "indoor",
+    physicalIntensity: "low",
+    duration: "1-3h",
+    website: "https://ateneum.fi/en/",
+    tags: ["museum", "landmark", "historical"],
+  },
 ];
