@@ -61,6 +61,17 @@ lives or dies on its imagery. Try multiple sources before giving up:
 - For events, the previous year's gallery on the official site is
   usually fair game (e.g. last year's photos for next year's entry)
 
+**Weight the official source heavily.** If you've found an official
+website for the entry — the Idea's `website`, or any source you're
+going to link to in a Topic's prose — its images should be your
+strongest candidates, not just one option among many. Fetch the
+homepage and at least one `/gallery`, `/media`, or `/press` page and
+exhaust what's there before falling back to Wikimedia or tourism
+aggregators. If you're going to link to the site as authoritative,
+its photos almost certainly outclass anything you'll find elsewhere.
+Only reach for lower-tier sources when the official site genuinely
+has nothing usable.
+
 Vary the angles — don't pick five photos of the same façade. The target
 image *count* differs between Ideas and Topics; see each skill's own
 guidance for how many to aim for.
