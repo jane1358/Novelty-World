@@ -337,7 +337,7 @@ export const IDEAS: Idea[] = [
     physicalIntensity: "low",
     duration: "<1h",
     website: "https://www.helsingintuomiokirkko.fi/en/",
-    tags: ["landmark", "historical"],
+    tags: ["church", "landmark", "historical"],
   },
   {
     slug: "esplanadi",
@@ -1522,7 +1522,7 @@ export const IDEAS: Idea[] = [
     physicalIntensity: "low",
     duration: "<1h",
     website: "https://hos.fi/en/uspenski-cathedral-main-cathedral-of-the-orthodox-parish-of-helsinki-and-the-diocese-of-helsinki/",
-    tags: ["landmark", "historical"],
+    tags: ["church", "landmark", "historical"],
   },
   {
     slug: "fuji-sushi-lauttasaari",
@@ -3847,5 +3847,301 @@ export const IDEAS: Idea[] = [
     duration: "1-3h",
     website: "https://ateneum.fi/en/",
     tags: ["museum", "landmark", "historical"],
+  },
+  {
+    slug: "museum-of-technology",
+    title: "Museum of Technology (Tekniikan museo)",
+    shortDescription:
+      "Finland's only general technology museum, set in the red-brick filter halls of Helsinki's first municipal waterworks on the island where Gustav Vasa founded the city in 1550 — ESKO (the first Finnish-built computer), early Nokia handsets, telephone exchanges, and a hands-on invention lab for kids.",
+    longDescription: [
+      "The Museum of Technology (Tekniikan museo) is Finland's only general-purpose technology museum and sits on Kuninkaankartanonsaari (\"King's Manor Island\") in Vanhakaupunki — the riverbank spot where King Gustav Vasa founded Helsinki by royal decree in 1550 before the city was moved to its current location 90 years later. Founded in 1969 as Helsinki was decommissioning the surrounding waterworks, the museum took over a striking ensemble of decommissioned filter halls: a circular open-filter basin from 1876, the rapid-filter hall from 1909 (restored to its 1920s appearance), and the long red-brick filter halls built between 1897 and 1951. The buildings were placed under heritage protection and are themselves a major part of the visit — Finnish industrial architecture as a continuous fifty-year experiment in brick.",
+      "The headline exhibition TechLand (running through 2027) traces Finland's hundred-year journey from a poor agrarian periphery to one of the most digitally connected societies on the planet. Highlights include ESKO (Electronic Stored Computing Operator), the first computer built in Finland and switched on in 1960; the original telephone exchanges that wired the country in the 1920s; early Nokia mobile handsets from the era when the company was still primarily a rubber-and-cable conglomerate; paper-mill and forestry machinery; and a teletext module that quietly defined how a generation of Finns got their news. The Ghost and the Invention Device, a parallel exhibition running through 2027, is the kids' wing — interactive flap-and-pull stations, a build-it-yourself contraption table, and small craft workshops on weekends.",
+      "Two hours is the right plan for adults; three hours with curious kids who actually use the hands-on stations. A small museum café (Helsinge) sits in the old power station opposite, and the Vanhankaupunginkoski waterfall and rapids are a 5-minute walk along the riverbank — the reason the waterworks were sited here in the first place, and a worthwhile add-on in any season.",
+      "Adult €15, children 7–17 €7, under-7 free, family ticket (2 adults + 3 children) €32, concessions (students/seniors/unemployed) €7. Museum Card holders free. Thursdays are Pay What You Want Day. Open Tue–Sun: Tue & Fri 11–17, Wed–Thu 11–20, Sat 11–18, Sun 11–17; closed Mondays. From Lauttasaari, take the metro to Hakaniemi (~7 min) and bus 71 north to the Annala / Vanhankaupunginkoski stop (~15 min), then walk 5 min across the bridge — about 45 min door to door.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Tekniikan_museo_2017-09-30.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Tekniikan_museo_2016-01-31.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Tekniikan_museo,_entrance.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Tekniikan_museon_punatiilihalli_2020-07-12_1.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Tekniikan_museon_punatiilihalli_2020-07-12_2.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Tekniikan_museo_2020-07-12_1.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Tekniikan_museo_-_Marit_Henriksson.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Vanhakaupunki_-_panoramio_-_jampe_(1).jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Teletext_module_Museum_of_Technology.jpg",
+    ],
+    availability: {
+      suitableMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      weeklySchedule:
+        "Tue 11:00–17:00, Wed–Thu 11:00–20:00, Fri 11:00–17:00, Sat 11:00–18:00, Sun 11:00–17:00. Closed Mondays.",
+      notes:
+        "Year-round. Thursdays are Pay What You Want and the busiest day; Tue/Fri mornings and Sun afternoons are the quietest. Combine with a 5-minute riverside walk to the Vanhankaupunginkoski waterfall — particularly worth the detour in spring runoff and autumn ruska.",
+    },
+    location: {
+      region: ["Helsinki", "Uusimaa"],
+      address: "Viikintie 1, 00560 Helsinki (Kuninkaankartanonsaari, Vanhakaupunki)",
+    },
+    accessFromLauttasaari: {
+      complexity: "moderate",
+      duration: "~45 min",
+      notes:
+        "Metro from Lauttasaari to Hakaniemi (~7 min, M1/M2), then bus 71 north to the Annala / Vanhankaupunginkoski stop (~15 min), then a 5-minute walk across the bridge to the museum island. Alternative: any tram into the city, then bus 71 from Hakaniemi.",
+    },
+    cost: {
+      perPersonEur: 15,
+      notes:
+        "Adult €15, children 7–17 €7, under-7 free, concessions €7, family (2+3) €32. Museum Card holders free. Thursdays are Pay What You Want.",
+    },
+    booking: {
+      leadTime: "same-day",
+      notes:
+        "Walk-in fine. Online booking available but rarely needed except for school groups and birthday-party slots.",
+    },
+    suitableAgeRange: { min: 4 },
+    childrenNotes:
+      "The Ghost and the Invention Device exhibition is purpose-built for kids 4–12 with hands-on stations, interactive flaps, and weekend craft workshops. The main TechLand floor is more text-heavy but has enough machines and screens to keep older children (7+) engaged. Stroller-accessible throughout — lifts to all floors. Family ticket €32 makes a half-day visit cheap.",
+    indoorOutdoor: "indoor",
+    physicalIntensity: "low",
+    duration: "1-3h",
+    website: "https://www.tekniikanmuseo.fi/en/",
+    tags: ["museum", "historical"],
+  },
+  {
+    slug: "baltic-herring-market",
+    title: "Helsinki Baltic Herring Market (Stadin Silakkamarkkinat)",
+    shortDescription:
+      "Finland's oldest continually-running public event — a week every October since 1743 when archipelago fishing boats moor at Helsinki's South Harbour and sell silakka (Baltic herring) in every conceivable preparation, plus archipelago bread, smoked fish, sea-buckthorn jam, and wool from small island producers.",
+    longDescription: [
+      "The Helsinki Baltic Herring Market (Stadin Silakkamarkkinat) is one of the oldest ongoing event traditions in Finland, held continuously in some form since 1743 — predating American independence by a comfortable margin. Established by royal decree to give Helsinki a reliable autumn fish supply, the market settled at the South Harbour by 1820 and runs there still, the same week-in-October arrangement that produced the same kind of crowd in 1850 and 1950 as it does today. After a quiet stretch in the mid-20th century the event was revived in the 1980s and now draws roughly 90,000 visitors over its single week. The 2026 edition runs 4–10 October.",
+      "The premise has barely changed: archipelago fishing boats moor along the quay, lay planks across to the cobblestones, and sell silakka — Finland's tiny Baltic herring, one of the foundational fish of Finnish food — in every preparation a fishing family has ever invented. Pickled in cream and dill, smoked over alder, fermented as the famously divisive surströmming-adjacent hapansilakka, marinated in mustard, in lingonberry, in sea-buckthorn, in beetroot. Beyond the herring boats, around 60 stalls along the perimeter sell other small-producer Finnish food: jälkiuunileipä (the dense rye archipelago bread baked overnight in cooling ovens), home-pressed apple juices, smoked sausage, hand-knitted wool mittens, juniper-smoked vendace, and preserved wild mushrooms. Two annual competitions run through the week — Best Salted Herring and Best Archipelago Bread — and the winning stalls sport a sticker for a full year afterwards.",
+      "The atmosphere is half festival, half working market. Fishermen in oilskins call orders across to one another. The seagulls are aggressive — guard your lihapiirakka. October weather along the harbour is unpredictable: bring a rain jacket and don't trust the morning forecast. In 2026 the organisers are replacing the previous tents with wooden huts for a more atmospheric setup and adding a maritime restaurant area with a few sit-down tables.",
+      "Free to attend; budget €10–25 for a sampling of fish, bread, and a coffee. Stalls open 9:00–19:00 Sun–Fri and 9:00–16:00 on the closing Saturday. Bring cash — some smaller producers don't take cards — and a sealable bag for the herring jars (the smell carries). From Lauttasaari, bus 21 runs straight to Kauppatori in 15 minutes. Pair with a quick stop at the Old Market Hall (3 min walk), Uspenski Cathedral (10 min walk uphill), or a Suomenlinna ferry from the same dock.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Crowds_at_the_2023_Helsinki_herring_market.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Helsinki_Herring_market_2024.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Helsinki_Baltic_Herring_Market_(52432256701).jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Baltic_Herring_Market1.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Baltic_Herring_Market2.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Baltic_Herring_Market3.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Silakkamarkkinat.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Eteläsatama,_Helsinki_1912.jpg",
+    ],
+    availability: {
+      suitableMonths: [10],
+      events: [
+        {
+          from: "10-04",
+          to: "10-10",
+          name: "Stadin Silakkamarkkinat (Helsinki Baltic Herring Market)",
+        },
+      ],
+      weeklySchedule:
+        "Sun–Fri 9:00–19:00, Sat 9:00–16:00 (closing day). Runs the first Sunday in October through the following Saturday — 2026 dates: 4–10 October.",
+      notes:
+        "Date-locked: only runs one week a year, the first Sunday of October through the following Saturday. Outside this window the South Harbour reverts to the year-round Kauppatori stalls.",
+    },
+    location: {
+      region: ["Helsinki", "Uusimaa"],
+      address: "Kauppatori (Market Square), Eteläranta, 00170 Helsinki (South Harbour quay)",
+    },
+    accessFromLauttasaari: {
+      complexity: "simple",
+      duration: "~15 min",
+      notes:
+        "Bus 21 from Lauttasaari runs straight to Kauppatori (~15 min, direct). Alternative: metro to Helsinki Central (~6 min), then a 10-min walk down Esplanadi.",
+    },
+    cost: {
+      perPersonEur: 0,
+      notes:
+        "Free entry. Budget €10–25 for a sampling — a small jar of pickled herring runs ~€8, smoked fish portions ~€10–15, a slice of archipelago bread with butter ~€3. Bring cash; smaller producers may not take cards.",
+    },
+    booking: {
+      leadTime: "same-day",
+      notes: "No tickets, no booking. Walk straight onto the quay.",
+    },
+    suitableAgeRange: { min: 0 },
+    childrenNotes:
+      "Stroller-friendly flat paving along the harbour. Strong fish smell — younger kids may baulk, but the boats, the gulls, and the cookie/jam stalls usually win them over. Bring a warm layer; October on the open quay can drop to single digits.",
+    indoorOutdoor: "outdoor",
+    physicalIntensity: "low",
+    duration: "1-3h",
+    website: "https://silakkamarkkinat.fi/en/",
+    tags: ["food", "historical", "nautical"],
+  },
+  {
+    slug: "temppeliaukio-church",
+    title: "Temppeliaukio Church (Rock Church)",
+    shortDescription:
+      "A Lutheran church blasted out of solid bedrock in central Helsinki, with rough granite walls climbing to a 24-metre copper-clad dome ring-lit by 180 skylight panes — and acoustics good enough that touring orchestras stop here.",
+    longDescription: [
+      "Temppeliaukio Church (Temppeliaukion kirkko, locally and on every English signpost just \"Rock Church\") is what happened when Helsinki spent 30 years arguing about the right church for an awkward block of granite in the middle of Töölö, then let two architect brothers — Timo and Tuomo Suomalainen — solve the problem in 1961 by going under the rock instead of over it. An earlier 1933 competition winner (J. S. Sirén) was scrapped after the war; the 1961 plan was scaled to about a quarter of its first ambition for budget reasons, then built between February 1968 and consecration in September 1969. The result is one of the most distinctive religious interiors in Northern Europe and now Helsinki's third-most-visited site, with roughly half a million visitors a year.",
+      "From the outside it's almost nothing — a low copper dome rising out of an ordinary residential block, easy to walk past. The interior immediately resets your sense of scale. The walls are unworked granite in pinks, reds, and grey-browns, climbing up to a 24-metre copper-clad dome supported by 180 narrow concrete beams arranged like the spokes of a wheel. Between the spokes, 180 panes of skylight pour daylight straight onto the granite altar — by mid-afternoon in winter you get a low, warm, almost orange light against cold stone. The Veikko Virtanen organ from 1975 has 3,001 pipes across 43 stops, and the bells are recorded — chimes composed by Taneli Kuusisto, played from speakers, since hanging a real bell tower into a granite outcrop never made sense.",
+      "The acoustics are the third reason to come. The rough rock walls absorb almost no sound (they were not part of the original competition entry — added late after consultation with conductor Paavo Berglund and acoustical engineer Mauri Parjo) and the dome focuses the sound back without ringing. The church hosts dozens of concerts a year — chamber, choral, organ, occasional folk and electronic — and recordings are made here often. Check the concert calendar on temppeliaukionkirkko.fi; tickets typically run €15–35 and the experience of an hour of music in this room is worth the budget over a daytime drop-in.",
+      "Adult €8 daytime entry, under-18 free, included with the Helsinki Card and Museum Card. Open Mon–Fri 10:00–17:00, Sat 10:00–13:15 and 15:45–17:00, Sun 12:00–13:15 and 14:15–17:00 (Sunday hours interrupted by services). The church briefly closes for weddings, baptisms, and concert setup; the daily schedule on the site is the only reliable way to confirm. Tour groups dominate 11:00–14:00 — go at opening or after 16:00 for a quieter visit. From Lauttasaari, metro to Kamppi (~3 min), then walk 10 min north up Fredrikinkatu.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Temppeliaukio_Church_07.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Lascar_Temppeliaukio_Church_(4549343556).jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Interior_of_Temppeliaukio_Church.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Temppeliaukio_Church_-_organ_-_DSC04459.JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Temppeliaukio_Church_-_ceiling_-_DSC04468.JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Temppeliaukio_Church_-_balcony_-_DSC04481.JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Temppeliaukio_Church_1.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Temppeliaukion_kirkko_Helsinki_2022-09-19_01.jpg",
+    ],
+    availability: {
+      suitableMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      weeklySchedule:
+        "Mon–Fri 10:00–17:00; Sat 10:00–13:15 and 15:45–17:00; Sun 12:00–13:15 and 14:15–17:00. Saturday and Sunday hours are split around services and weddings.",
+      notes:
+        "Year-round. Closes briefly for services, weddings, baptisms, and concert setup; the daily schedule on temppeliaukionkirkko.fi is the only reliable confirmation. Tour groups peak 11:00–14:00 — go at opening or after 16:00 for a quiet visit.",
+    },
+    location: {
+      region: ["Helsinki", "Töölö", "Uusimaa"],
+      address: "Lutherinkatu 3, 00100 Helsinki (Töölö)",
+    },
+    accessFromLauttasaari: {
+      complexity: "simple",
+      duration: "~20 min",
+      notes:
+        "Metro from Lauttasaari to Kamppi (~3 min, M1/M2), then a 10-min walk north up Fredrikinkatu. Alternative: bus 21 to Kamppi or any of the Mannerheimintie tram lines (1, 2, 4, 10) to Sammonkatu, then a 3-min walk.",
+    },
+    cost: {
+      perPersonEur: 8,
+      notes:
+        "Adult €8, under-18 free, included with Helsinki Card and Museum Card. Concert tickets run separately, typically €15–35. Online booking available via the website.",
+    },
+    booking: {
+      leadTime: "same-day",
+      notes:
+        "Walk-in fine for daytime visits. Online tickets save the queue at peak summer hours. Concerts (chamber, choral, organ) should be booked a few days ahead via the website.",
+    },
+    suitableAgeRange: { min: 0 },
+    childrenNotes:
+      "Stroller-accessible — the entrance is at street level and the floor is even. Quiet inside (it's a working church); not a play space. Older kids (5+) usually engage with the visual oddity of the rock walls and dome; toddlers will be in and out in 10 minutes.",
+    indoorOutdoor: "indoor",
+    physicalIntensity: "low",
+    duration: "<1h",
+    website: "https://www.temppeliaukionkirkko.fi/",
+    tags: ["church", "landmark"],
+  },
+  {
+    slug: "finnish-aviation-museum",
+    title: "Finnish Aviation Museum (Suomen Ilmailumuseo)",
+    shortDescription:
+      "80+ aircraft and a full century of Finnish flight under one roof beside Helsinki Airport — Caudron biplanes, Winter War fighters, MiG-21 and Saab Draken jets, a Caravelle and DC-3 outside, and open cockpits to climb into.",
+    longDescription: [
+      "The Finnish Aviation Museum (Suomen Ilmailumuseo) sits in the Aviapolis district of Vantaa, three minutes' drive from Helsinki Airport's main terminal — fittingly close to the runways its collection helped open. The Aviation Museum Society was founded in December 1969 by a group of pilots and aviation engineers who refused to watch the country's mid-century aircraft go to scrap; the first public museum opened in 1972 in the basement of the airport terminal itself, and moved into its own purpose-built hangars in 1981. The Foundation now operates ~80 aircraft, 22 of them gliders, plus 9,600 aviation objects and a serious research library of 16,000 books and 160,000 magazines.",
+      "What you actually see: rare warbirds and trainers (a Caudron C.60 from the 1920s, the wreck-fragments of a 1928 Gloster Gamecock fighter, the remarkable home-built Heinonen HK-1 Keltiäinen, a Letov Š-218 Smolik), Cold War fast jets (a MiG-21 and a Saab 35 Draken, both flown by the Finnish Air Force), Finnish-designed aircraft you genuinely won't find anywhere else (Valmet Vihuri, VL Tuisku, VL Pyry, the PIK glider series), and big civilian airliners outside the hangar — a Douglas DC-3 and the museum's prize Caravelle that you can sometimes board on open days. The Winter War and Continuation War sections are where the historical weight lands: aircraft, photographs, and personal kit from the period when a country of 4 million held off the Soviet Union with whatever planes it could borrow, buy, or build itself.",
+      "Especially good for kids who are into flying. Several cockpits are open for sitting in (the PIK-12 sailplane, a couple of the trainers), the Lentopuisto play hangar has flight simulators and hands-on stations, and the placards run in English alongside Finnish. If your child is mid-piloting-lesson, the docent volunteers — almost all retired pilots themselves — are usually delighted to talk through the cockpit layouts and old aircraft systems. Two hours minimum; three if the kid is engaged.",
+      "Adult €14, child 7–17 €7, under-7 free, family ticket €30, concessions €7. Museum Card holders free; Junior Card €20 (yearlong, 7–17). Open winter (Sept–May): closed Mon, Tue 10–17, Wed–Fri 10–20, Sat–Sun 10–17. Summer (Jun–Aug): Mon–Tue 10–17, Wed–Fri 10–20, Sat–Sun 10–17. Closed 6 Dec, 24–26 Dec, 31 Dec, 1 Jan, and Midsummer. Note the exhibition halls are unheated — bring a jacket year-round, a proper coat in winter. From Lauttasaari, take the metro to Helsinki Central (~6 min) then VR Ring Rail (line I or P) to Aviapolis station (~25 min), then walk 300m.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Finnish_Aviation_Museum_exhibition_hall_1_20090419.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/FinnishAviationMuseumBuilding.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Suomen_ilmailumuseo_20180625.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Caudron_C.60_CA-84.JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Gloster_Gamecock_20080619.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Heinonen_HK-1_Keltiäinen.JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/VL_Tuisku.JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Karhumäki_Karhu_48B.JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Letov_Š-218_Smolik.JPG",
+    ],
+    availability: {
+      suitableMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      weeklySchedule:
+        "Sept–May: Mon closed, Tue 10:00–17:00, Wed–Fri 10:00–20:00, Sat–Sun 10:00–17:00. Jun–Aug: Mon–Tue 10:00–17:00, Wed–Fri 10:00–20:00, Sat–Sun 10:00–17:00.",
+      notes:
+        "Year-round. Closed 6 Dec (Independence Day), 24–26 Dec, 31 Dec, 1 Jan, and Midsummer. Exhibition halls are unheated — wear a jacket year-round, a proper coat in winter.",
+    },
+    location: {
+      region: ["Vantaa", "Uusimaa"],
+      address: "Karhumäentie 12, 01530 Vantaa (Aviapolis, beside Helsinki Airport)",
+    },
+    accessFromLauttasaari: {
+      complexity: "moderate",
+      duration: "~50 min",
+      notes:
+        "Metro from Lauttasaari to Helsinki Central (~6 min), then VR Ring Rail (line I or P) to Aviapolis station (~25 min, runs every 10 min). 300m walk from the station to the museum.",
+    },
+    cost: {
+      perPersonEur: 14,
+      notes:
+        "Adult €14, child 7–17 €7, under-7 free, concessions (students/seniors/unemployed) €7, family ticket (2+3) €30, Junior Card (7–17, yearlong) €20. Museum Card free.",
+    },
+    booking: {
+      leadTime: "same-day",
+      notes: "Walk-in fine. Online booking available; rarely needed except for school groups.",
+    },
+    suitableAgeRange: { min: 4 },
+    childrenNotes:
+      "Especially good for plane-curious kids. Several cockpits are open for sitting in, the Lentopuisto play hangar has flight simulators and hands-on stations, English placards throughout, and the volunteer docents (often retired pilots) are usually happy to talk through the aircraft. Stroller-accessible. Halls are unheated — bring a coat in winter.",
+    indoorOutdoor: "mixed",
+    physicalIntensity: "low",
+    duration: "1-3h",
+    website: "https://ilmailumuseo.fi/en/",
+    tags: ["museum", "historical"],
+  },
+  {
+    slug: "arktikum",
+    title: "Arktikum",
+    shortDescription:
+      "A 172-metre glass tunnel buried into the Ounasjoki riverbank in Rovaniemi, housing both the Arctic Centre research institute and the Provincial Museum of Lapland — Sámi culture, Arctic ecosystems, the burning of Rovaniemi in WW2, and aurora science under one luminous spine.",
+    longDescription: [
+      "Arktikum is the architectural set-piece of Rovaniemi and one of the more striking buildings in Finnish Lapland: a 172-metre glass tunnel that emerges from the bank of the Ounasjoki river and stretches northward toward the Arctic, designed by Danish architects Claus Bonderup and Bonderup-Møller and opened in 1992. The glazed roof keeps the interior daylit even in the darkest weeks of December, and the building is angled so that on clear nights the back lawn — the Arctic Garden — looks straight north toward the auroral oval. Two distinct institutions share the shell: the Arctic Centre (a research institute under the University of Lapland) on the east side, and the Provincial Museum of Lapland on the west.",
+      "The Arctic Centre's permanent exhibition Arctic in Change covers the eight Arctic nations, climate science, polar ecosystems, and the politics of an opening-up Arctic. The new Arctic Opposites science exhibition explores light and dark, ice and meltwater, predator and prey. The Provincial Museum side tells Lapland's regional story — the Sámi people and their reindeer-herding economy, the colonial Finnish logging boom that opened up the interior in the 1800s, and the Lapland War of 1944–45, when retreating Wehrmacht forces — under orders from Hitler — destroyed nearly every building in Rovaniemi as they withdrew through northern Finland. The post-war Alvar Aalto reconstruction is what the visitor sees today walking around the city; the museum's photographs of the burned-out 1944 Rovaniemi are sobering. Specific highlights: full-size Sámi lavvu tents, traditional reindeer-herding tools, an aurora room with overhead projections, and the 1944 aerial photographs.",
+      "Two to three hours is the right plan; longer if you want to read every wall card on the Arctic Centre side. The on-site café Mauno (in the entry rotunda) is a respectable lunch spot. The Arctic Garden behind the building has benches, walking paths, and an aurora-viewing deck — September through March, on a clear night, this is one of the better central-Rovaniemi spots for the northern lights, since the river side has minimal light pollution. Combine with the neighbouring Pilke science centre on forestry (separate ticket, or bundled with the Culture Pass) for a full half-day in the Arktikum complex.",
+      "Adult €22, discounted (students/seniors/unemployed) €17, child 7–17 €10, under-7 free, family (2+2) €54. The Culture Pass (€30 adult, €20 discounted, €65 family) bundles Arktikum with Korundi House of Culture and Pilke. Open Tue–Sun 10:00–18:00; closed Mondays. Closed for system maintenance 1–4 May 2026. From Lauttasaari, the journey is the VR Santa Claus Express overnight train via Helsinki Central (departs ~19:30 or ~22:30, arrives Rovaniemi ~07:30–08:30; sleeper berths from €49); Arktikum is a 15-minute walk along the river from Rovaniemi station. Effectively a multi-day Lapland trip — most visitors pair it with Santa Claus Village, a husky safari, or aurora hunting.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Arktikum_2024.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Arktikum_Exterior_(53072369734).jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Arktikum_and_Northern_Lights.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Arctic_Centre_(Arktikum),_Rovaniemi_IMG_2668.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Rovaniemi_Arktikum_1.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Arktikum_Rovaniemi_2022-09-15_02.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Arktikum_Rovaniemi_from_lake.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Arktikum_museum_and_science_centre_summer.jpg",
+    ],
+    availability: {
+      suitableMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      weeklySchedule: "Tue–Sun 10:00–18:00. Closed Mondays.",
+      notes:
+        "Year-round. Closed for system maintenance 1–4 May 2026. The Arctic Garden behind the building gives its highest aurora-viewing odds Sept–March on clear nights — pair an evening visit with a step outside afterwards. Summer reverses the appeal: the river-bank lawn and 24-hour daylight in June–July make it a different, quieter experience.",
+    },
+    location: {
+      region: ["Rovaniemi", "Lapland"],
+      address: "Pohjoisranta 4, 96200 Rovaniemi",
+    },
+    accessFromLauttasaari: {
+      complexity: "moderate",
+      duration: "~12h overnight train (incl. metro to Helsinki Central)",
+      notes:
+        "Metro from Lauttasaari to Helsinki Central (~6 min), then VR Santa Claus Express overnight train: departs ~19:30 or ~22:30, arrives Rovaniemi ~07:30–08:30; sleeper berths from €49, basic seat from €29. From Rovaniemi station, Arktikum is a 15-minute walk along the river path (or a 5-minute taxi). Effectively a multi-day Lapland trip — almost no one does this as a same-day return; pair with Santa Claus Village, a husky safari, or aurora hunting.",
+    },
+    cost: {
+      perPersonEur: 22,
+      notes:
+        "Adult €22, discounted €17, child 7–17 €10, under-7 free, family (2+2) €54. Culture Pass (Arktikum + Korundi + Pilke) €30 adult / €20 discounted / €65 family — worth it if you're doing more than just Arktikum.",
+    },
+    booking: {
+      leadTime: "weeks",
+      notes:
+        "Arktikum itself is walk-in. The hard booking is the overnight train — December and February peak weeks should be booked 4–6 weeks ahead at minimum, sleeper cabins 2–3 months out for Christmas-week travel. Off-peak (April, May, late September) accepts 1–2 weeks notice.",
+    },
+    suitableAgeRange: { min: 6 },
+    childrenNotes:
+      "Stroller-accessible — flat ramps throughout the glass tunnel, lifts to all levels. Older kids (8+) engage best with the Arctic ecology dioramas, the aurora projection room, and the Sámi culture exhibits; younger children may not have the patience for the dense Arctic Centre wall-card sections. The Arctic Garden out the back is a fine break-spot if attention runs out indoors.",
+    indoorOutdoor: "mixed",
+    physicalIntensity: "low",
+    duration: "half-day",
+    website: "https://arktikum.fi/en/",
+    tags: ["museum", "historical", "nature"],
   },
 ];
