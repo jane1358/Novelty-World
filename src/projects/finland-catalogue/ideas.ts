@@ -1408,7 +1408,7 @@ export const IDEAS: Idea[] = [
     physicalIntensity: "low",
     duration: "half-day",
     website: "https://www.myhelsinki.fi/places/lauttasaari-beach-kasinonranta/",
-    tags: ["nature"],
+    tags: ["nature", "beach"],
   },
   {
     slug: "allas-pool",
@@ -3440,7 +3440,7 @@ export const IDEAS: Idea[] = [
     physicalIntensity: "moderate",
     duration: "full-day",
     website: "https://www.visithanko.fi/en/",
-    tags: ["nature", "nautical", "historical"],
+    tags: ["nature", "nautical", "historical", "beach"],
   },
   {
     slug: "aland-ferry",
@@ -4143,5 +4143,218 @@ export const IDEAS: Idea[] = [
     duration: "half-day",
     website: "https://arktikum.fi/en/",
     tags: ["museum", "historical", "nature"],
+  },
+  {
+    slug: "veijarivuoren-uimaranta",
+    title: "Veijarivuoren uimaranta",
+    shortDescription:
+      "Lauttasaari's quieter southern beach — sand and small stones, gently shelving water, a children's playground and outdoor gym in the pines, and one of Helsinki's better-known winter-swimming jetties on the same shore.",
+    longDescription: [
+      "Veijarivuoren uimaranta sits at the south-eastern tip of Lauttasaari — the second of the home island's two official city beaches, and a deliberately low-key counterpart to busier Kasinonranta a kilometre east. The shore is a mix of fine sand and small stones, the water shallow and slow to deepen, which makes it kind to small children and undemanding swimmers but slow to warm in spring and quick to chill when the wind turns. The beach takes its name from Veijarivuori, the wooded rocky knob that rises behind it; a short scramble up gives a view back over Itälahti bay and out to the Pihlajasaaret islands.",
+      "The City of Helsinki runs the official beach season from early-June to early-August (1 Jun – 9 Aug 2026). Facilities are functional rather than fancy — changing cabin, outdoor shower, public toilets, a small playground with two swings on the sand, and an outdoor gym tucked in the trees just behind. Unlike Kasinonranta there are no lifeguards and no café on the beach itself, but Paseo Cafe, Grill & Sauna sits a one-minute walk uphill with terrace seating, gelato, and the option to bolt on a sauna afterwards. Locals describe it as the family alternative — fewer beach-volleyball crowds, no kiteboarders launching across the swimmers, more dog-walkers and grandparents.",
+      "The same shoreline is one of Helsinki's better-known avantouinti spots. Humaus ry, the local winter-swimming club, maintains a year-round ladder-and-jetty just west of the beach with heated changing facilities for paying members; non-members can drop in on the public ladder for free. Through December–March the swim happens at sunrise and dusk in equal measure, with thermos coffee on the pier and the Paseo sauna nearby for the löyly half of the löyly-and-cold-plunge ritual.",
+      "From a Lauttasaari home base it's a 10–15-minute walk south through the Vattuniemi residential streets, or bus 21 if you'd rather ride. The Lauttasaari rantareitti coastal trail passes directly past, which makes it a natural mid-loop swim stop. There's no parking lot and the streets nearby are residents-only — coming on foot, bike, or public transport is the right move.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Veijarivuoren_talviuintipaikka_2022_(202220;%2BG70715).jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Veijarivuori.JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Lauttasaari_waterfront_trail_near_the_southern_tip_of_the_island_on_an_evening_in_May_2025.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Lauttasaari_waterfront_trail_on_the_western_shore_of_the_southern_part_of_the_island_on_an_evening_in_May_2025.jpg",
+    ],
+    availability: {
+      suitableMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      notes:
+        "Year-round, in two different modes. Official beach season 1 June – 9 Aug 2026; mid-June to mid-August is when the Baltic warms enough (~18–20°C) for comfortable swimming. May and September are atmospheric but cold for most. December–March it pivots to a winter-swimming spot — Humaus ry keeps the ladder open through the ice.",
+    },
+    location: {
+      region: ["Helsinki", "Lauttasaari", "Uusimaa"],
+      address: "Itälahdenpolku 3, 00210 Helsinki (south-eastern tip of Lauttasaari)",
+    },
+    accessFromLauttasaari: {
+      complexity: "simple",
+      duration: "~10–15 min walk",
+      notes:
+        "Same island. 10–15-minute walk south through Vattuniemi from Lauttasaari metro station. Bus 21 also serves the area. The Lauttasaari rantareitti coastal trail passes directly past it. No parking lot — surrounding streets are residents-only.",
+    },
+    cost: {
+      perPersonEur: 0,
+      notes:
+        "Free beach access — showers, toilets, and changing cabin all free. Humaus ry's heated winter-swimming changing room is members-only (separate annual fee, ~€60–80/season); the ladder itself is free to use. Paseo café food and sauna pricing separate.",
+    },
+    booking: {
+      leadTime: "same-day",
+      notes: "No booking — just turn up.",
+    },
+    suitableAgeRange: { min: 0 },
+    childrenNotes:
+      "The shallow, slow-deepening water suits small children and the on-beach playground keeps non-swimmers occupied. No lifeguard, so adult supervision is on you. The paved approach is stroller-friendly; the sand itself is soft.",
+    indoorOutdoor: "outdoor",
+    physicalIntensity: "low",
+    duration: "1-3h",
+    website:
+      "https://www.hel.fi/en/culture-and-leisure/outdoor-activities-parks-and-nature-destinations/public-beaches/helsinkis-public-beaches/veijarivuori-beach",
+    tags: ["nature", "beach"],
+  },
+  {
+    slug: "pihlajasaaren-uimaranta",
+    title: "Pihlajasaaren uimaranta",
+    shortDescription:
+      "A 10-minute summer ferry from south Helsinki drops you on a twin-island recreation park with the city's longest sandy beach, three free wood-fired cookshacks, a bookable Aalto sauna, a designated unisex naturist beach, and 1880s wooden villas turned into a restaurant.",
+    longDescription: [
+      "Pihlajasaari (\"Rowan Island\") is a small twin-island archipelago about a kilometre off the south Helsinki shore — Läntinen (Western) and Itäinen (Eastern) Pihlajasaari, joined by a footbridge — and is the most-loved summer beach escape inside the city limits. The 10-minute JT-Line waterbus from Merisatama (in the Eira/Hernesaari district) and Ruoholahti runs daily 16 May – 30 August 2026, weather permitting; on warm Saturdays the boats run nearly continuously, on cold Septembers the season is over.",
+      "The city beach itself is on the western island — a several-hundred-metre crescent of fine sand on the south-west shore, shallow water, changing shelters, an outdoor shower, toilets, a beach-volleyball court, a kiosk, and a small playground (no lifeguards). The rest of Läntinen Pihlajasaari is a mix of glaciated rock outcrops perfect for sunbathing, a 1.8-km marked nature trail through pine and birch, three free wood-fired public cookshacks (firewood and drinking water provided), and a handful of restored 1880s–1890s wooden villas. Restaurant Pihlajasaari fills one of them — a summer-only kitchen running Nordic seasonal plates from a terrace right above the harbour.",
+      "Cross the bridge to Itäinen Pihlajasaari for the quieter half: a 1-km nature trail, more open rock, weekend camping pitches (the only place inside Helsinki you can legally pitch a tent for the night), and Finland's most accessible designated unisex naturist beach — a small cove screened from the rest of the shore, gender-mixed in contrast to the segregated Seurasaari nudist beach on the other side of the city. The Aalto sauna, an electric sauna for up to six built by architecture students, can be booked through Helsinki's Varaamo system in 2-hour slots through the summer.",
+      "The mindset to bring is \"island day-trip with a beach in the middle.\" Buy the round-trip ticket on the boat or online (€9.80 adult, €6.80 child/senior 2026), bring a towel and food (the kiosk is fine but limited; the cookshacks reward people who packed sausages), and pace yourself — there's a six-hour-long version of the day that includes a bridge crossing, a swim, a nature-trail loop, dinner at the restaurant, and the last boat back at sunset. Out of season the island is officially closed; the restaurant, sauna, kiosk, and toilets all shut.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Pihlajasaari_2016.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Pihlajasaari.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Pihlajasaari_sea_view.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Pihlajasaari_bridge.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Pihlajasaari_VillaHallebo.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Itäinen_Pihlajasaari_and_Läntinen_Pihlajasaari_from_Kustaanmiekka_Suomenlinna_2022-09-17_01.jpg",
+    ],
+    availability: {
+      suitableMonths: [5, 6, 7, 8],
+      notes:
+        "JT-Line ferry runs daily 16 May – 30 August 2026. Outside that window the island is officially closed and the restaurant, sauna, kiosk, and toilets all shut. Mid-June to mid-August is peak — beach packed on warm weekends, ferries running back-to-back. May and late August are quieter and cooler; on a chilly week the boat may not run.",
+    },
+    location: {
+      region: ["Helsinki", "Uusimaa"],
+      address: "Läntinen Pihlajasaari, 00150 Helsinki (ferry from Merisatama or Ruoholahti)",
+    },
+    accessFromLauttasaari: {
+      complexity: "moderate",
+      duration: "~30 min each way",
+      notes:
+        "Bus 21 from Lauttasaari to Ruoholahti pier (~10 min), then the 10-minute JT-Line waterbus to Pihlajasaari. Alternative: tram 6 or 6T to Hernesaari/Merisatama and pick up the same waterbus from there. The Ruoholahti pier is closer; Merisatama runs more frequently in peak season. Ticket purchase walk-up on the boat or online.",
+    },
+    cost: {
+      perPersonEur: 10,
+      notes:
+        "Round-trip ferry €9.80 adult, €6.80 child 7–17 / senior, under-7 free. Restaurant Pihlajasaari mains ~€20–32; kiosk snacks €5–10. Aalto sauna ~€60 for a 2-hour slot (split among up to 6 people). Cookshack and beach use free.",
+    },
+    booking: {
+      leadTime: "same-day",
+      notes:
+        "Ferry tickets walk-up; no need to book ahead even on warm Saturdays (boats run continuously and JT-Line scales up). Book the Aalto sauna and Restaurant Pihlajasaari a few days to a week ahead in peak summer through Varaamo and the restaurant site respectively.",
+    },
+    suitableAgeRange: { min: 0 },
+    childrenNotes:
+      "Properly kid-friendly — shallow sandy beach, playground, easy nature-trail loop, cookshacks for sausage-grilling. The ferry itself is a hit. No lifeguards on the beach, and the cliff-edge sunbathing rocks need supervision with toddlers. Pack everything you'll need; the kiosk is small.",
+    indoorOutdoor: "outdoor",
+    physicalIntensity: "low",
+    duration: "half-day",
+    website: "https://www.jt-line.fi/eng/pihlajasaari/",
+    tags: ["nature", "beach", "nautical"],
+  },
+  {
+    slug: "bellevuen-uimaranta",
+    title: "Bellevuen uimaranta (Bellevue Beach, Hanko)",
+    shortDescription:
+      "The quietest of Hanko's central beaches — a long, shallow, sandy crescent on Kolaviken bay, the iconic striped wooden beach huts of Plagen behind you to the west and a protected nature reserve to the east, with the warmest water in town when the wind blows from the south.",
+    longDescription: [
+      "Bellevue (\"beautiful view\" in French) is the eastern of Hanko's three main central beaches, lying on the south shore of the peninsula at Appelgrenintie 16, a 10-minute walk east from Plagen and the rows of striped wooden beach huts that put Hanko on Finland's postcards. The water of Kolaviken bay where Bellevue sits is shallow over a fine sandy bottom, and on south-wind days it warms faster and stays warmer than the more exposed Plagen — locals know it as the warm-water option when the rest of the coast is bracing.",
+      "The atmosphere is deliberately low-key compared to its neighbours. Plagen has the photogenic striped huts and the volleyball crowd; Regattaranta in the centre has the family bustle and the kiosk; Bellevue has just three weathered wooden beach cabins, a portable toilet, a small parking lot, and a long stretch of empty sand. The eastern end runs straight into the Tulliniemi-Långsanda nature reserve — a sand-and-pine peninsula heading out toward mainland Finland's southernmost point, with a 6.7-km marked nature trail and a snorkel route in the shallows. You can walk the whole reserve in an afternoon, or just dip into the first hundred metres of dunes for the silence.",
+      "The setting is also why Bellevue is the most photogenic of the three at sundown. The 1880s–1900s spa-era villas of Hanko's Russian-aristocracy heyday line the road behind the beach (mint, butter-yellow, salmon) and the open Baltic faces full south, so you get a sun that drops directly over the water on long July evenings. The long-distance Bengtskär lighthouse cruise leaves from the Eastern Harbour 10 minutes' walk away (M/S Summersea, Sat–Thu 11:00, Fri 14:00 in season — a 5.5-hour return).",
+      "Logistics from Lauttasaari are the same as any Hanko visit. Metro to Helsinki Central, VR train to Karis/Karjaa (~1h, hourly), local Y-train to Hanko (~50 min, 5–7/day) — total 1h 50m–2h. From Hanko station it's a 15–20-minute walk south through the spa-villa streets to Bellevue. Free beach parking on Appelgrenintie if you drive (1h 30m via highway 25). Strictly a summer destination — May to September; the off-season town is sleepy and most things are shut.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Bellevuen_uimaranta.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Långsanda_beach_in_Hanko.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Coast_of_Tulliniemi_in_Hanko,_Finland,_2021_July.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Hangö_hamn,_2005.jpg",
+    ],
+    availability: {
+      suitableMonths: [5, 6, 7, 8, 9],
+      notes:
+        "Strictly summer — June through August is peak (warm sand-bottom water, huts open, terraces alive). May and September are quieter and cooler with cold dips only. The wider Hanko town is mostly shuttered the rest of the year.",
+    },
+    location: {
+      region: ["Hanko", "Uusimaa"],
+      address: "Appelgrenintie 16, 10960 Hanko",
+    },
+    accessFromLauttasaari: {
+      complexity: "moderate",
+      duration: "~2h each way",
+      notes:
+        "Metro from Lauttasaari to Helsinki Central (~6 min), VR train Helsinki Central → Karis/Karjaa (~1h, hourly), local Y-train Karis → Hanko (~50 min, 5–7/day). From Hanko station, ~15–20-min walk south through the spa-villa streets to Bellevue (or 10-min walk to Plagen, then 10-min walk east along the seafront). Driving via highway 25 is ~1h 30m; parking on Appelgrenintie is free.",
+    },
+    cost: {
+      perPersonEur: 0,
+      notes:
+        "Free beach. Round-trip train Helsinki ↔ Hanko ~€25–40. Lunch in town €15–25. The famous Plagen beach huts a short walk west are private rentals, not for the public.",
+    },
+    booking: {
+      leadTime: "same-day",
+      notes:
+        "No booking for the beach. Train tickets are cheaper booked a few days ahead. Peak-summer Hanko hotels (early-July Hangon Regatta weekend especially) need to be booked months ahead.",
+    },
+    suitableAgeRange: { min: 0 },
+    childrenNotes:
+      "Shallow, calm, sand-bottom water — well-suited to small children. The walk down from Hanko station is straightforward but ~20 minutes; consider a stroller or a short bus/taxi hop with very young kids. No lifeguards, so adult supervision is on you. Eastern end runs into the Tulliniemi nature trail (stroller-difficult past the first 100m).",
+    indoorOutdoor: "outdoor",
+    physicalIntensity: "low",
+    duration: "half-day",
+    website: "https://visithanko.fi/en/tuotesivu/bellevue-3/",
+    tags: ["nature", "beach"],
+  },
+  {
+    slug: "yyterin-hiekkarannat",
+    title: "Yyterin Hiekkarannat (Yyteri Sand Beaches)",
+    shortDescription:
+      "Finland's longest sand beach — a 6 km dune-backed strand on the Bothnian coast outside Pori, with Finland's first Blue Flag certification, the country's best windsurfing and kitesurfing, 30+ km of trails, 17 bird-watching towers, and a beach-front spa hotel.",
+    longDescription: [
+      "Yyteri sits on the Bothnian Sea coast 17 km north-west of Pori, and at six kilometres of fine wind-blown sand is by some margin the longest beach in Finland — and the southernmost continuous active sand-dune system in the country. The dunes are big: living, mobile, ten-plus metres high in places, planted with lyme grass and protected as a Natura 2000 site. The whole thing has a closer cousin in the North Sea coasts of Denmark and the Netherlands than to anything else in Finland; locals will tell you, with mild defensiveness, that it would be a major resort if it sat anywhere with dependable summer weather.",
+      "The headline central beach (Yyterinsantojentie, in front of the Yyteri Spa Hotel) is what most people mean by \"Yyteri\" — Finland's first Blue Flag-certified beach (lifeguards 12:00–18:00 mid-June to mid-August, changing rooms, gangways, public toilets, a barbecue area, kiosks, and a 2024-opened Visitor Centre with year-round restrooms). The water shelves out so gradually that you wade for a hundred metres before it reaches your shoulders, which is why every windsurfing and kitesurfing instructor in southern Finland eventually ends up here — Yyteri is the country's flagship spot for both, with strong steady on-shore winds and waist-deep water for ten kilometres of run-up. There's a separate dog beach at Merisatamatie 13.",
+      "The wider Yyteri area is more than a beach. Thirty-plus kilometres of marked trails wind through pine, dune, and the salt-marsh reedlands of Preiviikinlahti bay (one of the most important migratory-bird stop-overs in the Nordics, with 17 observation towers); rope-course adventure park Huikee runs from the Yyteri Spa Hotel; the spa hotel itself (built into the dunes) covers swimming pools, sauna, restaurant, and beach-side rooms. In winter — the off-season here is more interesting than most beaches — the dunes are sledged on, cross-country ski trails are groomed, and the frozen sea against the snow-covered dunes is one of those rare Finnish landscapes you don't see elsewhere.",
+      "Logistics from Lauttasaari are the catch. Pori is 240 km from Helsinki: metro to Helsinki Central (6 min), VR train Helsinki Central → Pori (~3h 45m, several services daily), then Pori local bus 32 from the bus station out to Yyteri (~30 min) — total 4h 30m–5h each way. Driving is ~3h–3h 15m via highways 1 and 2. This is realistically a multi-day trip — one or two nights at the spa hotel or in one of the holiday-cabin clusters along Yyterintie (Yyteri Beach Holiday Resort is the most established) is the right scale. June through August for swimming weather; May and September are quiet and cool with the dunes still beautiful; January–March for the snow-on-dune photographs.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Yyteri_Pori_July_2023.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Yyteri_panorama_2017.jpeg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Yyteri_beach_(45572598264).jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Dyyni_Yyterissä.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Yyteri_winter.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Yyteri_sunset.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Yyterin_ranta_01.JPG",
+    ],
+    availability: {
+      suitableMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      notes:
+        "Year-round but in different modes. Mid-June to mid-August is the warm-water swim window with lifeguards on duty; May and September are quiet with cold dips and great walks; October–April brings stormy beach walks, frozen sea, sledding on the dunes, and groomed cross-country ski trails. The spa hotel and Visitor Centre run year-round.",
+    },
+    location: {
+      region: ["Pori", "Satakunta"],
+      address: "Yyterinsantojentie, 28840 Pori (~17 km NW of Pori centre)",
+    },
+    accessFromLauttasaari: {
+      complexity: "complex",
+      duration: "~4.5–5h each way",
+      notes:
+        "Effectively a multi-day trip. Metro Lauttasaari → Helsinki Central (~6 min), VR train Helsinki Central → Pori (~3h 45m, several daily), then Pori local bus 32 → Yyteri (~30 min). Onnibus coaches Helsinki Kamppi → Pori run hourly as an alternative (~3h 30m). Driving via highways 1 and 2 takes ~3h–3h 15m. From Pori centre to Yyteri it's ~17 km, ~30 min by bus or 20 min by car. No same-day return makes sense — book a night at the spa or a cabin.",
+    },
+    cost: {
+      perPersonEur: 30,
+      notes:
+        "Beach access free. Round-trip VR train Helsinki ↔ Pori ~€40–80 advance, more last-minute. Yyteri Spa Hotel rooms ~€140–220/night summer; cottage rentals from ~€80/night. Lunch ~€15–25. Equipment rental for windsurfing/kitesurfing ~€40–80/half-day from on-beach schools.",
+    },
+    booking: {
+      leadTime: "weeks",
+      notes:
+        "Beach itself is walk-up. Spa hotel and cottage clusters book up weeks ahead in July; book 4–6 weeks out for warm-weather weekends. Train tickets cheaper booked a few days ahead. Windsurfing/kitesurfing lessons book 1–2 weeks ahead in summer.",
+    },
+    suitableAgeRange: { min: 0 },
+    childrenNotes:
+      "Among the most child-friendly beaches in Finland — the long shallow shelve, soft sand, dune-climbing, and on-beach lifeguards in season are all built for kids. Bring sunscreen and wind layers (even hot days are breezy). The nature-trail and bird-tower side of the area suits older curious kids (~7+); the central beach is fine from age 0.",
+    indoorOutdoor: "outdoor",
+    physicalIntensity: "low",
+    duration: "multi-day",
+    website: "https://www.visitpori.fi/en/yyteri/yyteri/",
+    tags: ["nature", "beach"],
   },
 ];
