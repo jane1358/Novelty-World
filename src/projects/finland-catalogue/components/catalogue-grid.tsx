@@ -3,7 +3,7 @@
 import { useDeferredValue, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BookOpen, Search, SlidersHorizontal, Star, X } from "lucide-react";
+import { BookOpen, SlidersHorizontal, Star } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { IDEAS } from "../ideas";
 import {
@@ -11,12 +11,14 @@ import {
   applySearch,
   countActive,
   EMPTY_FILTERS,
+  ideaHaystack,
   type Filters,
 } from "../filters";
 import { useFavorites } from "../store";
 import { FilterPanel } from "./filter-panel";
 import { IdeaCard } from "./idea-card";
 import { PageHeader } from "./page-header";
+import { SearchBar } from "./search-bar";
 
 type GridMode = "all" | "favorites";
 
@@ -47,7 +49,8 @@ export function CatalogueGrid({
   );
 
   const visibleIdeas = useMemo(
-    () => applySearch(applyFilters(baseIdeas, filters), deferredQuery),
+    () =>
+      applySearch(applyFilters(baseIdeas, filters), deferredQuery, ideaHaystack),
     [baseIdeas, filters, deferredQuery],
   );
 
@@ -75,7 +78,12 @@ export function CatalogueGrid({
           }
         />
 
-        <SearchBar value={query} onChange={setQuery} />
+        <SearchBar
+          value={query}
+          onChange={setQuery}
+          placeholder="Search ideas"
+          ariaLabel="Search ideas"
+        />
 
         <div className="lg:grid lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-8">
           <aside className="mb-6 lg:mb-0">
@@ -201,48 +209,6 @@ function SwitchTrack({ on }: { on: boolean }) {
         )}
       />
     </span>
-  );
-}
-
-function SearchBar({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div className="relative mb-6 lg:mb-8">
-      <Search
-        size={18}
-        aria-hidden
-        className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-text-muted"
-      />
-      <input
-        type="search"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="Search ideas"
-        aria-label="Search ideas"
-        className={cn(
-          "w-full rounded-full border border-border-default bg-surface-secondary",
-          "py-3 pl-11 pr-11 text-sm text-text-primary placeholder:text-text-muted",
-          "transition-colors hover:border-border-hover",
-          "focus:border-brand-pink focus:outline-none focus:ring-2 focus:ring-brand-pink/40",
-          "[&::-webkit-search-cancel-button]:appearance-none",
-        )}
-      />
-      {value && (
-        <button
-          type="button"
-          onClick={() => onChange("")}
-          aria-label="Clear search"
-          className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-surface-elevated hover:text-text-primary"
-        >
-          <X size={16} />
-        </button>
-      )}
-    </div>
   );
 }
 

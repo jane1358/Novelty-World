@@ -1,5 +1,5 @@
 import { IDEAS } from "./ideas";
-import type { Idea } from "./types";
+import type { Idea, Topic } from "./types";
 
 export type CostBucket = "free" | "under-30" | "under-100" | "over-100";
 export type AccessComplexity = Idea["accessFromLauttasaari"]["complexity"];
@@ -93,25 +93,45 @@ export function applyFilters(ideas: Idea[], filters: Filters): Idea[] {
   });
 }
 
-/** Free-text search across the fields a planner would scan: title, the
- *  card hook, the detail prose, tags, and regions. Whitespace-tokenised so
+/** Free-text search over arbitrary catalogue items. The caller provides a
+ *  haystack-builder so the same token-matching logic can search Ideas
+ *  (title + descriptions + tags + regions) and Topics (title + descriptions
+ *  + aliases) without duplicating the matcher. Whitespace-tokenised so
  *  "punavuori cafe" matches an idea whose title contains "cafe" and whose
  *  region contains "Punavuori". */
-export function applySearch(ideas: Idea[], query: string): Idea[] {
+export function applySearch<T>(
+  items: readonly T[],
+  query: string,
+  getHaystack: (item: T) => readonly string[],
+): T[] {
   const tokens = query.toLowerCase().split(/\s+/).filter(Boolean);
-  if (tokens.length === 0) return ideas;
-  return ideas.filter((idea) => {
-    const haystack = [
-      idea.title,
-      idea.shortDescription,
-      ...idea.longDescription,
-      ...idea.tags,
-      ...idea.location.region,
-    ]
-      .join(" ")
-      .toLowerCase();
+  if (tokens.length === 0) return [...items];
+  return items.filter((item) => {
+    const haystack = getHaystack(item).join(" ").toLowerCase();
     return tokens.every((t) => haystack.includes(t));
   });
+}
+
+/** Haystack for Idea search — title, card hook, detail prose, tags, regions. */
+export function ideaHaystack(idea: Idea): string[] {
+  return [
+    idea.title,
+    idea.shortDescription,
+    ...idea.longDescription,
+    ...idea.tags,
+    ...idea.location.region,
+  ];
+}
+
+/** Haystack for Topic search — title, card hook, detail prose, and the
+ *  aliases that double as natural-language synonyms a user might type. */
+export function topicHaystack(topic: Topic): string[] {
+  return [
+    topic.title,
+    topic.shortDescription,
+    ...topic.longDescription,
+    ...topic.aliases,
+  ];
 }
 
 export function countActive(filters: Filters): number {
