@@ -562,7 +562,7 @@ export const IDEAS: Idea[] = [
     physicalIntensity: "moderate",
     duration: "half-day",
     website: "https://www.suomenlinna.fi/en/",
-    tags: ["museum", "landmark", "historical", "nautical", "nature"],
+    tags: ["museum", "landmark", "historical", "nautical", "nature", "island"],
   },
   {
     slug: "hame-castle",
@@ -906,7 +906,7 @@ export const IDEAS: Idea[] = [
     physicalIntensity: "low",
     duration: "<1h",
     website: "https://www.raflaamo.fi/en/restaurant/helsinki/sparakoff",
-    tags: [],
+    tags: ["train"],
   },
   {
     slug: "porvoo",
@@ -1408,7 +1408,7 @@ export const IDEAS: Idea[] = [
     physicalIntensity: "low",
     duration: "half-day",
     website: "https://www.myhelsinki.fi/places/lauttasaari-beach-kasinonranta/",
-    tags: ["nature", "beach"],
+    tags: ["nature", "beach", "island"],
   },
   {
     slug: "allas-pool",
@@ -1818,7 +1818,7 @@ export const IDEAS: Idea[] = [
     duration: "half-day",
     website:
       "https://www.hel.fi/en/culture-and-leisure/outdoor-activities-parks-and-nature-destinations/hiking/routes-and-nature-trails",
-    tags: ["nature"],
+    tags: ["nature", "island"],
   },
   {
     slug: "linnanmaki",
@@ -3498,7 +3498,7 @@ export const IDEAS: Idea[] = [
     physicalIntensity: "low",
     duration: "multi-day",
     website: "https://visitaland.com/en/",
-    tags: ["nautical", "historical", "nature"],
+    tags: ["nautical", "historical", "nature", "island"],
   },
   {
     slug: "berry-mushroom-foraging",
@@ -3619,7 +3619,7 @@ export const IDEAS: Idea[] = [
     physicalIntensity: "moderate",
     duration: "half-day",
     website: "https://korkeasaari.fi/en/",
-    tags: ["nature", "landmark"],
+    tags: ["nature", "landmark", "island"],
   },
   {
     slug: "ravintola-plats",
@@ -4194,7 +4194,7 @@ export const IDEAS: Idea[] = [
     duration: "1-3h",
     website:
       "https://www.hel.fi/en/culture-and-leisure/outdoor-activities-parks-and-nature-destinations/public-beaches/helsinkis-public-beaches/veijarivuori-beach",
-    tags: ["nature", "beach"],
+    tags: ["nature", "beach", "island"],
   },
   {
     slug: "pihlajasaaren-uimaranta",
@@ -4248,7 +4248,7 @@ export const IDEAS: Idea[] = [
     physicalIntensity: "low",
     duration: "half-day",
     website: "https://www.jt-line.fi/eng/pihlajasaari/",
-    tags: ["nature", "beach", "nautical"],
+    tags: ["nature", "beach", "nautical", "island"],
   },
   {
     slug: "bellevuen-uimaranta",
@@ -4356,5 +4356,343 @@ export const IDEAS: Idea[] = [
     duration: "multi-day",
     website: "https://www.visitpori.fi/en/yyteri/yyteri/",
     tags: ["nature", "beach"],
+  },
+  {
+    slug: "restaurant-pihlajasaari",
+    title: "Restaurant Pihlajasaari",
+    shortDescription:
+      "An 1883 wooden Neo-Renaissance villa restaurant on Helsinki's most popular summer island, ten minutes by JT-Line ferry from Merisatama or Ruoholahti — salmon soup, herring patties, and a seaside terrace that's the whole point.",
+    longDescription: [
+      "Restaurant Pihlajasaari occupies an 1883 wooden Neo-Renaissance villa on the western half of Pihlajasaari (\"Rowanberry Island\"), the former private villa archipelago that Helsinki turned over to public recreation a century ago and that now ranks as the most popular summer island in the city. The restaurant sits a 300-metre sandy walk from the western pier, its terrace facing south over the open sea — the kind of scrubbed-pine, big-windowed, slightly time-warped seaside dining room that Helsinki has a small handful of and visitors quickly run out of in any one summer. The food is unfussy: salmon soup, fried herring patties, salads, soups, fish, chicken, schnitzel, vegetarian mains, a proper kids' menu. Mains land around €15–20. The food is the supporting cast, not the headliner — the headliner is the terrace and the ten-minute ferry that drops you on a rocky-and-sand-fringed island in the middle of the Gulf of Finland.",
+      "The visit is the day, not the meal. JT-Line ferries leave Merisatamanranta (behind Café Carusel in Eira) and Hernesaari/Ruoholahti every 30–60 minutes through the summer season; the crossing takes about ten minutes and lands at the western pier, a few hundred metres from the restaurant. The island has Pihlajasaaren uimaranta on the west side, a 2–3 km marked nature trail through pine and rowan woodland, two rentable saunas, cooking shelters, a kiosk, fire pits, picnic tables, a small boat harbour for day-trippers, and — across a footbridge to Itäinen (Eastern) Pihlajasaari — one of Helsinki's two designated naturist beaches. Most people pack a swim suit, a book, and stay 4–6 hours, eating lunch or an early dinner at the restaurant somewhere in the middle of the day and walking the trails or swimming around it. There's tent camping on the eastern island for €15/night if you want to extend the visit overnight in July or August.",
+      "The villa itself is part of the appeal. Built in 1883 as Villa Hallebo for a Helsinki shipping family, it's one of a small surviving cluster of late-19th-century summer villas left from when the Pihlajasaari islands were a fashionable pre-electric-era retreat for Helsinki's wealthier merchants — bourgeois families would rent rowboats from town and set up for the summer in painted wooden houses with verandas, croquet lawns, and saunas down at the rocks. Most of the villas burned, decayed, or were dismantled when the city took the islands public in the 1920s and 1930s; Restaurant Pihlajasaari is the rare one still in active use, restored as a seasonal dining room. The interior is a single big wooden room with the high ceiling and original window proportions intact; the terrace adds 50–80 outdoor seats over the rocks, weather-dependent.",
+      "Practical notes. The 2026 season runs daily from May 16 through August 30, 12:00–20:00 with the kitchen closing at 19:00; weekend-only previews on May 9–10. The restaurant does not take reservations — turn up, queue, get a table. Ferry round-trip is €9.80 adult / €6.80 child or senior, payable online at the JT-Line shop or onboard. Weather affects everything: a cold rainy day collapses the terrace appeal entirely and the ferry can be reduced or cancelled in heavy weather, so check the forecast before committing. Bring cash or card for the kiosk; the island has potable water, free toilets, and a couple of rental sauna slots that book through Helsinki's Varaamo system. The whole expedition prices out around €25–35 per person (ferry + a main and a drink at the restaurant).",
+    ],
+    thumbnailUrl:
+      "https://www.pihlajasaari.net/wp-content/uploads/2019/05/Pihlajsaari_Ravintola_1.jpg",
+    galleryUrls: [
+      "https://www.pihlajasaari.net/wp-content/uploads/2019/05/Pihlajsaari_Terassi_1.jpg",
+      "https://www.pihlajasaari.net/wp-content/uploads/2019/05/Pihlajsaari_Terassi_2.jpg",
+      "https://www.pihlajasaari.net/wp-content/uploads/2019/05/Pihlajsaari_Ravintola_2.jpg",
+      "https://www.pihlajasaari.net/wp-content/uploads/2019/05/Pihlajsaari_Ravintola_3.jpg",
+      "https://www.pihlajasaari.net/wp-content/uploads/2019/05/Pihlajsaari_Ravintola_5.jpg",
+      "https://www.pihlajasaari.net/wp-content/uploads/2019/05/Pihlajsaari_Ranta_1.jpg",
+      "https://www.pihlajasaari.net/wp-content/uploads/2019/05/Pihlajsaari_Ranta_2.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Pihlajasaari_VillaHallebo.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Pihlajasaari_2016.jpg",
+    ],
+    availability: {
+      suitableMonths: [5, 6, 7, 8],
+      weeklySchedule:
+        "Daily 12:00–20:00 (kitchen until 19:00) from May 16 through August 30, 2026. Weekend-only previews May 9–10.",
+      notes:
+        "Strictly summer-season — closed September through early May. Peak weeks (mid-June through early August) fill the terrace fast on warm afternoons; the May/late-August shoulder is quieter and just as pleasant. Bad weather thins the appeal sharply (the terrace is the draw) and can affect ferry sailings; check the JT-Line live status before crossing on a borderline day.",
+    },
+    location: {
+      region: ["Helsinki", "Uusimaa"],
+      address: "Läntinen Pihlajasaari, 00150 Helsinki",
+    },
+    accessFromLauttasaari: {
+      complexity: "moderate",
+      duration: "~30–45 min",
+      notes:
+        "Two sensible routes from Lauttasaari, both about 30–45 minutes door to door. (1) Bus 21 or metro one stop to Ruoholahti, walk to the JT-Line dock at Hernesaari/Ruoholahti, ferry ~10 min to Pihlajasaari western pier, walk 5 min to the restaurant. (2) Metro to Helsinki Central, tram 3 to Kaivopuisto, walk to Merisatamanranta (behind Café Carusel), ferry ~10 min. JT-Line ferries run every 30–60 min through summer; tickets €9.80 round-trip adult, €6.80 child/senior, buyable online or onboard.",
+    },
+    cost: {
+      perPersonEur: 30,
+      notes:
+        "Ferry round-trip €9.80 adult / €6.80 child or senior. Restaurant mains roughly €15–20, salmon soup ~€15, drinks extra. A typical full day with ferry and one meal is €25–35 per adult. Sauna rental ~€60/2h shared between a small group. Tent camping €15/night on Eastern Pihlajasaari.",
+    },
+    booking: {
+      leadTime: "same-day",
+      notes:
+        "Restaurant does not take reservations — walk-in only, expect to queue 10–30 min on a sunny weekend afternoon. Ferry tickets buyable online or onboard at sailing time. Sauna slots and meeting villas reserve through Helsinki's Varaamo system 1–4 weeks ahead.",
+    },
+    suitableAgeRange: { min: 0 },
+    childrenNotes:
+      "Stroller-friendly with caveats — the 300-metre walk from pier to restaurant is sand-and-gravel path and the island trails range from paved to forest single-track, so a sturdy off-road stroller or a carrier is ideal. Kids' menu (€8–10) at the restaurant. The sandy Pihlajasaaren uimaranta near the western pier is shallow, well-sheltered, and the obvious meet-up spot for families. Note the naturist beach is on the eastern island — clearly signposted and easy to avoid.",
+    indoorOutdoor: "mixed",
+    physicalIntensity: "low",
+    duration: "half-day",
+    website: "https://www.pihlajasaari.net/restaurant/",
+    tags: ["food", "nature", "island"],
+  },
+  {
+    slug: "kaunissaari-sipoo",
+    title: "Kaunissaari (Sipoo) & Kaunissaaren Ravintola",
+    shortDescription:
+      "Helsinki's easternmost recreation island — 22 km out into the Sipoo archipelago, a 50-minute ferry from Vuosaari, with rocky and sandy beaches, a 4 km nature trail, eider ducks and seals, rentable cottages and saunas, and an archipelago restaurant 200 m from the dock.",
+    longDescription: [
+      "Kaunissaari (\"Beautiful Island\") sits 22 km east of Helsinki in the outer Sipoo archipelago — the easternmost of the city's official outdoor-recreation islands and the one that genuinely feels like the open sea rather than a harbour-day-trip. The 50–60 minute ferry from Vuosaari's Hiekkalaituri pier crosses past the Vuosaari container port, threads through the inner archipelago of Sipoo's wooded skerries, and lands at a small wooden quay on Kaunissaari's south shore. The island itself is roughly 1.5 km long and a kilometre wide — open shores and rocky beaches on the south side facing the sea, magnificent stretches of sandy beach on the south-southeast, dense spruce forest in the interior, and gentler lee-side coves on the north. A 4 km nature trail with numbered interpretation poles loops the island, talking you through the historical fishing village, smuggling tales, and Civil War memory that mark the older parts of the wood. Wildlife you can plausibly meet: eider ducks (everywhere along the rocks in spring), otters, ringed seals on the outer skerries, and on rare occasions a moose that has swum across from the mainland.",
+      "Kaunissaaren Ravintola (the island restaurant) is 200 m up the path from the dock, in a red wooden building with a sea-facing terrace. The kitchen serves an archipelago menu — fried herring, grilled salmon, soups, lighter weekday lunches, kids' portions — plus a porridge-and-juice breakfast (€5.50) for early arrivals. Twice a week through July and August it runs public sauna evenings, the wood-heated lakeside-style sauna available without a cottage booking; the rest of the week it's reservable for groups. A ship-borne kauppa (shop boat) calls in midweek through summer, mooring at the dock with bread, sausages, ice cream, and the basics. Beyond the restaurant the island has six cooking shelters (firewood provided), seven toilets, four beach showers, an unguarded sandy public beach with changing facilities, and rules-marked camping zones. Seven cottages and three glamping-style \"wooden tents\" are rentable through Helsinki's Varaamo booking system from March or April for the summer ahead.",
+      "What this is, in trip-planning terms: a full-day expedition or a one- or two-night getaway, not a quick lunch. The ferry alone is two hours round-trip, and the island rewards lingering — an early-afternoon swim, a slow walk of the nature trail, a meal on the restaurant terrace as the sun moves west, and the evening boat back. If you can get a sauna slot or stay overnight, the island gets noticeably better after the daytime ferry crowd leaves; Kaunissaari at 21:00 in mid-July, with the swallows working the cove and almost everyone gone, is one of those Helsinki experiences that tells you why Finns spend so much of summer trying to get out to small islands. The island is part of the protected Sipoonkorpi National Park-adjacent recreation network managed by Uudenmaan virkistysalueyhdistys (UUVI), so the rules are real: dogs leashed, fires only in designated shelters, camping only in marked areas, quiet hours 23:00–07:00.",
+      "Practical notes. Ferry season runs May 2 through September 13, 2026 (FRS Finland operates it). Off-peak (May, early September) the boat runs Friday–Sunday; peak season (June 1 – September 6) Tuesday–Sunday with up to four daily departures. Adult round-trip is €24.99; €12.50 retired/student, €6.20 child 7–17, under-7 free. Departures from Vuosaari Hiekkalaituri 1; check the FRS Finland live timetable, especially in May and September when sailings are weather-dependent and reduced. Bring layers, a packed lunch in case you miss the kitchen window, swimwear, and cash as backup — card service at the restaurant is reliable in summer but not infallible at the outer-archipelago end of the network.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/People_at_the_beach_in_Kaunissaari,_Sipoo,_Finland,_2021_July.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Kaunissaari_Sipoo_Shore.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Kaunissaari_Sipoo_Port.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Marina_in_Kaunissaari,_Sipoo,_Finland,_2021.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Red_building_in_Kaunissaari,_Sipoo,_Finland,_2021.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Trail_in_Kaunissaari,_Sipoo,_Finland,_2021.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Camping_on_a_rock_in_Kaunissaari,_Sipoo,_Finland,_2021.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Rocky_shore_of_Kaunissaari_Island_in_front_of_Helsinki.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Kaunissaari_Sipoo_tents.jpg",
+    ],
+    availability: {
+      suitableMonths: [5, 6, 7, 8, 9],
+      weeklySchedule:
+        "Ferry season May 2 – Sep 13, 2026. May & early Sep: Fri–Sun only. Jun 1 – Sep 6 peak season: Tue–Sun, multiple daily sailings. Restaurant follows ferry season.",
+      notes:
+        "Strictly summer-season. Peak July–early August has the most reliable ferry frequency, the warmest swimming, and the best weather odds, but also the busiest restaurant and the booked-out cottages. Late May and early September are the quietest and arguably nicest if you don't need swim-warm water — the bird life is excellent in May, autumn light is exceptional in September. Off-peak (May / late Sep) ferry is Fri–Sun only, so check the FRS Finland timetable before committing to a midweek visit.",
+    },
+    location: {
+      region: ["Sipoo", "Uusimaa"],
+      address: "Kaunissaari, 01180 Sipoo (ferry dep. Vuosaari Hiekkalaituri 1, 00980 Helsinki)",
+    },
+    accessFromLauttasaari: {
+      complexity: "moderate",
+      duration: "~2h each way",
+      notes:
+        "Two transfers and a long ferry — plan the full day. Metro M2 from Lauttasaari east to the end of the line at Vuosaari (~25 min), then HSL bus 90 or a ~2 km walk through Aurinkolahti to the Hiekkalaituri pier (Hiekkalaituri 1) — total mainland leg ~45–60 min. From Hiekkalaituri the FRS Finland ferry crosses to Kaunissaari in 50–60 min. Round-trip ferry is €24.99 adult; check the live timetable before going (sailings vary by day of the week and by season).",
+    },
+    cost: {
+      perPersonEur: 45,
+      notes:
+        "Ferry round-trip €24.99 adult, €12.50 retired/student, €6.20 child 7–17, under-7 free. A 10-trip card pays for the 11th journey free if you go often. Restaurant mains roughly €18–25, lunch lighter. Cottage rental through Varaamo €60–150/night depending on size and season. Public sauna evenings around €15–20 per person. A typical day-trip prices out around €40–55 per adult with one restaurant meal.",
+    },
+    booking: {
+      leadTime: "weeks",
+      notes:
+        "Day-trip ferry tickets sometimes available same-day in shoulder season but should be booked online a few days ahead in peak July–August. Cottage and wooden-tent rentals on Varaamo open March/April for the upcoming summer and the prime midsummer weekends sell out within days — book 2–3 months ahead for July weekends. Restaurant takes informal reservations by phone for groups; walk-in fine for two.",
+    },
+    suitableAgeRange: { min: 5 },
+    childrenNotes:
+      "Older children (5+) handle the day well — the long ferry, the trails, the swimming, the campfire shelters. Under-fives may struggle with the two-hour ferry round-trip and the walking distances on the island. Stroller-unfriendly — most of the island is forest path, rock, and sand; bring a carrier. The sandy public beach is shallow and family-suitable on the south side; rocky shores require closer supervision. No high chairs at the restaurant but kids' portions available.",
+    indoorOutdoor: "outdoor",
+    physicalIntensity: "moderate",
+    duration: "full-day",
+    website: "https://www.kaunissaarenravintola.fi/",
+    tags: ["nature", "food", "sauna", "nautical", "island"],
+  },
+  {
+    slug: "skiffer-liuskaluoto",
+    title: "Skiffer Liuskaluoto",
+    shortDescription:
+      "Pizza on a tiny island a one-minute ferry off Kaivopuisto — long flat \"liuska\" pizzas (named for the island's shape, not Italy's) on a sea-rock terrace at the HSS sailing club's outer pontoon, May through September.",
+    longDescription: [
+      "Skiffer Liuskaluoto is the Helsinki summer-pizza experience that other Helsinki summer-pizza experiences are measured against. The setup is the joke: a one-minute open ferry from the HSS quay at Merisatamanranta drops you on Liuskaluoto, a 0.4-hectare granite skerry just off the south shore of Kaivopuisto, where Skiffer has built a small wooden pavilion, a long terrace over the rocks, and a wood-fired pizza oven. The pizzas are not round. They're long, flat, oval-rectangular slates the menu calls liuskas after the island they're on (liuska in Finnish means \"flag\" or \"slate,\" the same root that gave the island its name) — a deliberate visual gag that has become part of the brand. The toppings are the un-Italian part: Soignon goat cheese with strawberries and balsamic, surf-and-turf with chorizo and shrimps, classic margherita-and-mozzarella combinations, vegetarian options, and a rotating list that changes seasonally. Pizzas land around €15–17, salads around €13–15, drinks à la carte. Beer, wine, cider, soft drinks, the usual.",
+      "The terrace is the entire pitch. From the seating you look straight south across the open Gulf of Finland, with the bigger neighbour Liuskasaari (HSS's main island, with its 1899 pavilion clubhouse) immediately to the west. On a warm August evening with the sun setting behind the spires of central Helsinki, with sailboats motoring out past the pontoon and the swallows working the bugs above the rocks, this is one of the most Finnish-summer scenes Helsinki sells without asking you to leave the city limits. On a grey day, by contrast, the terrace empties out and the small indoor section turns into the cosy version — wooden benches, a few tables, and the smell of the oven doing the work. Skiffer's two other Helsinki branches (Viiskulma and Hanko) are open year-round; the Liuskaluoto outpost is the seasonal one and the only one with the ferry experience baked in.",
+      "Liuskaluoto and the larger Liuskasaari have been Helsingfors Segelsällskap (HSS) territory since the early 1900s — HSS is one of Finland's oldest sailing clubs, founded in the 1860s, and used the islands' marina as its home port through the 20th century, hosting the 1952 Olympic sailing events and continuing as one of the city's main yacht clubs today. About 50,000 people a year ride the small open ferry across; most of them are headed to the HSS clubhouse restaurant on Liuskasaari or to Skiffer on Liuskaluoto. The island has minimal infrastructure beyond the marina pontoon, the pizza pavilion, and the terrace — a few rocks for sunbathing, a small skinny-dippable swim spot off the seaward side, and the bobbing service moorings of the HSS guest harbour.",
+      "Practical notes. The 2026 season opens May 1 (Vappu) and runs through September. Hours: closed Mon–Tue, Wed–Fri 15:00–20:00, Sat–Sun 12:00–20:00 (Vappu and a few other holidays open longer). The HSS ferry runs roughly every 10–15 minutes from the small landing at Merisatamanranta — halfway between Café Carusel and Kompassitori, look for the signed pontoon — and costs €6 round-trip. No reservations at Skiffer; turn up, queue (sometimes half an hour on a 25 °C July Saturday), order at the counter, sit on the rocks. Weather changes the experience completely: in steady rain the ferry may pause, the terrace shuts, and the indoor seating fills fast — check Skiffer's Instagram or Facebook before crossing on a borderline day. From Lauttasaari, plan ~25–35 minutes door to terrace via metro to Helsinki Central + tram 3 to Kaivopuisto + short walk to the HSS quay.",
+    ],
+    thumbnailUrl:
+      "https://images.squarespace-cdn.com/content/v1/65c6784305bb88277acee42b/47a51a97-66be-424c-a898-ff1ccfe29cb4/liuskaluoto.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Liuskasaari.JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/HSS_klubblokal.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/HSS_marina.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Sirpalesaari_ja_Liuskasaari_talvella.JPG",
+    ],
+    availability: {
+      suitableMonths: [5, 6, 7, 8, 9],
+      weeklySchedule:
+        "Closed Mon–Tue. Wed–Fri 15:00–20:00, Sat–Sun 12:00–20:00 (Vappu May 1 12:00–21:00). Season opens May 1, runs into September.",
+      notes:
+        "Strict summer-only — the rest of Skiffer's Helsinki locations (Viiskulma and Hanko) cover the off-season. Vappu (May 1) and Juhannus (mid-June) are the biggest days; July weekends fill the terrace fast. Bad weather can pause the ferry and shut the terrace; check Skiffer's social media before crossing on a borderline day.",
+    },
+    location: {
+      region: ["Helsinki", "Uusimaa"],
+      address: "Liuskaluoto, 00140 Helsinki (ferry from Merisatamanranta)",
+    },
+    accessFromLauttasaari: {
+      complexity: "moderate",
+      duration: "~25–35 min",
+      notes:
+        "Metro from Lauttasaari to Helsinki Central (~6 min), then tram 3 toward Kaivopuisto, get off at Kaivopuisto stop and walk ~5 min south to Merisatamanranta — the HSS pontoon is halfway between Café Carusel and Kompassitori, signposted. The small open ferry runs every 10–15 min and crosses to Liuskaluoto in about a minute (€6 round-trip). Alternative: bus 24 from central Helsinki gets you closer to Merisatama if the tram is awkward.",
+    },
+    cost: {
+      perPersonEur: 30,
+      notes:
+        "Ferry round-trip €6. Pizzas (\"liuskas\") €15–17, salads €13–15, drinks extra. A typical lunch with a pizza, a beer, and the ferry is around €28–35 per person.",
+    },
+    booking: {
+      leadTime: "same-day",
+      notes:
+        "No reservations. Walk in, queue at the counter, find a seat. On a sunny weekend July afternoon the queue can be 20–40 minutes; weekday evenings are much calmer. Cards accepted; a small cash backup is wise.",
+    },
+    childrenNotes:
+      "Manageable with kids but the granite-rock terrace is not stroller-friendly — bring a carrier for under-twos. Older children (5+) usually love the ferry trip and the novelty of eating on a rocky islet, but there's no fenced play area and the rocks at the edge slope into the sea, so younger kids need close supervision. No dedicated kids' menu, though a half pizza splits well; high chairs are scarce.",
+    indoorOutdoor: "mixed",
+    physicalIntensity: "low",
+    duration: "1-3h",
+    website: "https://skiffer.fi/",
+    tags: ["food", "island", "nautical"],
+  },
+  {
+    slug: "ravintola-pyysaari",
+    title: "Ravintola Pyysaari",
+    shortDescription:
+      "The Helsinki Workers' Sailing Club's tiny wooden island restaurant — opened to feed the 1952 Olympic sailing competitors, run continuously every summer since, with a freshly renovated sea-facing terrace and a wood-heated dockyard sauna you can rent with dinner.",
+    longDescription: [
+      "Ravintola Pyysaari is the seasonal restaurant of Helsingin Työväen Pursiseura (HTPS — the Helsinki Workers' Sailing Club, founded 1925), occupying a small wooden clubhouse on Pyysaari, a tiny island wedged in the strait between Laajasalo and Kulosaari in eastern Helsinki. The restaurant opened in summer 1952 to feed the international sailors competing in the Helsinki Olympics — Pyysaari sat right by one of the sailing courses — and has run every summer since without a break, making it one of the longest-continuously-operating restaurants in the city. The food is unfussy and old-school in the best way: herring, shrimp, chicken, and chapel toasts (€15–19), classic Finnish mains like Salisbury steak, schnitzel (\"pork schnitzel, house style\"), Jägerschnitzel, and \"sail pan\" beef (€23–29), feta and salmon salads (€17–21), kids' sausages and schnitzel (€9–14). Mains land in the €20s; the menu hasn't been reinvented and isn't trying to be. The pleasure is the small wooden room, the recently renovated terrace facing the sea-strait, the sailing-club energy at the bar, and the clubhouse-meets-public-restaurant atmosphere that you don't quite find anywhere else in central Helsinki.",
+      "The terrace is the headliner. It looks straight north up the Kruunuvuorenselkä strait toward the new Crown Bridges (under construction toward 2027), with the wooded shores of Tervasaari and Kulosaari opposite and a steady traffic of sailing dinghies, RIB tenders, and the occasional 30-foot cruiser threading the channel. It's a working sailing-club outlook, not a polished waterfront — guests trail in off boats in deck shoes, the club's own racing fleet is moored out front, and there's an HSL-bus crowd from the mainland mixed in with the regulars. Reservations are encouraged (phone or email, the day before) but not compulsory — walk-in works on quieter weekday evenings and any weekday lunch.",
+      "The other thing Pyysaari does well is the sauna package. The wood-heated dockyard sauna — a small, traditional sauna with windows out onto the strait — is rentable in two-hour slots for groups of 10–20 in tandem with a table reservation, the kind of thing local kerho (work-club) groups and birthday gatherings use it for. The combination of dinner on the terrace, sauna at the dock, and a swim or a dip off the rocks afterwards is one of those Helsinki experiences that sums up why summer here works. Smaller bookings won't get the sauna, but the rest of the club is open to all.",
+      "Practical notes. Open to the public throughout the sailing season — early May through the end of September. Address Henrik Borgströmin polku 3, 00590 Helsinki. From Lauttasaari, the route is metro to central Helsinki then bus 88 from Hakaniemi or Rautatientori toward Laajasalo, getting off at Kaitalahti stop (4154) and walking ~1 km along the Tullisaari park trail to the Pyysaari footbridge — total about 50–60 minutes door to door. Bus 84 from Lauri Mikonpojan tien (4095) is a 1.4 km walk and slightly less convenient. By private boat, there's a guest pier on the north side of the island. Reservations: ravintola@htps.fi, the day before is the recommended horizon. Sauna bookings should be coordinated together with the table reservation and a few weeks of lead time helps in July.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Pyysaari.jpg",
+    galleryUrls: [
+      "https://wp.helsingintyovaenpursiseura.fi/wp-content/uploads/2019/04/cropped-Pyysaari-1937-003.jpg",
+      "https://usercontent.one/wp/htps.fi/wp-content/uploads/2019/02/Rav.toimikuntaa.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Killingholman_silta_-_panoramio.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Killingholmansalmi_strait_in_Helsinki,_Finland,_2021_August.jpg",
+    ],
+    availability: {
+      suitableMonths: [5, 6, 7, 8, 9],
+      weeklySchedule:
+        "Open through the sailing season (early May – end of September). Hours vary by month — see the Palma de Pyy Facebook page for the current week's schedule.",
+      notes:
+        "Strict summer-season — closed October through April. The terrace is at its best on warm evenings June through August; September turns it into a quieter shoulder-season experience with the sailing fleet still in the water but smaller crowds. Watch the Palma de Pyy Facebook page for current opening hours, which shift week to week with weather and the club's race schedule.",
+    },
+    location: {
+      region: ["Helsinki", "Laajasalo", "Uusimaa"],
+      address: "Henrik Borgströmin polku 3, 00590 Helsinki",
+    },
+    accessFromLauttasaari: {
+      complexity: "moderate",
+      duration: "~50–60 min",
+      notes:
+        "Metro from Lauttasaari to Hakaniemi or Rautatientori (~10 min), then HSL bus 88 toward Laajasalo to the Kaitalahti stop (~25 min). From Kaitalahti, walk ~1 km along the Tullisaari park trail to the small footbridge that connects to Pyysaari. Bus 84 from Lauri Mikonpojan tien stop is the alternate route (~1.4 km walk). Private boat: guest pier on the north side of the island, in the strait between Laajasalo and Kulosaari.",
+    },
+    cost: {
+      perPersonEur: 35,
+      notes:
+        "Toasts/starters €15–19, salads €17–21, mains €23–29 (a few up to €31). Kids' menu €9–14. Beer on draught €9, bottled €7.60–10.80, wines €15–62. A typical full meal with a drink lands €35–50 per adult. Sauna rental for a group is a separate add-on (~€200–300 for a 2-hour slot for 10–20 people, split among the group).",
+    },
+    booking: {
+      leadTime: "few-days",
+      notes:
+        "Email ravintola@htps.fi the day before is the standard cadence — walk-in works mid-week and at lunch, but weekend dinners during peak July benefit from a reservation. Sauna bookings should be combined with the table reservation; book 2–3 weeks ahead in summer.",
+    },
+    indoorOutdoor: "mixed",
+    physicalIntensity: "low",
+    duration: "1-3h",
+    website: "https://htps.fi/en/restaurant-pyysaari/",
+    tags: ["food", "island", "historical", "nautical"],
+  },
+  {
+    slug: "helsinki-tram-museum",
+    title: "Helsinki Tram Museum (Ratikkamuseo)",
+    shortDescription:
+      "A free museum tucked inside Helsinki's oldest tram depot — six vintage tram cars from a horse-drawn 1890s wagon to a 1941 motorman's car you can climb into and \"drive\" through four eras of city history.",
+    longDescription: [
+      "The Helsinki Tram Museum (Ratikkamuseo) sits inside the city's oldest surviving tram depot, a Valdemar Aspelin–designed building completed in 1900 on Töölönkatu in Töölö. Before electrification the site held the horse stables, wagon shed, and saddle workshop for the horse-drawn tram service; once the network electrified that same year the building was rebuilt as a working depot, and trams rolled in and out of those wide doors for nearly a century. The museum has been here since 1993 and the visitor experience was completely redone for a March 2022 reopening — the depot bones are untouched but everything around them is current.",
+      "Inside, six historic tram cars line up under iron roof beams. The oldest is a horse-drawn car from the 1890s; the rarest is a German Kummer motorised car built in 1900–1901, from the very first generation of electric trams to run in Helsinki. There's an open-back summer car last used at the 1952 Helsinki Olympics, an American J.G. Brill, a Swedish ASEA, and an HKL workhorse from the post-war decades. The story is told from a passenger's-eye view — fares, route maps, conductors' uniforms, the slang the trams generated (the word \"spåra\" being the most enduring) — rather than as an engineering catalogue.",
+      "The crowd-pleaser is the Sisulaattori, a driver's-cab simulator built inside a real motorised tram that worked Helsinki streets from 1941 to 1979. You take the controls and \"drive\" the same route through four historical eras — wartime blackout, 1950s post-war boom, late-Soviet 1970s, present day — with screens replacing the windows so the streetscape changes around you. Kids tend to do every era twice. The rest of the museum is interactive in a lighter way: walk-on platforms inside the older cars, archive photo touchscreens, hands-on bits for younger visitors.",
+      "Practicalities: free entry, open Mon–Sun 11:00–17:00 year-round (closed May 1, Dec 6, Dec 24–25, and Jan 1). Allow 60–90 minutes; with kids and a couple of laps in the simulator, two hours. The depot is part of the Korjaamo Culture Factory complex (\"korjaamo\" means \"repair shop\" — a nod to the building's working past), so there's a café, bookshop, and changing programme of theatre and music in the same yard if you want to linger. Run by Helsinki City Museum, so the curation matches the standard you'd expect from a city institution rather than a fan-run hobby site.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Ratikkamuseo_2025-9-Marit_Henriksson.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Helsinki_tram_museum_interior.JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Helsinki_tram_museum_Horse_tram.JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/J.G.Brill_%26_Co_tram_in_Helsinki.JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Asea_tram_19_in_Helsinki.JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Ratikkamuseo_-_HKL_169_01.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Sp%C3%A5ramuseet,_Helsinki,_20250201_-_05.jpg",
+    ],
+    availability: {
+      suitableMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      weeklySchedule: "Mon–Sun 11:00–17:00",
+      notes:
+        "Closed May 1 (Vappu), Dec 6 (Independence Day), Dec 24–25, and Jan 1.",
+    },
+    location: {
+      region: ["Helsinki", "Töölö", "Uusimaa"],
+      address: "Töölönkatu 51 A, 00250 Helsinki",
+    },
+    accessFromLauttasaari: {
+      complexity: "moderate",
+      duration: "~25 min",
+      notes:
+        "M1/M2 metro from Lauttasaari to Helsinki Central (~6 min), then tram 4 or 10 northbound on Mannerheimintie to Töölön halli (~5 min) and a 3-min walk west to Töölönkatu. Bus 21 from Lauttasaari into central Helsinki also passes within ~10 min walk if you'd rather skip the metro/tram transfer.",
+    },
+    cost: {
+      perPersonEur: 0,
+      notes:
+        "Free entry. Korjaamo café on-site if you want a coffee or lunch (~€8–15).",
+    },
+    booking: {
+      leadTime: "same-day",
+      notes:
+        "Walk-in only. Guided tours are bookable separately via the Helsinki City Museum site.",
+    },
+    suitableAgeRange: { min: 2 },
+    childrenNotes:
+      "Strong kid appeal — the Sisulaattori simulator is the headline, and several of the trams are walk-on. Step-free access throughout, stroller-friendly, accessible toilet. No high chairs in the museum itself but the Korjaamo café in the same building has them.",
+    indoorOutdoor: "indoor",
+    physicalIntensity: "low",
+    duration: "1-3h",
+    website: "https://trammuseum.fi/",
+    tags: ["museum", "historical", "train"],
+  },
+  {
+    slug: "finnish-railway-museum",
+    title: "Finnish Railway Museum (Suomen Rautatiemuseo)",
+    shortDescription:
+      "Finland's national railway museum on the working depot of the 1873 Hyvinkää–Hanko line — 25 locomotives in a working roundhouse, the only surviving Russian Imperial saloon cars in the world, and a 7¼-inch gauge miniature steam railway you can ride.",
+    longDescription: [
+      "The Finnish Railway Museum sits on the original station yard of the Hyvinkää–Hanko railway, Finland's first private rail line, opened in 1873. The wooden station building from that year still stands; the engine roundhouse, water tower, and various depot outbuildings around it are all real working infrastructure rather than reconstructions, which gives the place a different feel from a museum that imported its rolling stock onto a sterile site. The institution itself dates to 1898, founded in Helsinki, and moved out to Hyvinkää in 1974 when it took the depot over wholesale. It's now Finland's national-responsibility museum for railway heritage.",
+      "About 25 locomotives are on display — steam, diesel, petrol, narrow-gauge — spread between the roundhouse and the outdoor tracks. The headline pieces are the oldest: Class B1 No. 9 (\"Ram\"), built in 1868 and the oldest preserved locomotive in Finland; Class C1 No. 21 (\"Bristollari\") from the following year; the post-war heavy-freight Tr2 No. 1319, a Soviet-influenced design nicknamed \"Truman\". Manufacturers in the collection include Tampella, Neilson & Co, Swiss Locomotive & Machine Works, and the American Alco. The Heritage Train Valtteri is the working steam-hauled tour train that occasionally pulls out of the museum on charter runs — when it's in the yard, you can usually walk right up to the locomotive.",
+      "The most unusual exhibit isn't a locomotive at all. The museum holds the only three surviving carriages of the Russian Imperial train — the Tsar's Saloon, the Tsarina's Saloon, and a saloon car — built in the 1870s for the Tsar's travel between Saint Petersburg and Helsinki, and stranded in Finland by the 1917 revolution. Roughly a hundred Imperial carriages once existed; these three are what's left, anywhere on Earth. The interiors (silk, gilt, velvet, parquet) are absurdly opulent for railway carriages and are worth the trip on their own.",
+      "Practicalities: open Tue–Sun 10:00–18:00 in winter (Sept–May, closed Mondays) and daily 10:00–18:00 in summer (Jun–Aug, except Midsummer). Adults €14, children 7–17 €5, family ticket €30, under-7s free. The 7¼-inch gauge miniature live-steam railway runs public rides on summer weekends — kids' favourite by a wide margin, and not extra. Allow half a day on site; with the miniature train, lunch in town, and two laps of the roundhouse, you'll fill it. From Helsinki it's a 40-minute commuter-train ride and a 10-minute walk to the door — easily the most accessible big rail museum in the Nordics.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Suomen_rautatiemuseo_Hyvinkaa_2013.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/W-RautatieMuseo-c-veturitalli.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/W-RautatieMuseo-f-veturitalli.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/W-RautatieMuseo-h-veturitalli.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/W-RautatieMuseo-l-veturitalli.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Hyvinkaan_rautatieasema_(Hanko-Hyvinkaa)_front.JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Rautatiemuseo1.jpg",
+    ],
+    availability: {
+      suitableMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      weeklySchedule:
+        "Sept–May: Tue–Sun 10:00–18:00 (closed Mondays). Jun–Aug: daily 10:00–18:00.",
+      notes:
+        "Closed during Midsummer (~Jun 19–21) and over Christmas. The miniature live-steam railway runs public rides on summer weekends only — that's the kid sweet spot; the museum content itself is the same year-round.",
+    },
+    location: {
+      region: ["Hyvinkää", "Uusimaa"],
+      address: "Hyvinkäänkatu 9, 05800 Hyvinkää (~60 km north of Helsinki)",
+    },
+    accessFromLauttasaari: {
+      complexity: "moderate",
+      duration: "~1h each way",
+      notes:
+        "M1/M2 metro from Lauttasaari to Helsinki Central (~6 min), then VR commuter R train Helsinki Central → Hyvinkää (~40 min, two trains per hour all day), then a 10-min walk from Hyvinkää station to the museum. One easy transfer; very low planning effort.",
+    },
+    cost: {
+      perPersonEur: 14,
+      notes:
+        "Adult €14 / child 7–17 €5 / under-7 free / family €30. Round-trip VR commuter ticket Helsinki ↔ Hyvinkää ~€20. Lunch in Hyvinkää centre €12–18.",
+    },
+    booking: {
+      leadTime: "same-day",
+      notes:
+        "Walk-up at the door year-round. Train tickets cheaper booked online than at the kiosk but same-day is fine.",
+    },
+    suitableAgeRange: { min: 3 },
+    childrenNotes:
+      "Excellent for kids — climb-aboard locomotives, the miniature steam railway in summer, a kids' workshop at the back of the roundhouse, baby-care room in the entrance hall. Stroller-friendly inside; the outdoor depot tracks are gravel and ballast so a sturdy stroller is fine but a carrier is easier.",
+    indoorOutdoor: "mixed",
+    physicalIntensity: "low",
+    duration: "half-day",
+    website: "https://rautatiemuseo.fi/en/",
+    tags: ["museum", "historical", "train"],
   },
 ];
