@@ -369,7 +369,10 @@ function describeStructured(
     const path = findBloodPath(tree, spouseId, targetId);
     if (path === null) continue;
     const inner = classifyBlood(path, target.gender);
-    if (inner !== null) return `spouse's ${inner}`;
+    if (inner !== null) {
+      const spouseGender = tree.persons[spouseId].gender;
+      return `${spouseTerm(spouseGender)}'s ${inner}`;
+    }
   }
 
   // 7. Target is married into the family — spouse of root's blood relative.
@@ -382,7 +385,7 @@ function describeStructured(
       return classifyBlood(path, target.gender);
     }
     const inner = classifyBlood(path, tree.persons[targetSpouseId].gender);
-    if (inner !== null) return `${inner}'s spouse`;
+    if (inner !== null) return `${inner}'s ${spouseTerm(target.gender)}`;
   }
 
   return null;

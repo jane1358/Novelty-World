@@ -299,10 +299,46 @@ describe("describeRelation", () => {
       p("wifeMom", "F", ["wifeGrandpa"]),
       p("wifeGrandpa", "M"),
     ]);
-    // wifeGrandpa is wife's father's father → spouse's grandfather (no clean English term)
-    expect(describeRelation(t, "me", "wifeGrandpa").label).toBe("spouse's grandfather");
+    // wifeGrandpa is wife's father's father → wife's grandfather (no clean English term)
+    expect(describeRelation(t, "me", "wifeGrandpa").label).toBe("wife's grandfather");
     // uncleWife is married to uncle → English folds her into "aunt"
     expect(describeRelation(t, "me", "uncleWife").label).toBe("aunt");
+  });
+
+  it("uses the spouse's gendered term when describing in-laws of the spouse", () => {
+    const t = makeTree([
+      p("me", "F", [], ["husb"]),
+      p("husb", "M", ["husbDad"], ["me"]),
+      p("husbDad", "M", ["husbGpa"]),
+      p("husbUncle", "M", ["husbGpa"]),
+      p("husbGpa", "M"),
+    ]);
+    expect(describeRelation(t, "me", "husbUncle").label).toBe("husband's uncle");
+  });
+
+  it("falls back to neutral 'spouse' when the spouse has no recorded gender", () => {
+    const t = makeTree([
+      p("me", "F", [], ["partner"]),
+      p("partner", null, ["partnerDad"], ["me"]),
+      p("partnerDad", "M", ["partnerGpa"]),
+      p("partnerUncle", "M", ["partnerGpa"]),
+      p("partnerGpa", "M"),
+    ]);
+    expect(describeRelation(t, "me", "partnerUncle").label).toBe("spouse's uncle");
+  });
+
+  it("uses the target's gender when chaining 'cousin's spouse' style labels", () => {
+    const t = makeTree([
+      p("me", "M", ["dad"]),
+      p("dad", "M", ["gpa"]),
+      p("gpa", "M"),
+      p("uncle", "M", ["gpa"]),
+      p("cousin", "F", ["uncle"], ["cousinHusb"]),
+      p("cousinHusb", "M", [], ["cousin"]),
+    ]);
+    expect(describeRelation(t, "me", "cousinHusb").label).toBe(
+      "1st cousin's husband",
+    );
   });
 
   it("falls back to chain descriptors for distant connections", () => {
