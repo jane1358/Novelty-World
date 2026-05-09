@@ -1,4 +1,4 @@
-import type { Layout, Person, Tree, LaidOutNode } from "./types";
+import type { Gender, Layout, Person, Tree, LaidOutNode } from "./types";
 
 export const NODE_W = 160;
 export const NODE_H = 64;
@@ -14,7 +14,13 @@ export function createInitialTree(): Tree {
   return {
     rootId: ROOT_ID,
     persons: {
-      [ROOT_ID]: { id: ROOT_ID, name: ROOT_NAME, parentIds: [], spouseIds: [] },
+      [ROOT_ID]: {
+        id: ROOT_ID,
+        name: ROOT_NAME,
+        gender: "M",
+        parentIds: [],
+        spouseIds: [],
+      },
     },
   };
 }
@@ -32,11 +38,18 @@ export function addParent(
   childId: string,
   newId: string,
   name: string,
+  gender: Gender = null,
 ): Tree {
   const next = clone(tree);
   const child = next.persons[childId];
   if (child.parentIds.length >= 2) return tree;
-  next.persons[newId] = { id: newId, name, parentIds: [], spouseIds: [] };
+  next.persons[newId] = {
+    id: newId,
+    name,
+    gender,
+    parentIds: [],
+    spouseIds: [],
+  };
   child.parentIds.push(newId);
 
   if (child.parentIds.length === 2) {
@@ -56,12 +69,19 @@ export function addChild(
   parentId: string,
   newId: string,
   name: string,
+  gender: Gender = null,
 ): Tree {
   const next = clone(tree);
   const parent = next.persons[parentId];
   const parents = [parentId];
   if (parent.spouseIds.length > 0) parents.push(parent.spouseIds[0]);
-  next.persons[newId] = { id: newId, name, parentIds: parents, spouseIds: [] };
+  next.persons[newId] = {
+    id: newId,
+    name,
+    gender,
+    parentIds: parents,
+    spouseIds: [],
+  };
   return next;
 }
 
@@ -70,17 +90,40 @@ export function addSpouse(
   personId: string,
   newId: string,
   name: string,
+  gender: Gender = null,
 ): Tree {
   const next = clone(tree);
   const person = next.persons[personId];
-  next.persons[newId] = { id: newId, name, parentIds: [], spouseIds: [personId] };
+  next.persons[newId] = {
+    id: newId,
+    name,
+    gender,
+    parentIds: [],
+    spouseIds: [personId],
+  };
   person.spouseIds.push(newId);
+  // Without divorce in the model, marrying X means becoming the second
+  // parent of any of X's children who only have X listed.
+  for (const candidate of Object.values(next.persons)) {
+    if (
+      candidate.parentIds.length === 1 &&
+      candidate.parentIds[0] === personId
+    ) {
+      candidate.parentIds.push(newId);
+    }
+  }
   return next;
 }
 
 export function renamePerson(tree: Tree, id: string, name: string): Tree {
   const next = clone(tree);
   next.persons[id].name = name;
+  return next;
+}
+
+export function setGender(tree: Tree, id: string, gender: Gender): Tree {
+  const next = clone(tree);
+  next.persons[id].gender = gender;
   return next;
 }
 
@@ -93,6 +136,371 @@ export function deletePerson(tree: Tree, id: string): Tree {
     p.spouseIds = p.spouseIds.filter((sid) => sid !== id);
   }
   return next;
+}
+
+// Backfill gender on persons loaded from older data that predates the field,
+// and reconcile any children who only list one parent when that parent has a
+// (single) spouse — the spouse becomes the second parent. This heals data
+// written before addSpouse propagated to existing single-parent kids.
+// `changed` reports whether any normalization actually modified the input,
+// so callers can decide whether to persist the fix back.
+export function normalizeTree(raw: unknown): { tree: Tree; changed: boolean } {
+  const t = raw as Tree;
+  let changed = false;
+  const persons: Record<string, Person> = {};
+  for (const [id, person] of Object.entries(t.persons)) {
+    if ((person as Partial<Person>).gender === undefined) changed = true;
+    persons[id] = {
+      id: person.id,
+      name: person.name,
+      gender: (person as Partial<Person>).gender ?? null,
+      parentIds: [...person.parentIds],
+      spouseIds: [...person.spouseIds],
+    };
+  }
+  for (const child of Object.values(persons)) {
+    if (child.parentIds.length !== 1) continue;
+    const onlyParent = persons[child.parentIds[0]];
+    if (onlyParent.spouseIds.length === 1) {
+      child.parentIds.push(onlyParent.spouseIds[0]);
+      changed = true;
+    }
+  }
+  return { tree: { rootId: t.rootId, persons }, changed };
+}
+
+// ---------- Relations ----------
+
+// Walk the parent DAG breadth-first and record the shortest distance
+// from `id` up to every reachable ancestor (including `id` at distance 0).
+function ancestorsWithDistance(tree: Tree, id: string): Map<string, number> {
+  const result = new Map<string, number>();
+  result.set(id, 0);
+  let frontier: string[] = [id];
+  let depth = 0;
+  while (frontier.length > 0) {
+    depth += 1;
+    const nextFrontier: string[] = [];
+    for (const cur of frontier) {
+      const person = tree.persons[cur];
+      for (const parentId of person.parentIds) {
+        if (!result.has(parentId)) {
+          result.set(parentId, depth);
+          nextFrontier.push(parentId);
+        }
+      }
+    }
+    frontier = nextFrontier;
+  }
+  return result;
+}
+
+interface BloodPath {
+  distFrom: number;
+  distTo: number;
+}
+
+// Find the most-recent common ancestor of `from` and `to`. Returns the
+// generation distances from each (0 means the person itself).
+function findBloodPath(tree: Tree, fromId: string, toId: string): BloodPath | null {
+  const fromAnc = ancestorsWithDistance(tree, fromId);
+  const toAnc = ancestorsWithDistance(tree, toId);
+  let best: BloodPath | null = null;
+  for (const [id, distTo] of toAnc) {
+    const distFrom = fromAnc.get(id);
+    if (distFrom === undefined) continue;
+    const sum = distFrom + distTo;
+    if (best === null || sum < best.distFrom + best.distTo) {
+      best = { distFrom, distTo };
+    }
+  }
+  return best;
+}
+
+function ordinal(n: number): string {
+  const v = n % 100;
+  if (v >= 11 && v <= 13) return `${n}th`;
+  switch (n % 10) {
+    case 1: return `${n}st`;
+    case 2: return `${n}nd`;
+    case 3: return `${n}rd`;
+    default: return `${n}th`;
+  }
+}
+
+function pickByGender(gender: Gender, male: string, female: string, neutral: string): string {
+  if (gender === "M") return male;
+  if (gender === "F") return female;
+  return neutral;
+}
+
+function ancestorTerm(distance: number, gender: Gender): string {
+  if (distance === 1) return pickByGender(gender, "father", "mother", "parent");
+  const base = pickByGender(gender, "grandfather", "grandmother", "grandparent");
+  const greats = "great-".repeat(Math.max(0, distance - 2));
+  return greats + base;
+}
+
+function descendantTerm(distance: number, gender: Gender): string {
+  if (distance === 1) return pickByGender(gender, "son", "daughter", "child");
+  const base = pickByGender(gender, "grandson", "granddaughter", "grandchild");
+  const greats = "great-".repeat(Math.max(0, distance - 2));
+  return greats + base;
+}
+
+function siblingTerm(gender: Gender): string {
+  return pickByGender(gender, "brother", "sister", "sibling");
+}
+
+function auntUncleTerm(greats: number, gender: Gender): string {
+  const base = pickByGender(gender, "uncle", "aunt", "aunt/uncle");
+  return greats === 0 ? base : "great-".repeat(greats) + base;
+}
+
+function nieceNephewTerm(greats: number, gender: Gender): string {
+  const base = pickByGender(gender, "nephew", "niece", "niece/nephew");
+  if (greats === 0) return base;
+  // grandniece (one generation deeper than niece), great-grandniece, etc.
+  const grandBase = pickByGender(
+    gender,
+    "grandnephew",
+    "grandniece",
+    "grandniece/nephew",
+  );
+  return "great-".repeat(greats - 1) + grandBase;
+}
+
+function cousinTerm(degree: number, removed: number): string {
+  const base = `${ordinal(degree)} cousin`;
+  if (removed === 0) return base;
+  if (removed === 1) return `${base} once removed`;
+  if (removed === 2) return `${base} twice removed`;
+  return `${base} ${removed} times removed`;
+}
+
+function classifyBlood(path: BloodPath, gender: Gender): string | null {
+  const { distFrom, distTo } = path;
+  if (distFrom === 0 && distTo === 0) return null;
+  if (distFrom === 0) return descendantTerm(distTo, gender);
+  if (distTo === 0) return ancestorTerm(distFrom, gender);
+  if (distFrom === 1 && distTo === 1) return siblingTerm(gender);
+  // P is descendant of R's ancestor (sibling of an ancestor's lineage)
+  if (distFrom === 1) return nieceNephewTerm(distTo - 2, gender);
+  if (distTo === 1) return auntUncleTerm(distFrom - 2, gender);
+  // Both > 1: cousins
+  const degree = Math.min(distFrom, distTo) - 1;
+  const removed = Math.abs(distFrom - distTo);
+  return cousinTerm(degree, removed);
+}
+
+function spouseTerm(gender: Gender): string {
+  return pickByGender(gender, "husband", "wife", "spouse");
+}
+
+function siblingInLawTerm(gender: Gender): string {
+  return pickByGender(gender, "brother-in-law", "sister-in-law", "sibling-in-law");
+}
+
+function parentInLawTerm(gender: Gender): string {
+  return pickByGender(gender, "father-in-law", "mother-in-law", "parent-in-law");
+}
+
+function childInLawTerm(gender: Gender): string {
+  return pickByGender(gender, "son-in-law", "daughter-in-law", "child-in-law");
+}
+
+export interface Relation {
+  label: string | null;
+  isSelf: boolean;
+}
+
+// Internal: try every "single-name" rule and return a label if one fits,
+// otherwise return null. The chain fallback below uses this to collapse
+// long paths into idiomatic English ("brother-in-law's wife" rather than
+// "wife's brother's wife").
+function describeStructured(
+  tree: Tree,
+  rootId: string,
+  targetId: string,
+): string | null {
+  if (targetId === rootId) return null;
+
+  const root = tree.persons[rootId];
+  const target = tree.persons[targetId];
+
+  // 1. Direct spouse.
+  if (root.spouseIds.includes(targetId)) return spouseTerm(target.gender);
+
+  // 2. Blood relation.
+  const blood = findBloodPath(tree, rootId, targetId);
+  if (blood !== null) return classifyBlood(blood, target.gender);
+
+  // 3. Sibling-in-law: spouse of any sibling, or sibling of any spouse.
+  for (const spouseId of root.spouseIds) {
+    const path = findBloodPath(tree, spouseId, targetId);
+    if (path !== null && path.distFrom === 1 && path.distTo === 1) {
+      return siblingInLawTerm(target.gender);
+    }
+  }
+  for (const targetSpouseId of target.spouseIds) {
+    const path = findBloodPath(tree, rootId, targetSpouseId);
+    if (path !== null && path.distFrom === 1 && path.distTo === 1) {
+      return siblingInLawTerm(target.gender);
+    }
+  }
+
+  // 4. Parent-in-law: parent of any spouse.
+  for (const spouseId of root.spouseIds) {
+    const path = findBloodPath(tree, spouseId, targetId);
+    if (path !== null && path.distFrom === 1 && path.distTo === 0) {
+      return parentInLawTerm(target.gender);
+    }
+  }
+
+  // 5. Child-in-law: spouse of any child.
+  for (const targetSpouseId of target.spouseIds) {
+    const path = findBloodPath(tree, rootId, targetSpouseId);
+    if (path !== null && path.distFrom === 0 && path.distTo === 1) {
+      return childInLawTerm(target.gender);
+    }
+  }
+
+  // 6. Through one of root's spouses to a blood relative of that spouse.
+  for (const spouseId of root.spouseIds) {
+    const path = findBloodPath(tree, spouseId, targetId);
+    if (path === null) continue;
+    const inner = classifyBlood(path, target.gender);
+    if (inner !== null) return `spouse's ${inner}`;
+  }
+
+  // 7. Target is married into the family — spouse of root's blood relative.
+  // English folds spouses-of-aunts/uncles into "aunt"/"uncle" themselves, so
+  // gender-flip when the inner relation is an aunt/uncle (or great-).
+  for (const targetSpouseId of target.spouseIds) {
+    const path = findBloodPath(tree, rootId, targetSpouseId);
+    if (path === null) continue;
+    if (path.distTo === 1 && path.distFrom > 1) {
+      return classifyBlood(path, target.gender);
+    }
+    const inner = classifyBlood(path, tree.persons[targetSpouseId].gender);
+    if (inner !== null) return `${inner}'s spouse`;
+  }
+
+  return null;
+}
+
+export function describeRelation(
+  tree: Tree,
+  rootId: string,
+  targetId: string,
+): Relation {
+  if (targetId === rootId) return { label: null, isSelf: true };
+  const structured = describeStructured(tree, rootId, targetId);
+  if (structured !== null) return { label: structured, isSelf: false };
+  const chain = chainLabel(tree, rootId, targetId);
+  return { label: chain, isSelf: false };
+}
+
+interface ChainStep {
+  edge: "parent" | "child" | "spouse";
+  fromId: string;
+  toId: string;
+}
+
+function buildChildrenIndex(tree: Tree): Map<string, string[]> {
+  const idx = new Map<string, string[]>();
+  for (const p of Object.values(tree.persons)) {
+    for (const parentId of p.parentIds) {
+      const list = idx.get(parentId);
+      if (list === undefined) {
+        idx.set(parentId, [p.id]);
+      } else {
+        list.push(p.id);
+      }
+    }
+  }
+  return idx;
+}
+
+function shortestPath(tree: Tree, fromId: string, toId: string): ChainStep[] | null {
+  if (fromId === toId) return [];
+  const childrenIdx = buildChildrenIndex(tree);
+  const prev = new Map<string, ChainStep>();
+  const visited = new Set<string>([fromId]);
+  const queue: string[] = [fromId];
+
+  while (queue.length > 0) {
+    const cur = queue.shift()!;
+    if (cur === toId) break;
+    const person = tree.persons[cur];
+
+    const visit = (otherId: string, edge: ChainStep["edge"]): void => {
+      if (visited.has(otherId)) return;
+      visited.add(otherId);
+      prev.set(otherId, { edge, fromId: cur, toId: otherId });
+      queue.push(otherId);
+    };
+
+    for (const parentId of person.parentIds) visit(parentId, "parent");
+    for (const childId of childrenIdx.get(cur) ?? []) visit(childId, "child");
+    for (const spouseId of person.spouseIds) visit(spouseId, "spouse");
+  }
+
+  if (!visited.has(toId)) return null;
+
+  const path: ChainStep[] = [];
+  let curId = toId;
+  while (curId !== fromId) {
+    const step = prev.get(curId);
+    if (step === undefined) return null;
+    path.unshift(step);
+    curId = step.fromId;
+  }
+  return path;
+}
+
+// Walk the shortest path greedily: at each anchor, advance to the FARTHEST
+// person whose relation to the anchor has a structured (single-term) label.
+// The chain is the join of those labels, e.g. "brother-in-law's wife" rather
+// than "wife's brother's wife".
+function chainLabel(tree: Tree, fromId: string, toId: string): string | null {
+  const path = shortestPath(tree, fromId, toId);
+  if (path === null || path.length === 0) return null;
+
+  const persons = [fromId, ...path.map((s) => s.toId)];
+  const parts: string[] = [];
+  let anchorIdx = 0;
+
+  while (anchorIdx < persons.length - 1) {
+    const anchorId = persons[anchorIdx];
+    let bestIdx = -1;
+    let bestLabel: string | null = null;
+    for (let i = anchorIdx + 1; i < persons.length; i++) {
+      const label = describeStructured(tree, anchorId, persons[i]);
+      if (label !== null) {
+        bestIdx = i;
+        bestLabel = label;
+      }
+    }
+    if (bestLabel === null) {
+      // Single-edge fallback — should be rare since direct edges always
+      // produce a structured label, but stay defensive.
+      const step = path[anchorIdx];
+      const next = tree.persons[persons[anchorIdx + 1]];
+      bestLabel =
+        step.edge === "parent"
+          ? pickByGender(next.gender, "father", "mother", "parent")
+          : step.edge === "child"
+            ? pickByGender(next.gender, "son", "daughter", "child")
+            : spouseTerm(next.gender);
+      bestIdx = anchorIdx + 1;
+    }
+    parts.push(bestLabel);
+    anchorIdx = bestIdx;
+  }
+
+  if (parts.length === 0) return null;
+  return parts.join("'s ");
 }
 
 // ---------- Layout ----------

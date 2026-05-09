@@ -2,16 +2,24 @@
 
 import { type PointerEvent } from "react";
 import type { LaidOutNode, Person } from "../types";
-import { ROOT_ID } from "../logic";
 
 interface NodeProps {
   node: LaidOutNode;
   person: Person;
   selected: boolean;
+  isViewRoot: boolean;
+  relation: string | null;
   onSelect: (id: string) => void;
 }
 
-export function Node({ node, person, selected, onSelect }: NodeProps) {
+export function Node({
+  node,
+  person,
+  selected,
+  isViewRoot,
+  relation,
+  onSelect,
+}: NodeProps) {
   function handlePointerDown(e: PointerEvent<HTMLDivElement>) {
     e.stopPropagation();
   }
@@ -20,7 +28,7 @@ export function Node({ node, person, selected, onSelect }: NodeProps) {
     onSelect(person.id);
   }
 
-  const isRoot = person.id === ROOT_ID;
+  const subtitle = isViewRoot ? "you" : relation;
 
   return (
     <div
@@ -28,7 +36,7 @@ export function Node({ node, person, selected, onSelect }: NodeProps) {
         "absolute flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 px-3 py-2 text-center transition-colors",
         selected
           ? "border-brand-orange bg-surface-elevated"
-          : isRoot
+          : isViewRoot
             ? "border-brand-blue bg-surface-tertiary hover:border-brand-pink"
             : "border-border-default bg-surface-secondary hover:border-border-hover",
       ].join(" ")}
@@ -39,8 +47,15 @@ export function Node({ node, person, selected, onSelect }: NodeProps) {
       <span className="text-sm font-medium text-text-primary leading-tight">
         {person.name}
       </span>
-      {isRoot ? (
-        <span className="mt-1 text-xs text-brand-blue">root</span>
+      {subtitle !== null ? (
+        <span
+          className={[
+            "mt-1 text-xs leading-tight",
+            isViewRoot ? "text-brand-blue" : "text-text-muted",
+          ].join(" ")}
+        >
+          {subtitle}
+        </span>
       ) : null}
     </div>
   );

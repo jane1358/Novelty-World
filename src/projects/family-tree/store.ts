@@ -3,7 +3,7 @@
 import { create } from "zustand";
 import { createClient } from "@/shared/lib/supabase/client";
 import { getProjectStorage } from "@/shared/lib/storage";
-import type { Tree } from "./types";
+import type { Gender, Tree } from "./types";
 import {
   ROOT_ID,
   addChild as logicAddChild,
@@ -11,7 +11,9 @@ import {
   addSpouse as logicAddSpouse,
   createInitialTree,
   deletePerson as logicDeletePerson,
+  normalizeTree,
   renamePerson as logicRenamePerson,
+  setGender as logicSetGender,
 } from "./logic";
 
 const TABLE = "family_tree";
@@ -28,12 +30,18 @@ interface FamilyTreeState {
   status: Status;
   saving: boolean;
   selectedId: string | null;
+  // Local-only viewing perspective. Defaults to ROOT_ID, never persisted to
+  // Supabase. Resets to ROOT_ID on reload by design.
+  viewRootId: string;
   hydrate: () => Promise<void>;
   setSelected: (id: string | null) => void;
-  addParent: (childId: string, name: string) => void;
-  addChild: (parentId: string, name: string) => void;
-  addSpouse: (personId: string, name: string) => void;
+  setViewRoot: (id: string) => void;
+  resetViewRoot: () => void;
+  addParent: (childId: string, name: string, gender: Gender) => void;
+  addChild: (parentId: string, name: string, gender: Gender) => void;
+  addSpouse: (personId: string, name: string, gender: Gender) => void;
   rename: (id: string, name: string) => void;
+  setGender: (id: string, gender: Gender) => void;
   remove: (id: string) => void;
 }
 
@@ -79,6 +87,7 @@ export const useFamilyTreeStore = create<FamilyTreeState>((set, get) => ({
   status: "idle",
   saving: false,
   selectedId: null,
+  viewRootId: ROOT_ID,
 
   hydrate: async () => {
     if (hydratePromise) return hydratePromise;
@@ -86,6 +95,7 @@ export const useFamilyTreeStore = create<FamilyTreeState>((set, get) => ({
       set({ status: "loading" });
       try {
         let loaded: Tree | null = null;
+        let needsPersist = false;
         if (isSupabaseConfigured()) {
           const supabase = createClient();
           const { data, error } = await supabase
@@ -94,18 +104,27 @@ export const useFamilyTreeStore = create<FamilyTreeState>((set, get) => ({
             .eq("id", ROW_ID)
             .maybeSingle();
           if (error) throw error;
-          if (data) loaded = data.data as Tree;
+          if (data) {
+            const result = normalizeTree(data.data);
+            loaded = result.tree;
+            needsPersist = result.changed;
+          }
         }
         if (!loaded) {
-          loaded = localStore.get<Tree>(LOCAL_FALLBACK_KEY);
+          const local = localStore.get<unknown>(LOCAL_FALLBACK_KEY);
+          if (local) loaded = normalizeTree(local).tree;
         }
         if (!loaded) {
           loaded = createInitialTree();
           await persist(loaded, (b) => { set({ saving: b }); });
+        } else if (needsPersist) {
+          // Heal the row in-place so future readers don't see the broken shape.
+          await persist(loaded, (b) => { set({ saving: b }); });
         }
         set({ tree: loaded, status: "ready" });
       } catch {
-        const fallback = localStore.get<Tree>(LOCAL_FALLBACK_KEY) ?? createInitialTree();
+        const local = localStore.get<unknown>(LOCAL_FALLBACK_KEY);
+        const fallback = local ? normalizeTree(local).tree : createInitialTree();
         set({ tree: fallback, status: "error" });
       }
     })();
@@ -114,25 +133,29 @@ export const useFamilyTreeStore = create<FamilyTreeState>((set, get) => ({
 
   setSelected: (id) => { set({ selectedId: id }); },
 
-  addParent: (childId, name) => {
+  setViewRoot: (id) => { set({ viewRootId: id }); },
+
+  resetViewRoot: () => { set({ viewRootId: ROOT_ID }); },
+
+  addParent: (childId, name, gender) => {
     const { tree } = get();
-    const next = logicAddParent(tree, childId, newId(), name.trim() || "Unnamed");
+    const next = logicAddParent(tree, childId, newId(), name.trim() || "Unnamed", gender);
     if (next === tree) return;
     set({ tree: next });
     scheduleSave(next, (b) => { set({ saving: b }); });
   },
 
-  addChild: (parentId, name) => {
+  addChild: (parentId, name, gender) => {
     const { tree } = get();
-    const next = logicAddChild(tree, parentId, newId(), name.trim() || "Unnamed");
+    const next = logicAddChild(tree, parentId, newId(), name.trim() || "Unnamed", gender);
     if (next === tree) return;
     set({ tree: next });
     scheduleSave(next, (b) => { set({ saving: b }); });
   },
 
-  addSpouse: (personId, name) => {
+  addSpouse: (personId, name, gender) => {
     const { tree } = get();
-    const next = logicAddSpouse(tree, personId, newId(), name.trim() || "Unnamed");
+    const next = logicAddSpouse(tree, personId, newId(), name.trim() || "Unnamed", gender);
     if (next === tree) return;
     set({ tree: next });
     scheduleSave(next, (b) => { set({ saving: b }); });
@@ -148,14 +171,23 @@ export const useFamilyTreeStore = create<FamilyTreeState>((set, get) => ({
     scheduleSave(next, (b) => { set({ saving: b }); });
   },
 
+  setGender: (id, gender) => {
+    const { tree } = get();
+    const next = logicSetGender(tree, id, gender);
+    if (next === tree) return;
+    set({ tree: next });
+    scheduleSave(next, (b) => { set({ saving: b }); });
+  },
+
   remove: (id) => {
-    const { tree, selectedId } = get();
+    const { tree, selectedId, viewRootId } = get();
     if (id === ROOT_ID) return;
     const next = logicDeletePerson(tree, id);
     if (next === tree) return;
     set({
       tree: next,
       selectedId: selectedId === id ? null : selectedId,
+      viewRootId: viewRootId === id ? ROOT_ID : viewRootId,
     });
     scheduleSave(next, (b) => { set({ saving: b }); });
   },

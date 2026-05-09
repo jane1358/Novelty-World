@@ -1,6 +1,9 @@
+export type Gender = "M" | "F" | "NB" | null;
+
 export interface Person {
   id: string;
   name: string;
+  gender: Gender;
   parentIds: string[];
   spouseIds: string[];
 }
