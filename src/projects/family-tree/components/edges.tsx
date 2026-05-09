@@ -1,7 +1,6 @@
 "use client";
 
 import type { LaidOutNode, Layout } from "../types";
-import { ROW_GAP } from "../logic";
 
 interface EdgesProps {
   layout: Layout;
@@ -54,8 +53,7 @@ export function Edges({ layout }: EdgesProps) {
         const parentBottomY = a.y + a.h;
         const childTopY = child.y;
         const childMidX = child.x + child.w / 2;
-        const elbowY = parentBottomY + ROW_GAP / 2;
-        const d = `M ${parentMidX} ${parentBottomY} L ${parentMidX} ${elbowY} L ${childMidX} ${elbowY} L ${childMidX} ${childTopY}`;
+        const d = `M ${parentMidX} ${parentBottomY} L ${parentMidX} ${edge.elbowY} L ${childMidX} ${edge.elbowY} L ${childMidX} ${childTopY}`;
         return (
           <path
             key={`p-${i}`}

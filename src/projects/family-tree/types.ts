@@ -23,7 +23,15 @@ export interface LaidOutNode {
 
 export type LaidOutEdge =
   | { kind: "spouse"; aId: string; bId: string }
-  | { kind: "parent-child"; parentAId: string; parentBId: string | null; childId: string };
+  | {
+      kind: "parent-child";
+      parentAId: string;
+      parentBId: string | null;
+      childId: string;
+      // Y at which the elbow horizontal is drawn. Each parent couple gets its
+      // own Y so horizontals from different parents don't visually merge.
+      elbowY: number;
+    };
 
 export interface Layout {
   nodes: LaidOutNode[];

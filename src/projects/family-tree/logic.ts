@@ -626,6 +626,19 @@ export function computeLayout(tree: Tree): Layout {
     parentCouplesOf.set(couple.id, parents);
   }
 
+  // Inverse: for each couple, the child couples it produced. Used by the
+  // bottom-up barycenter sweep so a couple is pulled toward its descendants.
+  const childCouplesOf = new Map<string, string[]>();
+  for (const couple of couples) childCouplesOf.set(couple.id, []);
+  for (const couple of couples) {
+    for (const pcId of parentCouplesOf.get(couple.id) ?? []) {
+      const list = childCouplesOf.get(pcId);
+      if (list !== undefined && !list.includes(couple.id)) {
+        list.push(couple.id);
+      }
+    }
+  }
+
   const byGen = new Map<number, CoupleUnit[]>();
   for (const couple of couples) {
     let arr = byGen.get(couple.generation);
@@ -637,24 +650,20 @@ export function computeLayout(tree: Tree): Layout {
   }
   const sortedGens = [...byGen.keys()].sort((a, b) => a - b);
 
-  // Top-down placement: each couple's ideal x is the average of its already-
-  // placed parent couples. Couples are sorted by ideal then placed left-to-
-  // right with a min spacing, so the order respects parent positions when
-  // possible without ever overlapping.
   const centerX = new Map<string, number>();
-  for (const g of sortedGens) {
+
+  // Place a single generation: sort by ideal x (or fall back to BFS order
+  // when no ideal is available), then assign positions left-to-right with
+  // the min couple gap. Returns true if the ordering changed.
+  const placeLayer = (
+    g: number,
+    idealOf: (id: string) => number | null,
+  ): boolean => {
     const inGen = byGen.get(g)!;
-    const items = inGen.map((couple) => {
-      const placedParents = parentCouplesOf
-        .get(couple.id)!
-        .filter((pid) => centerX.has(pid));
-      const ideal =
-        placedParents.length > 0
-          ? placedParents.reduce((sum, pid) => sum + centerX.get(pid)!, 0) /
-            placedParents.length
-          : null;
-      return { couple, ideal };
-    });
+    const items = inGen.map((couple) => ({
+      couple,
+      ideal: idealOf(couple.id),
+    }));
     items.sort((a, b) => {
       if (a.ideal === null && b.ideal === null) {
         return (
@@ -664,8 +673,20 @@ export function computeLayout(tree: Tree): Layout {
       }
       if (a.ideal === null) return 1;
       if (b.ideal === null) return -1;
-      return a.ideal - b.ideal;
+      const cmp = a.ideal - b.ideal;
+      if (cmp !== 0) return cmp;
+      // Tie-break by current position so units already in a sensible place
+      // don't churn, then by id for full determinism.
+      const ax = centerX.get(a.couple.id);
+      const bx = centerX.get(b.couple.id);
+      if (ax !== undefined && bx !== undefined && ax !== bx) return ax - bx;
+      return a.couple.id < b.couple.id ? -1 : a.couple.id > b.couple.id ? 1 : 0;
     });
+
+    const oldOrder = inGen.map((c) => c.id);
+    const newOrder = items.map((x) => x.couple.id);
+    const changed = newOrder.some((id, i) => id !== oldOrder[i]);
+    byGen.set(g, items.map((x) => x.couple));
 
     let cursor = 0;
     for (const { couple, ideal } of items) {
@@ -679,10 +700,90 @@ export function computeLayout(tree: Tree): Layout {
       centerX.set(couple.id, center);
       cursor = leftX + w + SUBTREE_GAP;
     }
+    return changed;
+  };
+
+  // Ideal-x from a set of anchor couples (parents or children). When no
+  // anchor is placed yet, optionally fall back to the unit's current position
+  // so refinement sweeps don't yank anchorless units around.
+  const idealFrom = (
+    anchorMap: Map<string, string[]>,
+    fallbackToCurrent: boolean,
+  ) =>
+    (id: string): number | null => {
+      const anchors = anchorMap.get(id) ?? [];
+      const placed = anchors.filter((aid) => centerX.has(aid));
+      if (placed.length > 0) {
+        return (
+          placed.reduce((sum, aid) => sum + centerX.get(aid)!, 0) /
+          placed.length
+        );
+      }
+      if (fallbackToCurrent) {
+        const cur = centerX.get(id);
+        return cur ?? null;
+      }
+      return null;
+    };
+
+  // Initial pass: top-down using parent barycenter (no fallback — top
+  // generation legitimately has no parents and falls back to BFS order).
+  for (const g of sortedGens) {
+    placeLayer(g, idealFrom(parentCouplesOf, false));
   }
 
-  const minGen = sortedGens.length > 0 ? sortedGens[0] : 0;
-  const yFor = (g: number): number => (g - minGen) * (NODE_H + ROW_GAP);
+  // Sugiyama-style barycenter refinement: alternate top-down and bottom-up
+  // sweeps, reordering each generation by the average position of its
+  // adjacent layer. Stop early once no order changes in a full cycle.
+  // Deterministic: same tree always produces the same layout.
+  const BARYCENTER_ITERATIONS = 12;
+  for (let iter = 0; iter < BARYCENTER_ITERATIONS; iter++) {
+    let changed = false;
+    for (const g of sortedGens) {
+      if (placeLayer(g, idealFrom(parentCouplesOf, true))) changed = true;
+    }
+    for (let i = sortedGens.length - 1; i >= 0; i--) {
+      if (placeLayer(sortedGens[i], idealFrom(childCouplesOf, true))) {
+        changed = true;
+      }
+    }
+    if (!changed) break;
+  }
+
+  // Each parent couple gets its own elbow row (so child-drops from different
+  // parents don't visually merge). We need at least ELBOW_FIRST_OFFSET below
+  // the parent for the topmost elbow, ELBOW_SPACING between elbows, and
+  // ELBOW_LAST_MARGIN below the bottommost elbow before the child top. When
+  // a generation has many parent couples this grows the row gap dynamically.
+  const ELBOW_FIRST_OFFSET = 28;
+  const ELBOW_SPACING = 32;
+  const ELBOW_LAST_MARGIN = 28;
+
+  const rowGapAfter = (g: number): number => {
+    const inGen = byGen.get(g) ?? [];
+    const numParentCouples = inGen.filter(
+      (c) => (childCouplesOf.get(c.id) ?? []).length > 0,
+    ).length;
+    if (numParentCouples <= 1) return ROW_GAP;
+    const required =
+      ELBOW_FIRST_OFFSET +
+      (numParentCouples - 1) * ELBOW_SPACING +
+      ELBOW_LAST_MARGIN;
+    return Math.max(ROW_GAP, required);
+  };
+
+  const yByGen = new Map<number, number>();
+  if (sortedGens.length > 0) {
+    yByGen.set(sortedGens[0], 0);
+    for (let i = 1; i < sortedGens.length; i++) {
+      const prev = sortedGens[i - 1];
+      yByGen.set(
+        sortedGens[i],
+        (yByGen.get(prev) ?? 0) + NODE_H + rowGapAfter(prev),
+      );
+    }
+  }
+  const yFor = (g: number): number => yByGen.get(g) ?? 0;
 
   const layout: Layout = { nodes: [], edges: [], width: 0, height: 0 };
 
@@ -708,16 +809,49 @@ export function computeLayout(tree: Tree): Layout {
     }
   }
 
+  // Assign each parent couple its own elbow Y, sorted left-to-right by x.
+  // Spacing is absolute (ELBOW_SPACING) so adjacent rows are visually
+  // distinct regardless of how many parents share a generation.
+  const elbowYByCouple = new Map<string, number>();
+  for (const g of sortedGens) {
+    const inGen = byGen.get(g) ?? [];
+    const parentCouples = inGen.filter(
+      (c) => (childCouplesOf.get(c.id) ?? []).length > 0,
+    );
+    parentCouples.sort(
+      (a, b) => (centerX.get(a.id) ?? 0) - (centerX.get(b.id) ?? 0),
+    );
+    const parentBottomY = yFor(g) + NODE_H;
+    if (parentCouples.length === 1) {
+      elbowYByCouple.set(parentCouples[0].id, parentBottomY + ROW_GAP / 2);
+    } else {
+      parentCouples.forEach((couple, i) => {
+        elbowYByCouple.set(
+          couple.id,
+          parentBottomY + ELBOW_FIRST_OFFSET + i * ELBOW_SPACING,
+        );
+      });
+    }
+  }
+
   // One parent-child edge per child. The renderer drops from the midpoint of
   // the parents' marriage line (or the lone parent's center) down to the
   // child — so in-laws naturally get their own visible drop into their child.
   for (const person of Object.values(tree.persons)) {
     if (person.parentIds.length === 0) continue;
+    const parentCoupleId = coupleOf.get(person.parentIds[0]);
+    const parentGen = parentCoupleId !== undefined
+      ? gen.get(person.parentIds[0]) ?? 0
+      : 0;
+    const elbowY = parentCoupleId !== undefined
+      ? elbowYByCouple.get(parentCoupleId) ?? yFor(parentGen) + NODE_H + ROW_GAP / 2
+      : yFor(parentGen) + NODE_H + ROW_GAP / 2;
     layout.edges.push({
       kind: "parent-child",
       parentAId: person.parentIds[0],
       parentBId: person.parentIds.length === 2 ? person.parentIds[1] : null,
       childId: person.id,
+      elbowY,
     });
   }
 

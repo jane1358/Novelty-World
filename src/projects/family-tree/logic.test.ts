@@ -418,6 +418,58 @@ describe("computeLayout", () => {
     const kidMid = kid.x + kid.w / 2;
     expect(Math.abs(coupleMid - kidMid)).toBeLessThan(1);
   });
+
+  it("uses barycenter to pull a spouse next to their siblings", () => {
+    // Tree shape: root and spouse share gen 0 with root's cousin and spouse's
+    // sibling. Without barycenter the BFS order leaves the spouse on the
+    // root's side, forcing the spouse-parent edge to vault over the cousin.
+    // After refinement the spouse's couple sits next to their sibling.
+    const t = makeTree([
+      p("me", "M", ["dad", "mom"], ["sp"]),
+      p("dad", "M", ["gp"]),
+      p("mom", "F"),
+      p("uncle", "M", ["gp"], ["uncleW"]),
+      p("uncleW", "F", [], ["uncle"]),
+      p("cousin", "F", ["uncle", "uncleW"]),
+      p("sp", "F", ["spDad", "spMom"], ["me"]),
+      p("spDad", "M"),
+      p("spMom", "F", [], ["spDad"]),
+      p("spSib", "M", ["spDad", "spMom"]),
+      p("gp", "M"),
+    ]);
+    const layout = computeLayout(t);
+    const findX = (id: string): number => {
+      const n = layout.nodes.find((node) => node.id === id);
+      if (!n) throw new Error(`missing ${id}`);
+      return n.x + n.w / 2;
+    };
+    // Spouse should sit closer to spouse's sibling than the cousin does.
+    expect(Math.abs(findX("sp") - findX("spSib"))).toBeLessThan(
+      Math.abs(findX("cousin") - findX("spSib")),
+    );
+  });
+
+  it("is deterministic — repeated layouts produce identical positions", () => {
+    const build = (): Tree =>
+      makeTree([
+        p("me", "M", ["dad", "mom"], ["sp"]),
+        p("dad", "M", ["gp"]),
+        p("mom", "F"),
+        p("uncle", "M", ["gp"], ["uncleW"]),
+        p("uncleW", "F", [], ["uncle"]),
+        p("cousin", "F", ["uncle", "uncleW"]),
+        p("sp", "F", ["spDad", "spMom"], ["me"]),
+        p("spDad", "M"),
+        p("spMom", "F", [], ["spDad"]),
+        p("spSib", "M", ["spDad", "spMom"]),
+        p("gp", "M"),
+      ]);
+    const a = computeLayout(build());
+    const b = computeLayout(build());
+    expect(b.nodes.map((n) => `${n.id}:${n.x},${n.y}`)).toEqual(
+      a.nodes.map((n) => `${n.id}:${n.x},${n.y}`),
+    );
+  });
 });
 
 function node(id: string, x: number, y: number): LaidOutNode {
