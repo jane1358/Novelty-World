@@ -2,13 +2,27 @@ import type { NextConfig } from "next";
 import { execSync } from "child_process";
 
 // CI hosts (Vercel etc.) shallow-clone by default, which truncates the
-// commit count. Unshallow first so the version badge reflects real history.
-try {
-  execSync("git fetch --unshallow", { stdio: "ignore" });
-} catch {
-  // Already complete, or no remote available — fall through to the count.
+// commit count. Try to unshallow so the version badge reflects real history.
+// Log failures to stderr so build logs show why this fell back.
+function tryFetchFullHistory(): void {
+  const attempts = [
+    "git fetch --unshallow",
+    "git fetch --depth=2147483647",
+  ];
+  for (const cmd of attempts) {
+    try {
+      execSync(cmd, { stdio: ["ignore", "ignore", "pipe"] });
+      return;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("on a complete repository")) return; // already full
+      console.warn(`[next.config] ${cmd} failed: ${msg.split("\n")[0]}`);
+    }
+  }
 }
+tryFetchFullHistory();
 const commitCount = execSync("git rev-list --count HEAD").toString().trim();
+console.log(`[next.config] APP_VERSION commit count = ${commitCount}`);
 
 // `highs` (HiGHS WASM solver, used by family-tree's decross-highs.ts) ships a
 // universal CJS bundle whose Node branch does `require("fs")`/`require("path")`
