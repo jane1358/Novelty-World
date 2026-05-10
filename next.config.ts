@@ -1,21 +1,26 @@
 import type { NextConfig } from "next";
 import { execSync } from "child_process";
 
-// CI hosts (Vercel etc.) shallow-clone by default, which truncates the
-// commit count. Diagnose what state the .git is in and try to unshallow.
-function logCmd(label: string, cmd: string): void {
+// Vercel shallow-clones the repo and strips the `origin` remote, so a plain
+// `git fetch --unshallow` has nothing to fetch from. Re-add origin from
+// VERCEL_GIT_* env vars (public-repo HTTPS needs no auth), then unshallow.
+function unshallow(): void {
   try {
-    const out = execSync(cmd, { stdio: ["ignore", "pipe", "pipe"] }).toString().trim();
-    console.log(`[next.config] ${label}: ${out || "(empty)"}`);
+    const isShallow = execSync("git rev-parse --is-shallow-repository").toString().trim();
+    if (isShallow !== "true") return;
+    const owner = process.env.VERCEL_GIT_REPO_OWNER;
+    const slug = process.env.VERCEL_GIT_REPO_SLUG;
+    if (owner && slug) {
+      const url = `https://github.com/${owner}/${slug}.git`;
+      execSync(`git remote add origin ${url} || git remote set-url origin ${url}`, { stdio: "ignore", shell: "/bin/sh" });
+    }
+    execSync("git fetch --unshallow origin", { stdio: "ignore" });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.log(`[next.config] ${label} FAILED: ${msg.replace(/\n/g, " | ")}`);
+    console.warn(`[next.config] unshallow failed: ${msg.replace(/\n/g, " | ")}`);
   }
 }
-logCmd("is-shallow", "git rev-parse --is-shallow-repository");
-logCmd("remote-v", "git remote -v");
-logCmd("fetch-unshallow", "git fetch --unshallow 2>&1");
-logCmd("count-after", "git rev-list --count HEAD");
+unshallow();
 const commitCount = execSync("git rev-list --count HEAD").toString().trim();
 
 // `highs` (HiGHS WASM solver, used by family-tree's decross-highs.ts) ships a
