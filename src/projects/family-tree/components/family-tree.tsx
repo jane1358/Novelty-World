@@ -214,19 +214,17 @@ export function FamilyTree() {
         <div className="flex shrink-0 items-center gap-2">
           {layout.nodes.length > 0 && (kind === "simple" || kind === "nice") ? (
             <span
-              className="flex items-center gap-1.5 rounded-full border border-border-default bg-surface-elevated px-2.5 py-1 text-xs text-text-secondary"
+              className="flex items-center gap-1.5 rounded-full border border-border-default bg-surface-elevated px-2 py-1 text-xs text-text-secondary sm:px-2.5"
               aria-live="polite"
-              title={
-                kind === "simple"
-                  ? "Showing a quick draft. Computing the nicer layout next, then the optimal one."
-                  : "Showing a refined layout. Optimizing for fewest crossings…"
-              }
+              aria-label="Optimizing layout"
+              title="Showing an approximate layout while we compute the optimal one."
             >
               <span
                 className="inline-block h-2 w-2 animate-pulse rounded-full bg-brand-orange"
                 aria-hidden
               />
-              {kind === "simple" ? "Simple draft · refining…" : "Nice layout · optimizing…"}
+              <span className="hidden sm:inline">Optimizing layout…</span>
+              <span className="sm:hidden">Optimizing…</span>
             </span>
           ) : null}
           {showResetView ? (

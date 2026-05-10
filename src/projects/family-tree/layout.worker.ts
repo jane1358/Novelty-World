@@ -6,6 +6,11 @@
 //             gets a real-looking layout quickly.
 //   "fancy" — optimal crossing minimization via integer program, seconds for
 //             large trees. Replaces "nice" when it lands.
+//
+// When `skipNice` is set, the heuristic pass is skipped and only fancy is
+// computed. The caller sets this when the on-screen layout is already at
+// fancy quality (an optimistic patch on top of a previously-fancy result),
+// so emitting "nice" would visibly downgrade the layout before fancy lands.
 
 import { computeLayout } from "./logic";
 import type { Layout, Tree } from "./types";
@@ -15,6 +20,7 @@ export type LayoutKind = "nice" | "fancy";
 export interface LayoutRequest {
   id: number;
   tree: Tree;
+  skipNice: boolean;
 }
 
 export type LayoutResponse =
@@ -32,10 +38,12 @@ interface WorkerScope {
 const ctx = self as unknown as WorkerScope;
 
 ctx.onmessage = (e) => {
-  const { id, tree } = e.data;
+  const { id, tree, skipNice } = e.data;
   try {
-    const nice = computeLayout(tree, { decross: "two-layer" });
-    ctx.postMessage({ id, ok: true, layout: nice, kind: "nice" });
+    if (!skipNice) {
+      const nice = computeLayout(tree, { decross: "two-layer" });
+      ctx.postMessage({ id, ok: true, layout: nice, kind: "nice" });
+    }
 
     const fancy = computeLayout(tree, { decross: "opt" });
     ctx.postMessage({ id, ok: true, layout: fancy, kind: "fancy" });
