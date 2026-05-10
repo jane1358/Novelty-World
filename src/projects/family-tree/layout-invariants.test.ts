@@ -4,7 +4,7 @@
 // tripping here is a bug, not a quality regression. Quality metrics
 // (crossing counts, edge lengths, etc.) live elsewhere.
 
-import { describe, it, expect } from "vitest";
+import { beforeAll, describe, it, expect } from "vitest";
 import { computeLayout, type ComputeLayoutOptions } from "./logic";
 import type { LaidOutNode, Layout, Tree } from "./types";
 import { NAMED_FIXTURES, productionTree } from "./__fixtures__/trees";
@@ -44,8 +44,12 @@ function defineInvariants(
   build: () => Tree,
   options: ComputeLayoutOptions = {},
 ): void {
-  const tree = build();
-  const layout = computeLayout(tree, options);
+  let tree: Tree;
+  let layout: Layout;
+  beforeAll(async () => {
+    tree = build();
+    layout = await computeLayout(tree, options);
+  });
 
   it("places every person in the tree", () => {
     const placed = new Set(layout.nodes.map((n) => n.id));
@@ -132,9 +136,9 @@ function defineInvariants(
     }
   });
 
-  it("is deterministic across repeated runs", () => {
-    const a = computeLayout(build(), options);
-    const b = computeLayout(build(), options);
+  it("is deterministic across repeated runs", async () => {
+    const a = await computeLayout(build(), options);
+    const b = await computeLayout(build(), options);
     const fmt = (l: Layout): string =>
       l.nodes
         .slice()
@@ -161,10 +165,11 @@ describe.each(Object.entries(NAMED_FIXTURES))(
   },
 );
 
-// Production tree runs with the two-layer (nice) decross strategy. The
-// optimal (fancy) pass takes ~50s and is impractical inside the test
-// suite — invariants are correctness checks that should hold under either
-// strategy, and the bench covers the opt pass separately.
+// Production tree runs with the two-layer (nice) decross strategy. With
+// HiGHS the opt pass is now fast enough (~2s) for the test suite, but
+// we keep this on two-layer because invariants are correctness checks
+// that should hold under either strategy and the bench covers opt
+// separately.
 describe("computeLayout invariants — productionTree (two-layer)", () => {
   defineInvariants("productionTree", productionTree, { decross: "two-layer" });
 });

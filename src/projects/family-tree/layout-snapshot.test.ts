@@ -17,7 +17,7 @@ import { serializeLayout } from "./layout-snapshot.helpers";
 
 describe("productionTree layout — nice (decross=two-layer)", () => {
   it("matches the pinned snapshot", async () => {
-    const layout = computeLayout(productionTree(), { decross: "two-layer" });
+    const layout = await computeLayout(productionTree(), { decross: "two-layer" });
     await expect(serializeLayout(layout)).toMatchFileSnapshot(
       "./__snapshots__/production-tree.nice.json",
     );

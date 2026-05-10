@@ -1,6 +1,5 @@
 import {
   coordSimplex,
-  decrossOpt,
   decrossTwoLayer,
   graphStratify,
   sugiyama,
@@ -674,11 +673,11 @@ export type DecrossStrategy = "opt" | "two-layer";
 // width/gap constraints).
 // Returns null on failure (degenerate graph the LP solver can't handle); the
 // caller falls back to a flat per-layer placement.
-function layoutCouplesViaSugiyama(
+async function layoutCouplesViaSugiyama(
   couples: CoupleUnit[],
   parentCouplesOf: Map<string, string[]>,
   strategy: DecrossStrategy,
-): Map<string, number> | null {
+): Promise<Map<string, number> | null> {
   if (couples.length === 0) return null;
   interface CoupleData { id: string; parentIds: string[] }
   const data: CoupleData[] = couples.map((c) => ({
@@ -693,11 +692,21 @@ function layoutCouplesViaSugiyama(
     // accepts our typed dag. The runtime is unaffected — nodeSize only ever
     // needs node.data.id, which is present on the stratified data.
     const dag = graphStratify()(data);
-    // `slow` lets the LP solver attempt graphs the default `fast` check
-    // would refuse.
-    const decross = strategy === "opt"
-      ? decrossOpt().check("slow")
-      : decrossTwoLayer();
+    // For "opt", we hand d3-dag a custom decross plugin that solves the
+    // crossing-minimization MIP via HiGHS-WASM (~30× faster than d3-dag's
+    // bundled javascript-lp-solver on the production tree). The whole
+    // decross-highs module (and the ~600KB highs WASM it loads) is dynamic-
+    // imported so the React component bundle that imports logic.ts for
+    // types/helpers doesn't pull in any of it. Only the layout Web Worker
+    // (which is the sole caller of computeLayout) ever fetches this chunk.
+    // For "two-layer" we keep d3-dag's barycenter heuristic.
+    let decross;
+    if (strategy === "opt") {
+      const mod = await import("./decross-highs");
+      decross = mod.decrossHighs(await mod.loadHighs());
+    } else {
+      decross = decrossTwoLayer();
+    }
     const layout = sugiyama()
       .decross(decross)
       .coord(coordSimplex())
@@ -751,10 +760,10 @@ export interface ComputeLayoutOptions {
   decross?: DecrossStrategy;
 }
 
-export function computeLayout(
+export async function computeLayout(
   tree: Tree,
   options: ComputeLayoutOptions = {},
-): Layout {
+): Promise<Layout> {
   const decross: DecrossStrategy = options.decross ?? "opt";
   const order = bfsOrder(tree);
   const gen = computeGenerations(tree);
@@ -796,7 +805,7 @@ export function computeLayout(
   }
 
   const layered = buildLayered(couples);
-  const sugiyamaCenterX = layoutCouplesViaSugiyama(
+  const sugiyamaCenterX = await layoutCouplesViaSugiyama(
     couples,
     parentCouplesOf,
     decross,

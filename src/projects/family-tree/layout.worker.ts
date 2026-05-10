@@ -39,16 +39,18 @@ const ctx = self as unknown as WorkerScope;
 
 ctx.onmessage = (e) => {
   const { id, tree, skipNice } = e.data;
-  try {
-    if (!skipNice) {
-      const nice = computeLayout(tree, { decross: "two-layer" });
-      ctx.postMessage({ id, ok: true, layout: nice, kind: "nice" });
-    }
+  void (async () => {
+    try {
+      if (!skipNice) {
+        const nice = await computeLayout(tree, { decross: "two-layer" });
+        ctx.postMessage({ id, ok: true, layout: nice, kind: "nice" });
+      }
 
-    const fancy = computeLayout(tree, { decross: "opt" });
-    ctx.postMessage({ id, ok: true, layout: fancy, kind: "fancy" });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    ctx.postMessage({ id, ok: false, error: message });
-  }
+      const fancy = await computeLayout(tree, { decross: "opt" });
+      ctx.postMessage({ id, ok: true, layout: fancy, kind: "fancy" });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      ctx.postMessage({ id, ok: false, error: message });
+    }
+  })();
 };

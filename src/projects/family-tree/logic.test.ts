@@ -383,36 +383,36 @@ describe("describeRelation", () => {
 });
 
 describe("computeLayout", () => {
-  it("places the lone root", () => {
-    const layout = computeLayout(createInitialTree());
+  it("places the lone root", async () => {
+    const layout = await computeLayout(createInitialTree());
     expect(layout.nodes).toHaveLength(1);
     expect(layout.nodes[0].id).toBe(ROOT_ID);
     expect(layout.edges).toEqual([]);
   });
 
-  it("places spouses on the same row with a spouse edge", () => {
+  it("places spouses on the same row with a spouse edge", async () => {
     let t = createInitialTree();
     t = addSpouse(t, ROOT_ID, "s", "Partner", "", "F");
-    const layout = computeLayout(t);
+    const layout = await computeLayout(t);
     const root = layout.nodes.find((n) => n.id === ROOT_ID)!;
     const spouse = layout.nodes.find((n) => n.id === "s")!;
     expect(root.y).toBe(spouse.y);
     expect(layout.edges.some((e) => e.kind === "spouse")).toBe(true);
   });
 
-  it("places ancestors above the root", () => {
+  it("places ancestors above the root", async () => {
     let t = createInitialTree();
     t = addParent(t, ROOT_ID, "mom", "Mom", "", "F");
-    const layout = computeLayout(t);
+    const layout = await computeLayout(t);
     const root = layout.nodes.find((n) => n.id === ROOT_ID)!;
     const mom = layout.nodes.find((n) => n.id === "mom")!;
     expect(mom.y).toBeLessThan(root.y);
   });
 
-  it("places children below their parents and connects them", () => {
+  it("places children below their parents and connects them", async () => {
     let t = createInitialTree();
     t = addChild(t, ROOT_ID, "kid", "Kid", "", "M");
-    const layout = computeLayout(t);
+    const layout = await computeLayout(t);
     const root = layout.nodes.find((n) => n.id === ROOT_ID)!;
     const kid = layout.nodes.find((n) => n.id === "kid")!;
     expect(kid.y).toBeGreaterThan(root.y);
@@ -423,11 +423,11 @@ describe("computeLayout", () => {
     ).toBe(true);
   });
 
-  it("centers a single child under a couple", () => {
+  it("centers a single child under a couple", async () => {
     let t = createInitialTree();
     t = addSpouse(t, ROOT_ID, "spouse", "Partner", "", "F");
     t = addChild(t, ROOT_ID, "kid", "Kid", "", "M");
-    const layout = computeLayout(t);
+    const layout = await computeLayout(t);
     const root = layout.nodes.find((n) => n.id === ROOT_ID)!;
     const spouse = layout.nodes.find((n) => n.id === "spouse")!;
     const kid = layout.nodes.find((n) => n.id === "kid")!;
@@ -436,7 +436,7 @@ describe("computeLayout", () => {
     expect(Math.abs(coupleMid - kidMid)).toBeLessThan(1);
   });
 
-  it("uses barycenter to pull a spouse next to their siblings", () => {
+  it("uses barycenter to pull a spouse next to their siblings", async () => {
     // Tree shape: root and spouse share gen 0 with root's cousin and spouse's
     // sibling. Without barycenter the BFS order leaves the spouse on the
     // root's side, forcing the spouse-parent edge to vault over the cousin.
@@ -454,7 +454,7 @@ describe("computeLayout", () => {
       p("spSib", "M", ["spDad", "spMom"]),
       p("gp", "M"),
     ]);
-    const layout = computeLayout(t);
+    const layout = await computeLayout(t);
     const findX = (id: string): number => {
       const n = layout.nodes.find((node) => node.id === id);
       if (!n) throw new Error(`missing ${id}`);
@@ -466,7 +466,7 @@ describe("computeLayout", () => {
     );
   });
 
-  it("never overlaps two couples on the same generation row", () => {
+  it("never overlaps two couples on the same generation row", async () => {
     // Great-grandparent with two children: one is on focal's lineage
     // (a paired couple), the other is a singleton sibling. The earlier
     // single-width packer placed the singleton at the same x as the
@@ -481,7 +481,7 @@ describe("computeLayout", () => {
       p("aunt", "F", ["ggma"]),
       p("greatAunt", "F", ["ggma"]),
     ]);
-    const layout = computeLayout(t);
+    const layout = await computeLayout(t);
     const persons = t.persons;
     for (let i = 0; i < layout.nodes.length; i++) {
       for (let j = i + 1; j < layout.nodes.length; j++) {
@@ -498,7 +498,7 @@ describe("computeLayout", () => {
     }
   });
 
-  it("is deterministic — repeated layouts produce identical positions", () => {
+  it("is deterministic — repeated layouts produce identical positions", async () => {
     const build = (): Tree =>
       makeTree([
         p("me", "M", ["dad", "mom"], ["sp"]),
@@ -513,8 +513,8 @@ describe("computeLayout", () => {
         p("spSib", "M", ["spDad", "spMom"]),
         p("gp", "M"),
       ]);
-    const a = computeLayout(build());
-    const b = computeLayout(build());
+    const a = await computeLayout(build());
+    const b = await computeLayout(build());
     expect(b.nodes.map((n) => `${n.id}:${n.x},${n.y}`)).toEqual(
       a.nodes.map((n) => `${n.id}:${n.x},${n.y}`),
     );

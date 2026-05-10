@@ -1,16 +1,15 @@
 // Benches for computeLayout. Two groups:
 //   - productionTree: live snapshot of the real family_tree row. The
-//     authoritative real-world number to track for regressions. The opt
-//     pass takes ~50s, so it gets a relaxed iteration budget.
+//     authoritative real-world number to track for regressions.
 //   - synthetic sweep: parameterized shapes that vary L (chain depth),
 //     pedigree depth, sibling-fan width K, and recursive branching. Used
 //     to validate the complexity story.
 //
 // Note: the synthetic sweeps systematically *underestimate* real cost
 // because none of them produce the "two adjacent wide layers densely
-// interconnected" pattern that triggers decrossOpt's worst case. They
-// validate the W-dominates trend; productionTree is what tells you the
-// absolute number.
+// interconnected" pattern that triggers the worst case. They validate
+// the W-dominates trend; productionTree is what tells you the absolute
+// number.
 //
 // Run with `npm run bench`.
 
@@ -27,14 +26,14 @@ import {
 
 describe("productionTree (real family_tree row)", () => {
   const tree = productionTree();
-  // Single-iteration by default — opt pass averages ~60s/run, and one
-  // sample is enough to tell whether a tweak moved things in the right
-  // direction. Re-run the bench a few times and average if the change
-  // looks marginal and you need to defeat run-to-run variance.
+  // Single-iteration by default. The opt pass dropped from ~70s (d3-dag's
+  // bundled javascript-lp-solver) to ~1.8s after we swapped in HiGHS-WASM
+  // for crossing minimization (see decross-highs.ts). Re-run a few times
+  // if a change looks marginal and you need to defeat run-to-run variance.
   bench(
     "decross=opt (fancy)",
-    () => {
-      computeLayout(tree, { decross: "opt" });
+    async () => {
+      await computeLayout(tree, { decross: "opt" });
     },
     { time: 0, iterations: 1 },
   );
@@ -42,11 +41,11 @@ describe("productionTree (real family_tree row)", () => {
 
 describe("kitchenSink (synthetic ~50 ppl, narrower than production)", () => {
   const tree = kitchenSink();
-  bench("decross=opt (fancy)", () => {
-    computeLayout(tree, { decross: "opt" });
+  bench("decross=opt (fancy)", async () => {
+    await computeLayout(tree, { decross: "opt" });
   });
-  bench("decross=two-layer (nice)", () => {
-    computeLayout(tree, { decross: "two-layer" });
+  bench("decross=two-layer (nice)", async () => {
+    await computeLayout(tree, { decross: "two-layer" });
   });
 });
 
@@ -54,8 +53,8 @@ describe("kitchenSink (synthetic ~50 ppl, narrower than production)", () => {
 describe("chain — depth sweep (W=1)", () => {
   for (const L of [5, 20, 50]) {
     const tree = chain(L);
-    bench(`L=${L} (N=${L})`, () => {
-      computeLayout(tree, { decross: "opt" });
+    bench(`L=${L} (N=${L})`, async () => {
+      await computeLayout(tree, { decross: "opt" });
     });
   }
 });
@@ -67,8 +66,8 @@ describe("ancestorPedigree — width sweep", () => {
     const tree = ancestorPedigree(depth);
     const N = (1 << depth) - 1;
     const W = depth >= 2 ? 1 << (depth - 2) : 1;
-    bench(`depth=${depth} (N=${N}, W=${W})`, () => {
-      computeLayout(tree, { decross: "opt" });
+    bench(`depth=${depth} (N=${N}, W=${W})`, async () => {
+      await computeLayout(tree, { decross: "opt" });
     });
   }
 });
@@ -80,8 +79,8 @@ describe("siblingFan — width sweep (single parent couple)", () => {
   for (const K of [5, 15, 30]) {
     const tree = siblingFanOfWidth(K);
     const N = Object.keys(tree.persons).length;
-    bench(`K=${K} (N=${N})`, () => {
-      computeLayout(tree, { decross: "opt" });
+    bench(`K=${K} (N=${N})`, async () => {
+      await computeLayout(tree, { decross: "opt" });
     });
   }
 });
@@ -97,8 +96,8 @@ describe("branching — joint W/L sweep", () => {
   ] as const) {
     const tree = branching(b, d);
     const N = Object.keys(tree.persons).length;
-    bench(`b=${b}, d=${d} (N=${N})`, () => {
-      computeLayout(tree, { decross: "opt" });
+    bench(`b=${b}, d=${d} (N=${N})`, async () => {
+      await computeLayout(tree, { decross: "opt" });
     });
   }
 });
