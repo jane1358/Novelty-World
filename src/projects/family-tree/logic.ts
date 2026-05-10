@@ -21,7 +21,14 @@ export const ROW_GAP = 96;
 export const SUBTREE_GAP = 72;
 
 export const ROOT_ID = "kyle-hutchinson";
-export const ROOT_NAME = "Kyle Hutchinson";
+export const ROOT_FIRST_NAME = "Kyle";
+export const ROOT_LAST_NAME = "Hutchinson";
+
+export function fullName(person: Pick<Person, "firstName" | "lastName">): string {
+  return person.lastName
+    ? `${person.firstName} ${person.lastName}`
+    : person.firstName;
+}
 
 export function createInitialTree(): Tree {
   return {
@@ -29,7 +36,8 @@ export function createInitialTree(): Tree {
     persons: {
       [ROOT_ID]: {
         id: ROOT_ID,
-        name: ROOT_NAME,
+        firstName: ROOT_FIRST_NAME,
+        lastName: ROOT_LAST_NAME,
         gender: "M",
         parentIds: [],
         spouseIds: [],
@@ -50,7 +58,8 @@ export function addParent(
   tree: Tree,
   childId: string,
   newId: string,
-  name: string,
+  firstName: string,
+  lastName: string,
   gender: Gender,
 ): Tree {
   const next = clone(tree);
@@ -58,7 +67,8 @@ export function addParent(
   if (child.parentIds.length >= 2) return tree;
   next.persons[newId] = {
     id: newId,
-    name,
+    firstName,
+    lastName,
     gender,
     parentIds: [],
     spouseIds: [],
@@ -81,7 +91,8 @@ export function addChild(
   tree: Tree,
   parentId: string,
   newId: string,
-  name: string,
+  firstName: string,
+  lastName: string,
   gender: Gender,
 ): Tree {
   const next = clone(tree);
@@ -90,7 +101,8 @@ export function addChild(
   if (parent.spouseIds.length > 0) parents.push(parent.spouseIds[0]);
   next.persons[newId] = {
     id: newId,
-    name,
+    firstName,
+    lastName,
     gender,
     parentIds: parents,
     spouseIds: [],
@@ -102,14 +114,16 @@ export function addSpouse(
   tree: Tree,
   personId: string,
   newId: string,
-  name: string,
+  firstName: string,
+  lastName: string,
   gender: Gender,
 ): Tree {
   const next = clone(tree);
   const person = next.persons[personId];
   next.persons[newId] = {
     id: newId,
-    name,
+    firstName,
+    lastName,
     gender,
     parentIds: [],
     spouseIds: [personId],
@@ -128,9 +142,15 @@ export function addSpouse(
   return next;
 }
 
-export function renamePerson(tree: Tree, id: string, name: string): Tree {
+export function renamePerson(
+  tree: Tree,
+  id: string,
+  firstName: string,
+  lastName: string,
+): Tree {
   const next = clone(tree);
-  next.persons[id].name = name;
+  next.persons[id].firstName = firstName;
+  next.persons[id].lastName = lastName;
   return next;
 }
 
@@ -163,7 +183,8 @@ export function normalizeTree(raw: unknown): { tree: Tree; changed: boolean } {
   for (const [id, person] of Object.entries(t.persons)) {
     persons[id] = {
       id: person.id,
-      name: person.name,
+      firstName: person.firstName,
+      lastName: person.lastName,
       gender: person.gender,
       parentIds: [...person.parentIds],
       spouseIds: [...person.spouseIds],

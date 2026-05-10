@@ -2,7 +2,10 @@ export type Gender = "M" | "F" | "NB";
 
 export interface Person {
   id: string;
-  name: string;
+  firstName: string;
+  // Empty string means "no last name". Keeping it always-present (never
+  // optional) avoids null/undefined plumbing through the layout/render path.
+  lastName: string;
   gender: Gender;
   parentIds: string[];
   spouseIds: string[];

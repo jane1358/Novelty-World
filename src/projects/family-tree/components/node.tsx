@@ -2,6 +2,7 @@
 
 import { type PointerEvent } from "react";
 import type { LaidOutNode, Person } from "../types";
+import { fullName } from "../logic";
 
 interface NodeProps {
   node: LaidOutNode;
@@ -45,7 +46,7 @@ export function Node({
       onClick={handleClick}
     >
       <span className="text-sm font-medium text-text-primary leading-tight">
-        {person.name}
+        {fullName(person)}
       </span>
       {subtitle !== null ? (
         <span

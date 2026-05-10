@@ -4,9 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFamilyTreeStore } from "../store";
 import {
   ROOT_ID,
-  ROOT_NAME,
+  ROOT_FIRST_NAME,
   countChildren,
   describeRelation,
+  fullName,
   nearestInDirection,
   nextGender,
   type NavDirection,
@@ -45,7 +46,7 @@ function deleteWithConfirm(
   const childCount = countChildren(tree, personId);
   if (childCount > 0) {
     const ok = window.confirm(
-      `${p.name} has ${childCount} ${childCount === 1 ? "child" : "children"} listed. Remove anyway? Their children will keep their other parent (if any).`,
+      `${fullName(p)} has ${childCount} ${childCount === 1 ? "child" : "children"} listed. Remove anyway? Their children will keep their other parent (if any).`,
     );
     if (!ok) return;
   }
@@ -204,7 +205,7 @@ export function FamilyTree() {
             {personCount} {personCount === 1 ? "person" : "people"}
             <span className="mx-1">·</span>
             viewing from{" "}
-            <span className="text-brand-blue">{viewRoot.name}</span>
+            <span className="text-brand-blue">{fullName(viewRoot)}</span>
             {status === "loading" ? " · loading…" : null}
             {status === "error" ? " · offline (local only)" : null}
             {saving ? " · saving…" : null}
@@ -230,7 +231,7 @@ export function FamilyTree() {
           ) : null}
           {showResetView ? (
             <Button variant="ghost" onClick={resetViewRoot}>
-              Reset to {ROOT_NAME.split(" ")[0]}
+              Reset to {ROOT_FIRST_NAME}
             </Button>
           ) : null}
           <p className="hidden text-xs text-text-muted lg:block">
@@ -283,10 +284,10 @@ export function FamilyTree() {
             mode={panelMode}
             onModeChange={setPanelMode}
             onClose={() => { setSelected(null); }}
-            onAddParent={(name, gender) => { addParent(selectedPerson.id, name, gender); }}
-            onAddChild={(name, gender) => { addChild(selectedPerson.id, name, gender); }}
-            onAddSpouse={(name, gender) => { addSpouse(selectedPerson.id, name, gender); }}
-            onRename={(name) => { rename(selectedPerson.id, name); }}
+            onAddParent={(firstName, lastName, gender) => { addParent(selectedPerson.id, firstName, lastName, gender); }}
+            onAddChild={(firstName, lastName, gender) => { addChild(selectedPerson.id, firstName, lastName, gender); }}
+            onAddSpouse={(firstName, lastName, gender) => { addSpouse(selectedPerson.id, firstName, lastName, gender); }}
+            onRename={(firstName, lastName) => { rename(selectedPerson.id, firstName, lastName); }}
             onSetGender={(gender) => { setGender(selectedPerson.id, gender); }}
             onSetAsViewRoot={() => { setViewRoot(selectedPerson.id); }}
             onDelete={() => { handleDelete(selectedPerson.id); }}

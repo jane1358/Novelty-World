@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
   ROOT_ID,
-  ROOT_NAME,
+  ROOT_FIRST_NAME,
+  ROOT_LAST_NAME,
   addChild,
   addParent,
   addSpouse,
@@ -10,6 +11,7 @@ import {
   createInitialTree,
   deletePerson,
   describeRelation,
+  fullName,
   nearestInDirection,
   nextGender,
   renamePerson,
@@ -24,7 +26,7 @@ function p(
   parentIds: string[] = [],
   spouseIds: string[] = [],
 ): Person {
-  return { id, name: id, gender, parentIds, spouseIds };
+  return { id, firstName: id, lastName: "", gender, parentIds, spouseIds };
 }
 
 function makeTree(persons: Person[]): Tree {
@@ -38,33 +40,47 @@ describe("createInitialTree", () => {
   it("seeds with root person only, gender M", () => {
     const t = createInitialTree();
     expect(Object.keys(t.persons)).toEqual([ROOT_ID]);
-    expect(t.persons[ROOT_ID].name).toBe(ROOT_NAME);
+    expect(t.persons[ROOT_ID].firstName).toBe(ROOT_FIRST_NAME);
+    expect(t.persons[ROOT_ID].lastName).toBe(ROOT_LAST_NAME);
     expect(t.persons[ROOT_ID].gender).toBe("M");
+  });
+});
+
+describe("fullName", () => {
+  it("joins first and last with a space", () => {
+    expect(fullName({ firstName: "Kyle", lastName: "Hutchinson" })).toBe(
+      "Kyle Hutchinson",
+    );
+  });
+
+  it("omits the trailing space when last name is empty", () => {
+    expect(fullName({ firstName: "Kyle", lastName: "" })).toBe("Kyle");
   });
 });
 
 describe("addParent", () => {
   it("attaches a parent with the given gender", () => {
     const t1 = createInitialTree();
-    const t2 = addParent(t1, ROOT_ID, "p1", "Mom", "F");
+    const t2 = addParent(t1, ROOT_ID, "p1", "Mom", "Hutchinson", "F");
     expect(t2.persons[ROOT_ID].parentIds).toEqual(["p1"]);
-    expect(t2.persons.p1.name).toBe("Mom");
+    expect(t2.persons.p1.firstName).toBe("Mom");
+    expect(t2.persons.p1.lastName).toBe("Hutchinson");
     expect(t2.persons.p1.gender).toBe("F");
   });
 
   it("auto-marries the two parents when the second is added", () => {
     let t = createInitialTree();
-    t = addParent(t, ROOT_ID, "mom", "Mom", "F");
-    t = addParent(t, ROOT_ID, "dad", "Dad", "M");
+    t = addParent(t, ROOT_ID, "mom", "Mom", "", "F");
+    t = addParent(t, ROOT_ID, "dad", "Dad", "", "M");
     expect(t.persons.mom.spouseIds).toEqual(["dad"]);
     expect(t.persons.dad.spouseIds).toEqual(["mom"]);
   });
 
   it("is a no-op when the child already has two parents", () => {
     let t = createInitialTree();
-    t = addParent(t, ROOT_ID, "mom", "Mom", "F");
-    t = addParent(t, ROOT_ID, "dad", "Dad", "M");
-    const t2 = addParent(t, ROOT_ID, "extra", "Extra", "M");
+    t = addParent(t, ROOT_ID, "mom", "Mom", "", "F");
+    t = addParent(t, ROOT_ID, "dad", "Dad", "", "M");
+    const t2 = addParent(t, ROOT_ID, "extra", "Extra", "", "M");
     expect(t2).toBe(t);
   });
 });
@@ -72,22 +88,22 @@ describe("addParent", () => {
 describe("addChild", () => {
   it("uses the parent's spouse as a co-parent if present", () => {
     let t = createInitialTree();
-    t = addSpouse(t, ROOT_ID, "spouse", "Partner", "F");
-    t = addChild(t, ROOT_ID, "kid", "Kid", "M");
+    t = addSpouse(t, ROOT_ID, "spouse", "Partner", "", "F");
+    t = addChild(t, ROOT_ID, "kid", "Kid", "", "M");
     expect([...t.persons.kid.parentIds].sort()).toEqual([ROOT_ID, "spouse"].sort());
     expect(t.persons.kid.gender).toBe("M");
   });
 
   it("creates a single-parent child when the parent has no spouse", () => {
     let t = createInitialTree();
-    t = addChild(t, ROOT_ID, "kid", "Kid", "M");
+    t = addChild(t, ROOT_ID, "kid", "Kid", "", "M");
     expect(t.persons.kid.parentIds).toEqual([ROOT_ID]);
   });
 });
 
 describe("addSpouse", () => {
   it("links spouses bidirectionally with given gender", () => {
-    const t = addSpouse(createInitialTree(), ROOT_ID, "s", "S", "F");
+    const t = addSpouse(createInitialTree(), ROOT_ID, "s", "S", "", "F");
     expect(t.persons[ROOT_ID].spouseIds).toEqual(["s"]);
     expect(t.persons.s.spouseIds).toEqual([ROOT_ID]);
     expect(t.persons.s.gender).toBe("F");
@@ -95,28 +111,34 @@ describe("addSpouse", () => {
 
   it("auto-co-parents the new spouse onto existing single-parent kids", () => {
     let t = createInitialTree();
-    t = addParent(t, ROOT_ID, "mom", "Mom", "F");
+    t = addParent(t, ROOT_ID, "mom", "Mom", "", "F");
     expect(t.persons[ROOT_ID].parentIds).toEqual(["mom"]);
-    t = addSpouse(t, "mom", "dad", "Dad", "M");
+    t = addSpouse(t, "mom", "dad", "Dad", "", "M");
     expect(t.persons[ROOT_ID].parentIds).toContain("dad");
     expect(t.persons[ROOT_ID].parentIds).toHaveLength(2);
   });
 
   it("does not touch kids who already have two parents", () => {
     let t = createInitialTree();
-    t = addParent(t, ROOT_ID, "mom", "Mom", "F");
-    t = addParent(t, ROOT_ID, "dad", "Dad", "M");
+    t = addParent(t, ROOT_ID, "mom", "Mom", "", "F");
+    t = addParent(t, ROOT_ID, "dad", "Dad", "", "M");
     // dad already a parent of root; adding a new spouse to mom shouldn't
     // re-touch root (already two parents).
-    t = addSpouse(t, "mom", "third", "Third", "M");
+    t = addSpouse(t, "mom", "third", "Third", "", "M");
     expect(t.persons[ROOT_ID].parentIds.sort()).toEqual(["dad", "mom"]);
   });
 });
 
 describe("renamePerson", () => {
-  it("updates the name", () => {
-    const t = renamePerson(createInitialTree(), ROOT_ID, "K. Hutchinson");
-    expect(t.persons[ROOT_ID].name).toBe("K. Hutchinson");
+  it("updates first and last name", () => {
+    const t = renamePerson(createInitialTree(), ROOT_ID, "K.", "Hutchinson");
+    expect(t.persons[ROOT_ID].firstName).toBe("K.");
+    expect(t.persons[ROOT_ID].lastName).toBe("Hutchinson");
+  });
+
+  it("allows clearing the last name to empty", () => {
+    const t = renamePerson(createInitialTree(), ROOT_ID, "Kyle", "");
+    expect(t.persons[ROOT_ID].lastName).toBe("");
   });
 });
 
@@ -136,8 +158,8 @@ describe("deletePerson", () => {
 
   it("removes a person and cleans references", () => {
     let t = createInitialTree();
-    t = addSpouse(t, ROOT_ID, "spouse", "Partner", "F");
-    t = addChild(t, ROOT_ID, "kid", "Kid", "M");
+    t = addSpouse(t, ROOT_ID, "spouse", "Partner", "", "F");
+    t = addChild(t, ROOT_ID, "kid", "Kid", "", "M");
     t = deletePerson(t, "spouse");
     expect(t.persons.spouse as unknown).toBeUndefined();
     expect(t.persons[ROOT_ID].spouseIds).toEqual([]);
@@ -370,7 +392,7 @@ describe("computeLayout", () => {
 
   it("places spouses on the same row with a spouse edge", () => {
     let t = createInitialTree();
-    t = addSpouse(t, ROOT_ID, "s", "Partner", "F");
+    t = addSpouse(t, ROOT_ID, "s", "Partner", "", "F");
     const layout = computeLayout(t);
     const root = layout.nodes.find((n) => n.id === ROOT_ID)!;
     const spouse = layout.nodes.find((n) => n.id === "s")!;
@@ -380,7 +402,7 @@ describe("computeLayout", () => {
 
   it("places ancestors above the root", () => {
     let t = createInitialTree();
-    t = addParent(t, ROOT_ID, "mom", "Mom", "F");
+    t = addParent(t, ROOT_ID, "mom", "Mom", "", "F");
     const layout = computeLayout(t);
     const root = layout.nodes.find((n) => n.id === ROOT_ID)!;
     const mom = layout.nodes.find((n) => n.id === "mom")!;
@@ -389,7 +411,7 @@ describe("computeLayout", () => {
 
   it("places children below their parents and connects them", () => {
     let t = createInitialTree();
-    t = addChild(t, ROOT_ID, "kid", "Kid", "M");
+    t = addChild(t, ROOT_ID, "kid", "Kid", "", "M");
     const layout = computeLayout(t);
     const root = layout.nodes.find((n) => n.id === ROOT_ID)!;
     const kid = layout.nodes.find((n) => n.id === "kid")!;
@@ -403,8 +425,8 @@ describe("computeLayout", () => {
 
   it("centers a single child under a couple", () => {
     let t = createInitialTree();
-    t = addSpouse(t, ROOT_ID, "spouse", "Partner", "F");
-    t = addChild(t, ROOT_ID, "kid", "Kid", "M");
+    t = addSpouse(t, ROOT_ID, "spouse", "Partner", "", "F");
+    t = addChild(t, ROOT_ID, "kid", "Kid", "", "M");
     const layout = computeLayout(t);
     const root = layout.nodes.find((n) => n.id === ROOT_ID)!;
     const spouse = layout.nodes.find((n) => n.id === "spouse")!;
@@ -469,7 +491,7 @@ describe("computeLayout", () => {
         const yOverlap = !(a.y + a.h <= b.y || b.y + b.h <= a.y);
         if (xOverlap && yOverlap) {
           throw new Error(
-            `nodes overlap: ${persons[a.id].name} and ${persons[b.id].name}`,
+            `nodes overlap: ${fullName(persons[a.id])} and ${fullName(persons[b.id])}`,
           );
         }
       }
@@ -544,8 +566,8 @@ describe("nextGender", () => {
 describe("countChildren", () => {
   it("counts persons whose parentIds contain the given id", () => {
     let t = createInitialTree();
-    t = addChild(t, ROOT_ID, "a", "A", "M");
-    t = addChild(t, ROOT_ID, "b", "B", "F");
+    t = addChild(t, ROOT_ID, "a", "A", "", "M");
+    t = addChild(t, ROOT_ID, "b", "B", "", "F");
     expect(countChildren(t, ROOT_ID)).toBe(2);
     expect(countChildren(t, "a")).toBe(0);
   });

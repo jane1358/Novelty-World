@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { Gender, Person } from "../types";
-import { ROOT_ID } from "../logic";
+import { ROOT_ID, fullName } from "../logic";
 import { Button } from "@/shared/components/ui/button";
 
 export type PanelMode =
@@ -18,10 +18,10 @@ interface ActionPanelProps {
   mode: PanelMode;
   onModeChange: (mode: PanelMode) => void;
   onClose: () => void;
-  onAddParent: (name: string, gender: Gender) => void;
-  onAddChild: (name: string, gender: Gender) => void;
-  onAddSpouse: (name: string, gender: Gender) => void;
-  onRename: (name: string) => void;
+  onAddParent: (firstName: string, lastName: string, gender: Gender) => void;
+  onAddChild: (firstName: string, lastName: string, gender: Gender) => void;
+  onAddSpouse: (firstName: string, lastName: string, gender: Gender) => void;
+  onRename: (firstName: string, lastName: string) => void;
   onSetGender: (gender: Gender) => void;
   onSetAsViewRoot: () => void;
   onDelete: () => void;
@@ -80,35 +80,52 @@ export function ActionPanel({
   onSetAsViewRoot,
   onDelete,
 }: ActionPanelProps) {
-  const [draft, setDraft] = useState("");
+  const [firstDraft, setFirstDraft] = useState("");
+  const [lastDraft, setLastDraft] = useState("");
   const [draftGender, setDraftGender] = useState<Gender | null>(null);
 
   // Reset draft state when mode changes (including hotkey-driven changes from
   // the parent). Tracking the previous prop in state is React's recommended
   // pattern: https://react.dev/reference/react/useState#storing-information-from-previous-renders
+  // For add-parent / add-child / add-spouse we prepopulate lastName from the
+  // selected person's lastName so families with a shared surname can be entered
+  // quickly. The user can edit it before submitting.
   const [prevMode, setPrevMode] = useState(mode);
   if (prevMode !== mode) {
     setPrevMode(mode);
-    setDraft(mode === "rename" ? person.name : "");
+    if (mode === "rename") {
+      setFirstDraft(person.firstName);
+      setLastDraft(person.lastName);
+    } else if (mode === "menu") {
+      setFirstDraft("");
+      setLastDraft("");
+    } else {
+      setFirstDraft("");
+      setLastDraft(person.lastName);
+    }
     setDraftGender(null);
   }
 
   const isCanonicalRoot = person.id === ROOT_ID;
   const canAddParent = person.parentIds.length < 2;
   const needsGender = mode !== "rename" && mode !== "menu";
+  const trimmedFirst = firstDraft.trim();
   const canSubmit =
-    mode === "rename" ? draft.trim().length > 0 : draft.trim().length > 0 && draftGender !== null;
+    mode === "rename"
+      ? trimmedFirst.length > 0
+      : trimmedFirst.length > 0 && draftGender !== null;
 
   function submit() {
-    const name = draft.trim();
+    const f = firstDraft.trim();
+    const l = lastDraft.trim();
     if (mode === "rename") {
-      if (!name) return;
-      onRename(name);
+      if (!f) return;
+      onRename(f, l);
     } else {
-      if (!name || draftGender === null) return;
-      if (mode === "add-parent") onAddParent(name, draftGender);
-      else if (mode === "add-child") onAddChild(name, draftGender);
-      else if (mode === "add-spouse") onAddSpouse(name, draftGender);
+      if (!f || draftGender === null) return;
+      if (mode === "add-parent") onAddParent(f, l, draftGender);
+      else if (mode === "add-child") onAddChild(f, l, draftGender);
+      else if (mode === "add-spouse") onAddSpouse(f, l, draftGender);
     }
     onModeChange("menu");
   }
@@ -121,7 +138,7 @@ export function ActionPanel({
             Selected
           </div>
           <div className="text-lg font-semibold text-text-primary">
-            {person.name}
+            {fullName(person)}
           </div>
         </div>
         <Button variant="ghost" onClick={onClose} aria-label="Close">
@@ -186,27 +203,32 @@ export function ActionPanel({
           onSubmit={(e) => { e.preventDefault(); submit(); }}
           className="flex flex-col gap-3"
         >
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-text-secondary">
-              {mode === "rename" ? "New name" : "Name"}
-            </label>
-            <input
-              type="text"
-              value={draft}
-              onChange={(e) => { setDraft(e.target.value); }}
-              autoFocus
-              onFocus={(e) => { e.currentTarget.select(); }}
-              className="rounded-md border border-border-default bg-surface-primary px-3 py-2 text-text-primary outline-none focus:border-brand-orange"
-              placeholder={
-                mode === "add-parent"
-                  ? "Parent's name"
-                  : mode === "add-child"
-                    ? "Child's name"
-                    : mode === "add-spouse"
-                      ? "Spouse's name"
-                      : "Name"
-              }
-            />
+          <div className="grid grid-cols-2 gap-2">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-text-secondary">First name</label>
+              <input
+                type="text"
+                value={firstDraft}
+                onChange={(e) => { setFirstDraft(e.target.value); }}
+                autoFocus
+                onFocus={(e) => { e.currentTarget.select(); }}
+                className="rounded-md border border-border-default bg-surface-primary px-3 py-2 text-text-primary outline-none focus:border-brand-orange"
+                placeholder="First"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-text-secondary">
+                Last name <span className="text-text-muted">(optional)</span>
+              </label>
+              <input
+                type="text"
+                value={lastDraft}
+                onChange={(e) => { setLastDraft(e.target.value); }}
+                onFocus={(e) => { e.currentTarget.select(); }}
+                className="rounded-md border border-border-default bg-surface-primary px-3 py-2 text-text-primary outline-none focus:border-brand-orange"
+                placeholder="Last"
+              />
+            </div>
           </div>
 
           {needsGender ? (
