@@ -1,6 +1,13 @@
 import type { NextConfig } from "next";
 import { execSync } from "child_process";
 
+// CI hosts (Vercel etc.) shallow-clone by default, which truncates the
+// commit count. Unshallow first so the version badge reflects real history.
+try {
+  execSync("git fetch --unshallow", { stdio: "ignore" });
+} catch {
+  // Already complete, or no remote available — fall through to the count.
+}
 const commitCount = execSync("git rev-list --count HEAD").toString().trim();
 
 // `highs` (HiGHS WASM solver, used by family-tree's decross-highs.ts) ships a
