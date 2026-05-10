@@ -96,7 +96,9 @@ export function PanZoom({
     let lastTime = 0;
 
     const PAN_SPEED = 700; // screen px per second
+    const PAN_BOOST = 3; // multiplier when shift is held
     const ZOOM_RATE = 1.8; // multiplicative factor per second
+    let shiftHeld = false;
 
     const tick = (now: number): void => {
       const dt = lastTime === 0 ? 16 : Math.min(50, now - lastTime);
@@ -106,10 +108,11 @@ export function PanZoom({
       let dy = 0;
       let zoomFactor = 1;
       const seconds = dt / 1000;
-      if (pressed.has("w")) dy += PAN_SPEED * seconds;
-      if (pressed.has("s")) dy -= PAN_SPEED * seconds;
-      if (pressed.has("a")) dx += PAN_SPEED * seconds;
-      if (pressed.has("d")) dx -= PAN_SPEED * seconds;
+      const panStep = PAN_SPEED * seconds * (shiftHeld ? PAN_BOOST : 1);
+      if (pressed.has("w")) dy += panStep;
+      if (pressed.has("s")) dy -= panStep;
+      if (pressed.has("a")) dx += panStep;
+      if (pressed.has("d")) dx -= panStep;
       if (pressed.has("+")) zoomFactor *= Math.pow(ZOOM_RATE, seconds);
       if (pressed.has("-")) zoomFactor /= Math.pow(ZOOM_RATE, seconds);
 
@@ -159,6 +162,7 @@ export function PanZoom({
     const onKeyDown = (e: KeyboardEvent): void => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (isInteractive(e.target)) return;
+      shiftHeld = e.shiftKey;
       const token = keyToken(e);
       if (token === null) return;
       e.preventDefault();
@@ -168,11 +172,12 @@ export function PanZoom({
     };
 
     const onKeyUp = (e: KeyboardEvent): void => {
+      shiftHeld = e.shiftKey;
       const token = keyToken(e);
       if (token !== null) pressed.delete(token);
     };
 
-    const clearPressed = (): void => { pressed.clear(); };
+    const clearPressed = (): void => { pressed.clear(); shiftHeld = false; };
 
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
