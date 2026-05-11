@@ -722,6 +722,38 @@ describe("computeLayout", () => {
     expect(firstGroup).toBe("maya-gary");
   });
 
+  it("doesn't orphan a current spouse when the partner's ex is processed first", async () => {
+    // John reaches BFS before Kristin (he's connected via parents). John has
+    // no current spouse, only a divorced one (Kristin), and Kristin is
+    // remarried to Anthony. The fallback used to pull Kristin into John's
+    // cluster anyway, which then left Anthony as an orphan singleton with no
+    // edges — sugiyama dumped him off the right side of the canvas.
+    const t = makeTree([
+      p("me", "M", ["john"]),
+      p("john", "M", [], [], ["kristin"]),
+      p("kristin", "F", [], ["anthony"], ["john"]),
+      p("anthony", "M", [], ["kristin"]),
+    ]);
+
+    const layout = await computeLayout(t);
+    const kristin = layout.nodes.find((n) => n.id === "kristin")!;
+    const anthony = layout.nodes.find((n) => n.id === "anthony")!;
+    // Anthony must be adjacent to Kristin (his current spouse), not orphaned.
+    expect(anthony.y).toBe(kristin.y);
+    expect(Math.abs(anthony.x - kristin.x)).toBe(NODE_W + SPOUSE_GAP);
+
+    // The divorce link between John and Kristin still renders as a dashed
+    // edge from the post-layout sweep.
+    const exEdge = layout.edges.find(
+      (e) =>
+        e.kind === "spouse" &&
+        e.status === "divorced" &&
+        ((e.aId === "john" && e.bId === "kristin") ||
+          (e.aId === "kristin" && e.bId === "john")),
+    );
+    expect(exEdge).toBeDefined();
+  });
+
   it("leaves a remarried ex out of the cluster — long dashed line instead", async () => {
     // Maya re-partnered with Bob. She belongs in HER cluster with Bob,
     // not in Gary's cluster — so Maya/Gary aren't adjacent, but the

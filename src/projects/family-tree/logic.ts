@@ -761,8 +761,14 @@ function buildCoupleUnits(
     } else if (exPartner === null) {
       // Back-compat: a person with only an ex (no current) still pairs
       // adjacent — the ex sits to the right with a dashed marriage line.
+      // Must mirror the exPartner "not remarried" filter, otherwise this
+      // path silently captures an ex who's currently married to someone
+      // else, orphaning that current spouse from their own cluster.
       const fallbackEx =
-        p.divorcedSpouseIds.find((sid) => !coupleOf.has(sid)) ?? null;
+        p.divorcedSpouseIds.find(
+          (sid) =>
+            !coupleOf.has(sid) && tree.persons[sid].spouseIds.length === 0,
+        ) ?? null;
       if (fallbackEx !== null) {
         members.push(fallbackEx);
         statuses.push("divorced");
