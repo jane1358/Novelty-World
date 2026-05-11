@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Gender, MarriageStatus, Person } from "../types";
+import type { Gender, MarriageStatus, NameFields, Person } from "../types";
 import { ROOT_ID, fullName } from "../logic";
 import { Button } from "@/shared/components/ui/button";
 
@@ -26,21 +26,19 @@ interface ActionPanelProps {
   mode: PanelMode;
   onModeChange: (mode: PanelMode) => void;
   onClose: () => void;
-  onAddParent: (firstName: string, lastName: string, gender: Gender) => void;
+  onAddParent: (name: NameFields, gender: Gender) => void;
   onAddChild: (
-    firstName: string,
-    lastName: string,
+    name: NameFields,
     gender: Gender,
     coParentId: string | null,
   ) => void;
   onAddSpouse: (
-    firstName: string,
-    lastName: string,
+    name: NameFields,
     gender: Gender,
     status: MarriageStatus,
   ) => void;
   onDivorce: (partnerId: string) => void;
-  onRename: (firstName: string, lastName: string, commonName: string) => void;
+  onRename: (name: NameFields) => void;
   onSetGender: (gender: Gender) => void;
   onSetAsViewRoot: () => void;
   onDelete: () => void;
@@ -195,18 +193,19 @@ export function ActionPanel({
       : trimmedFirst.length > 0 && draftGender !== null;
 
   function submit() {
-    const f = firstDraft.trim();
-    const l = lastDraft.trim();
-    const c = commonDraft.trim();
+    const name: NameFields = {
+      firstName: firstDraft.trim(),
+      lastName: lastDraft.trim(),
+      commonName: commonDraft.trim(),
+    };
     if (mode === "rename") {
-      if (!f) return;
-      onRename(f, l, c);
+      if (!name.firstName) return;
+      onRename(name);
     } else {
-      if (!f || draftGender === null) return;
-      if (mode === "add-parent") onAddParent(f, l, draftGender);
-      else if (mode === "add-child") onAddChild(f, l, draftGender, draftCoParent);
-      else if (mode === "add-spouse")
-        onAddSpouse(f, l, draftGender, draftStatus);
+      if (!name.firstName || draftGender === null) return;
+      if (mode === "add-parent") onAddParent(name, draftGender);
+      else if (mode === "add-child") onAddChild(name, draftGender, draftCoParent);
+      else if (mode === "add-spouse") onAddSpouse(name, draftGender, draftStatus);
     }
     onModeChange("menu");
   }
@@ -362,21 +361,19 @@ export function ActionPanel({
             </div>
           </div>
 
-          {mode === "rename" ? (
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-text-secondary">
-                Common name <span className="text-text-muted">(optional)</span>
-              </label>
-              <input
-                type="text"
-                value={commonDraft}
-                onChange={(e) => { setCommonDraft(e.target.value); }}
-                onFocus={(e) => { e.currentTarget.select(); }}
-                className="rounded-md border border-border-default bg-surface-primary px-3 py-2 text-text-primary outline-none focus:border-brand-orange"
-                placeholder="Nickname"
-              />
-            </div>
-          ) : null}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-text-secondary">
+              Common name <span className="text-text-muted">(optional)</span>
+            </label>
+            <input
+              type="text"
+              value={commonDraft}
+              onChange={(e) => { setCommonDraft(e.target.value); }}
+              onFocus={(e) => { e.currentTarget.select(); }}
+              className="rounded-md border border-border-default bg-surface-primary px-3 py-2 text-text-primary outline-none focus:border-brand-orange"
+              placeholder="Nickname"
+            />
+          </div>
 
           {needsGender ? (
             <div className="flex flex-col gap-1">

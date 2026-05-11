@@ -10,6 +10,7 @@ import type {
   LaidOutNode,
   Layout,
   MarriageStatus,
+  NameFields,
   Person,
   Tree,
 } from "./types";
@@ -32,21 +33,37 @@ export function fullName(
   return `${person.firstName}${middle}${last}`;
 }
 
+// Single source of truth for the Person shape — every place that creates a
+// new person funnels through this so adding a field can't drift across the
+// 4 create paths.
+function makePerson(
+  id: string,
+  name: NameFields,
+  gender: Gender,
+  overrides: Partial<Pick<Person, "parentIds" | "spouseIds" | "divorcedSpouseIds">> = {},
+): Person {
+  return {
+    id,
+    firstName: name.firstName,
+    lastName: name.lastName,
+    commonName: name.commonName,
+    gender,
+    parentIds: [],
+    spouseIds: [],
+    divorcedSpouseIds: [],
+    ...overrides,
+  };
+}
+
 export function createInitialTree(): Tree {
+  const rootName: NameFields = {
+    firstName: ROOT_FIRST_NAME,
+    lastName: ROOT_LAST_NAME,
+    commonName: "",
+  };
   return {
     rootId: ROOT_ID,
-    persons: {
-      [ROOT_ID]: {
-        id: ROOT_ID,
-        firstName: ROOT_FIRST_NAME,
-        lastName: ROOT_LAST_NAME,
-        commonName: "",
-        gender: "M",
-        parentIds: [],
-        spouseIds: [],
-        divorcedSpouseIds: [],
-      },
-    },
+    persons: { [ROOT_ID]: makePerson(ROOT_ID, rootName, "M") },
   };
 }
 
@@ -67,23 +84,13 @@ export function addParent(
   tree: Tree,
   childId: string,
   newId: string,
-  firstName: string,
-  lastName: string,
+  name: NameFields,
   gender: Gender,
 ): Tree {
   const next = clone(tree);
   const child = next.persons[childId];
   if (child.parentIds.length >= 2) return tree;
-  next.persons[newId] = {
-    id: newId,
-    firstName,
-    lastName,
-    commonName: "",
-    gender,
-    parentIds: [],
-    spouseIds: [],
-    divorcedSpouseIds: [],
-  };
+  next.persons[newId] = makePerson(newId, name, gender);
   child.parentIds.push(newId);
 
   if (child.parentIds.length === 2) {
@@ -102,8 +109,7 @@ export function addChild(
   tree: Tree,
   parentId: string,
   newId: string,
-  firstName: string,
-  lastName: string,
+  name: NameFields,
   gender: Gender,
   // Co-parent selector with three meanings, intentionally distinct:
   //   string  — use this person as the second parent.
@@ -122,16 +128,7 @@ export function addChild(
   } else if (parent.spouseIds.length > 0) {
     parents.push(parent.spouseIds[0]);
   }
-  next.persons[newId] = {
-    id: newId,
-    firstName,
-    lastName,
-    commonName: "",
-    gender,
-    parentIds: parents,
-    spouseIds: [],
-    divorcedSpouseIds: [],
-  };
+  next.persons[newId] = makePerson(newId, name, gender, { parentIds: parents });
   return next;
 }
 
@@ -139,23 +136,16 @@ export function addSpouse(
   tree: Tree,
   personId: string,
   newId: string,
-  firstName: string,
-  lastName: string,
+  name: NameFields,
   gender: Gender,
   status: MarriageStatus = "married",
 ): Tree {
   const next = clone(tree);
   const person = next.persons[personId];
-  next.persons[newId] = {
-    id: newId,
-    firstName,
-    lastName,
-    commonName: "",
-    gender,
-    parentIds: [],
+  next.persons[newId] = makePerson(newId, name, gender, {
     spouseIds: status === "married" ? [personId] : [],
     divorcedSpouseIds: status === "divorced" ? [personId] : [],
-  };
+  });
   if (status === "married") {
     person.spouseIds.push(newId);
   } else {
@@ -185,17 +175,9 @@ export function divorceSpouse(
   return next;
 }
 
-export function renamePerson(
-  tree: Tree,
-  id: string,
-  firstName: string,
-  lastName: string,
-  commonName: string,
-): Tree {
+export function renamePerson(tree: Tree, id: string, name: NameFields): Tree {
   const next = clone(tree);
-  next.persons[id].firstName = firstName;
-  next.persons[id].lastName = lastName;
-  next.persons[id].commonName = commonName;
+  Object.assign(next.persons[id], name);
   return next;
 }
 

@@ -2,6 +2,15 @@ export type Gender = "M" | "F" | "NB";
 
 export type MarriageStatus = "married" | "divorced";
 
+// All name-shaped fields. Carried as a single object through the form →
+// store → logic call chain so adding a new name field (suffix, maiden, …)
+// is a one-line type change instead of a positional-arg sweep.
+export interface NameFields {
+  firstName: string;
+  lastName: string;
+  commonName: string;
+}
+
 export interface Person {
   id: string;
   firstName: string;

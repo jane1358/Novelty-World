@@ -3,7 +3,7 @@
 import { create } from "zustand";
 import { createClient } from "@/shared/lib/supabase/client";
 import { getProjectStorage } from "@/shared/lib/storage";
-import type { Gender, MarriageStatus, Tree } from "./types";
+import type { Gender, MarriageStatus, NameFields, Tree } from "./types";
 import {
   ROOT_ID,
   addChild as logicAddChild,
@@ -38,23 +38,21 @@ interface FamilyTreeState {
   setSelected: (id: string | null) => void;
   setViewRoot: (id: string) => void;
   resetViewRoot: () => void;
-  addParent: (childId: string, firstName: string, lastName: string, gender: Gender) => void;
+  addParent: (childId: string, name: NameFields, gender: Gender) => void;
   addChild: (
     parentId: string,
-    firstName: string,
-    lastName: string,
+    name: NameFields,
     gender: Gender,
     coParentId?: string | null,
   ) => void;
   addSpouse: (
     personId: string,
-    firstName: string,
-    lastName: string,
+    name: NameFields,
     gender: Gender,
     status?: MarriageStatus,
   ) => void;
   divorce: (aId: string, bId: string) => void;
-  rename: (id: string, firstName: string, lastName: string, commonName: string) => void;
+  rename: (id: string, name: NameFields) => void;
   setGender: (id: string, gender: Gender) => void;
   remove: (id: string) => void;
 }
@@ -96,7 +94,30 @@ function scheduleSave(tree: Tree, setSaving: (b: boolean) => void): void {
   }, SAVE_DEBOUNCE_MS);
 }
 
-export const useFamilyTreeStore = create<FamilyTreeState>((set, get) => ({
+// Normalize raw form text into the trimmed shape the logic layer expects.
+// Empty firstName is treated as "Unnamed" because every Person must have a
+// non-empty first name; the other fields are allowed to be empty strings.
+function cleanName(name: NameFields): NameFields {
+  return {
+    firstName: name.firstName.trim() || "Unnamed",
+    lastName: name.lastName.trim(),
+    commonName: name.commonName.trim(),
+  };
+}
+
+export const useFamilyTreeStore = create<FamilyTreeState>((set, get) => {
+  // Apply a logic mutation: if it produced a new tree (i.e. wasn't a no-op),
+  // commit it to state and schedule a save. Collapses the trim+dispatch
+  // boilerplate that every mutator was repeating.
+  function applyMutation(mutate: (tree: Tree) => Tree): void {
+    const { tree } = get();
+    const next = mutate(tree);
+    if (next === tree) return;
+    set({ tree: next });
+    scheduleSave(next, (b) => { set({ saving: b }); });
+  }
+
+  return {
   tree: createInitialTree(),
   status: "idle",
   saving: false,
@@ -151,67 +172,38 @@ export const useFamilyTreeStore = create<FamilyTreeState>((set, get) => ({
 
   resetViewRoot: () => { set({ viewRootId: ROOT_ID }); },
 
-  addParent: (childId, firstName, lastName, gender) => {
-    const { tree } = get();
-    const f = firstName.trim() || "Unnamed";
-    const l = lastName.trim();
-    const next = logicAddParent(tree, childId, newId(), f, l, gender);
-    if (next === tree) return;
-    set({ tree: next });
-    scheduleSave(next, (b) => { set({ saving: b }); });
+  addParent: (childId, name, gender) => {
+    applyMutation((tree) => logicAddParent(tree, childId, newId(), cleanName(name), gender));
   },
 
-  addChild: (parentId, firstName, lastName, gender, coParentId) => {
-    const { tree } = get();
-    const f = firstName.trim() || "Unnamed";
-    const l = lastName.trim();
-    const next = logicAddChild(tree, parentId, newId(), f, l, gender, coParentId);
-    if (next === tree) return;
-    set({ tree: next });
-    scheduleSave(next, (b) => { set({ saving: b }); });
+  addChild: (parentId, name, gender, coParentId) => {
+    applyMutation((tree) =>
+      logicAddChild(tree, parentId, newId(), cleanName(name), gender, coParentId),
+    );
   },
 
-  addSpouse: (personId, firstName, lastName, gender, status) => {
-    const { tree } = get();
-    const f = firstName.trim() || "Unnamed";
-    const l = lastName.trim();
-    const next = logicAddSpouse(tree, personId, newId(), f, l, gender, status);
-    if (next === tree) return;
-    set({ tree: next });
-    scheduleSave(next, (b) => { set({ saving: b }); });
+  addSpouse: (personId, name, gender, status) => {
+    applyMutation((tree) =>
+      logicAddSpouse(tree, personId, newId(), cleanName(name), gender, status),
+    );
   },
 
   divorce: (aId, bId) => {
-    const { tree } = get();
-    const next = logicDivorceSpouse(tree, aId, bId);
-    if (next === tree) return;
-    set({ tree: next });
-    scheduleSave(next, (b) => { set({ saving: b }); });
+    applyMutation((tree) => logicDivorceSpouse(tree, aId, bId));
   },
 
-  rename: (id, firstName, lastName, commonName) => {
-    const { tree } = get();
-    const f = firstName.trim();
-    if (!f) return;
-    const l = lastName.trim();
-    const c = commonName.trim();
-    const next = logicRenamePerson(tree, id, f, l, c);
-    if (next === tree) return;
-    set({ tree: next });
-    scheduleSave(next, (b) => { set({ saving: b }); });
+  rename: (id, name) => {
+    if (!name.firstName.trim()) return;
+    applyMutation((tree) => logicRenamePerson(tree, id, cleanName(name)));
   },
 
   setGender: (id, gender) => {
-    const { tree } = get();
-    const next = logicSetGender(tree, id, gender);
-    if (next === tree) return;
-    set({ tree: next });
-    scheduleSave(next, (b) => { set({ saving: b }); });
+    applyMutation((tree) => logicSetGender(tree, id, gender));
   },
 
   remove: (id) => {
-    const { tree, selectedId, viewRootId } = get();
     if (id === ROOT_ID) return;
+    const { tree, selectedId, viewRootId } = get();
     const next = logicDeletePerson(tree, id);
     if (next === tree) return;
     set({
@@ -221,4 +213,5 @@ export const useFamilyTreeStore = create<FamilyTreeState>((set, get) => ({
     });
     scheduleSave(next, (b) => { set({ saving: b }); });
   },
-}));
+  };
+});

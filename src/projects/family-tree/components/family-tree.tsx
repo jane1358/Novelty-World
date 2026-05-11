@@ -300,21 +300,15 @@ export function FamilyTree() {
             mode={panelMode}
             onModeChange={setPanelMode}
             onClose={() => { setSelected(null); }}
-            onAddParent={(firstName, lastName, gender) => { addParent(selectedPerson.id, firstName, lastName, gender); }}
-            onAddChild={(firstName, lastName, gender, coParentId) => {
+            onAddParent={(name, gender) => { addParent(selectedPerson.id, name, gender); }}
+            onAddChild={(name, gender, coParentId) => {
               // Pass null through unchanged — addChild treats null as
               // "explicit single parent" and undefined as "use default".
-              addChild(
-                selectedPerson.id,
-                firstName,
-                lastName,
-                gender,
-                coParentId,
-              );
+              addChild(selectedPerson.id, name, gender, coParentId);
             }}
-            onAddSpouse={(firstName, lastName, gender, status) => { addSpouse(selectedPerson.id, firstName, lastName, gender, status); }}
+            onAddSpouse={(name, gender, status) => { addSpouse(selectedPerson.id, name, gender, status); }}
             onDivorce={(partnerId) => { divorce(selectedPerson.id, partnerId); }}
-            onRename={(firstName, lastName, commonName) => { rename(selectedPerson.id, firstName, lastName, commonName); }}
+            onRename={(name) => { rename(selectedPerson.id, name); }}
             onSetGender={(gender) => { setGender(selectedPerson.id, gender); }}
             onSetAsViewRoot={() => { setViewRoot(selectedPerson.id); }}
             onDelete={() => { handleDelete(selectedPerson.id); }}
