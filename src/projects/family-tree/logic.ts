@@ -640,11 +640,19 @@ function chainLabel(tree: Tree, fromId: string, toId: string): string | null {
 
 interface CoupleUnit {
   id: string;
-  members: string[]; // [primary] or [primary, partner]
+  // Adjacent members of one render-time row cluster:
+  //   1 member  — singleton.
+  //   2 members — single marriage (current or divorced).
+  //   3 members — one ex + the person + one current spouse. This is the
+  //               common "remarried" shape; rendered side-by-side with the
+  //               person in the middle and both partners adjacent so each
+  //               marriage line is short and child-drops emerge from clearly
+  //               identifiable marriage midpoints.
+  members: string[];
   generation: number;
-  // When members has 2 entries, this is the marriage status between them.
-  // Singletons leave it undefined.
-  status?: MarriageStatus;
+  // One status per adjacent marriage line; length == members.length - 1.
+  // Empty for singletons.
+  statuses: MarriageStatus[];
 }
 
 function childrenOf(tree: Tree, parentId: string): string[] {
@@ -706,26 +714,6 @@ function computeGenerations(tree: Tree): Map<string, number> {
   return gen;
 }
 
-// Which "marriage within a parent couple" produced a child. Returns:
-//   -1   child's bio parents are the LEFT spouse only
-//    0   shared (both spouses are bio parents) — or neither, defensively
-//   +1   child's bio parents are the RIGHT spouse only
-// First structural step toward marriage-as-DAG-primitive: today only used
-// to permute sibling positions post-sugiyama; later this is the natural
-// grouping key for promoting marriages to first-class DAG nodes.
-function marriageSideOfChild(
-  childParentIds: string[],
-  leftSpouseId: string,
-  rightSpouseId: string,
-): -1 | 0 | 1 {
-  const hasLeft = childParentIds.includes(leftSpouseId);
-  const hasRight = childParentIds.includes(rightSpouseId);
-  if (hasLeft && hasRight) return 0;
-  if (hasLeft) return -1;
-  if (hasRight) return 1;
-  return 0;
-}
-
 function buildCoupleUnits(
   tree: Tree,
   order: string[],
@@ -736,35 +724,57 @@ function buildCoupleUnits(
   for (const id of order) {
     if (coupleOf.has(id)) continue;
     const p = tree.persons[id];
-    // Prefer a current partner; fall back to a divorced partner so the ex
-    // still lays out adjacent (with a dashed marriage edge). This is the
-    // single-marriage-or-ex case; multi-marriage layout is future work.
+
+    // Right-hand partner: the current spouse, if any uncoupled one exists.
     const currentPartner =
       p.spouseIds.find((sid) => !coupleOf.has(sid)) ?? null;
-    const partner =
-      currentPartner ??
-      p.divorcedSpouseIds.find((sid) => !coupleOf.has(sid)) ??
-      null;
-    const status: MarriageStatus | undefined =
-      partner === null
-        ? undefined
-        : currentPartner !== null
-          ? "married"
-          : "divorced";
+
+    // Left-hand partner: a "free" ex — uncoupled AND not remarried elsewhere.
+    // A remarried ex belongs in their own cluster with their new spouse, so
+    // we leave them alone here; the post-layout sweep emits a long dashed
+    // line across whatever distance the layout produces.
+    const exPartner =
+      p.divorcedSpouseIds.find(
+        (sid) =>
+          !coupleOf.has(sid) && tree.persons[sid].spouseIds.length === 0,
+      ) ?? null;
+
+    const members: string[] = [];
+    const statuses: MarriageStatus[] = [];
+
+    if (exPartner !== null) {
+      members.push(exPartner);
+      statuses.push("divorced");
+    }
+    members.push(id);
+    if (currentPartner !== null) {
+      members.push(currentPartner);
+      statuses.push("married");
+    } else if (exPartner === null) {
+      // Back-compat: a person with only an ex (no current) still pairs
+      // adjacent — the ex sits to the right with a dashed marriage line.
+      const fallbackEx =
+        p.divorcedSpouseIds.find((sid) => !coupleOf.has(sid)) ?? null;
+      if (fallbackEx !== null) {
+        members.push(fallbackEx);
+        statuses.push("divorced");
+      }
+    }
+
     couples.push({
       id,
-      members: partner !== null ? [id, partner] : [id],
+      members,
       generation: gen.get(id)!,
-      status,
+      statuses,
     });
-    coupleOf.set(id, id);
-    if (partner !== null) coupleOf.set(partner, id);
+    for (const member of members) coupleOf.set(member, id);
   }
   return { couples, coupleOf };
 }
 
 function coupleWidth(couple: CoupleUnit): number {
-  return couple.members.length === 2 ? 2 * NODE_W + SPOUSE_GAP : NODE_W;
+  const n = couple.members.length;
+  return n * NODE_W + (n - 1) * SPOUSE_GAP;
 }
 
 interface LayeredOrdering {
@@ -989,10 +999,13 @@ export async function computeLayout(
   // Within-couple spouse ordering: place each spouse on the side closer to
   // their own parents. Doesn't affect couple-level crossings but reduces
   // visual length of the parent→spouse drops.
+  // Skipped for 3+ member clusters: their order ([ex, person, current]) is
+  // already meaningful — the person sits in the middle by construction so
+  // each marriage line stays short.
   const spouseSideOrder = new Map<string, string[]>();
   for (const couple of couples) {
-    if (couple.members.length < 2) {
-      spouseSideOrder.set(couple.id, [couple.members[0]]);
+    if (couple.members.length !== 2) {
+      spouseSideOrder.set(couple.id, [...couple.members]);
       continue;
     }
     const [a, b] = couple.members;
@@ -1026,15 +1039,18 @@ export async function computeLayout(
     spouseSideOrder.set(couple.id, [leftId, rightId]);
   }
 
-  // Marriage-aware child reordering. Within each parent couple, cluster its
-  // children by which marriage produced them: left-spouse-only kids on the
-  // left, shared kids in the middle, right-spouse-only kids on the right.
-  // This makes blended families read correctly without the full marriage-
-  // as-DAG-primitive refactor (doc step 4). Limited to leaf children for
-  // now — translating non-leaf subtrees risks descending crossings, which
-  // the full refactor handles properly.
+  // Marriage-aware child reordering. Within each parent couple/cluster, sort
+  // children by which marriage produced them so blended families read
+  // correctly: e.g. for [Maya, Gary, Marta], Maya's-side kids on the left,
+  // Maya+Gary shared kids next, then Gary+Marta shared, then Marta's-side.
+  // Rank is the average index of the child's bio parents within the parent
+  // cluster's member array (-1/0/+1 falls out naturally for the 2-member
+  // case). Limited to leaf children — translating non-leaf subtrees risks
+  // descending crossings, which the full marriage-as-DAG refactor handles
+  // properly.
   const coupleById = new Map(couples.map((c) => [c.id, c] as const));
   for (const parent of couples) {
+    if (parent.members.length < 2) continue;
     const childIds = childCouplesOf.get(parent.id) ?? [];
     if (childIds.length < 2) continue;
     const sides = spouseSideOrder.get(parent.id);
@@ -1044,30 +1060,31 @@ export async function computeLayout(
     );
     if (!allLeaves) continue;
 
-    const [leftId, rightId] = sides;
-    const sideOf = new Map<string, number>();
-    for (const cid of childIds) {
+    const memberIndex = new Map(sides.map((id, i) => [id, i] as const));
+    const rankOf = (cid: string): number => {
       const child = coupleById.get(cid);
-      if (!child) continue;
-      // Walk the child couple's members to find parent IDs that belong to
-      // THIS parent couple. Other-side parents (e.g. an in-law's lineage)
-      // are irrelevant for grouping within this couple.
-      const bioParentIds: string[] = [];
+      if (child === undefined) return 0;
+      const indices: number[] = [];
       for (const memberId of child.members) {
         for (const pid of tree.persons[memberId].parentIds) {
-          if (pid === leftId || pid === rightId) bioParentIds.push(pid);
+          const idx = memberIndex.get(pid);
+          if (idx !== undefined) indices.push(idx);
         }
       }
-      sideOf.set(cid, marriageSideOfChild(bioParentIds, leftId, rightId));
-    }
+      if (indices.length === 0) return 0;
+      return indices.reduce((s, i) => s + i, 0) / indices.length;
+    };
+    const rankByChild = new Map<string, number>(
+      childIds.map((cid) => [cid, rankOf(cid)] as const),
+    );
 
     const oldByX = [...childIds].sort(
       (a, b) => (centerX.get(a) ?? 0) - (centerX.get(b) ?? 0),
     );
     const sortedChildren = [...childIds].sort((a, b) => {
-      const diff = (sideOf.get(a) ?? 0) - (sideOf.get(b) ?? 0);
+      const diff = (rankByChild.get(a) ?? 0) - (rankByChild.get(b) ?? 0);
       if (diff !== 0) return diff;
-      // Stable within a side: preserve sugiyama's left-to-right order.
+      // Stable within a rank: preserve sugiyama's left-to-right order.
       return (centerX.get(a) ?? 0) - (centerX.get(b) ?? 0);
     });
     let unchanged = true;
@@ -1093,20 +1110,32 @@ export async function computeLayout(
     const w = coupleWidth(couple);
     const leftX = center - w / 2;
     const sides = spouseSideOrder.get(couple.id) ?? couple.members;
-    layout.nodes.push({ id: sides[0], x: leftX, y, w: NODE_W, h: NODE_H });
-    if (sides.length === 2) {
+    for (let i = 0; i < sides.length; i++) {
       layout.nodes.push({
-        id: sides[1],
-        x: leftX + NODE_W + SPOUSE_GAP,
+        id: sides[i],
+        x: leftX + i * (NODE_W + SPOUSE_GAP),
         y,
         w: NODE_W,
         h: NODE_H,
       });
+    }
+    // One spouse edge per adjacent pair. spouseSideOrder may have swapped
+    // members in 2-member couples, so map the i-th adjacent pair back to
+    // the original buildCoupleUnits position to pick the right status.
+    const indexOfOriginal = new Map(
+      couple.members.map((m, idx) => [m, idx] as const),
+    );
+    for (let i = 0; i < sides.length - 1; i++) {
+      const a = sides[i];
+      const b = sides[i + 1];
+      const aIdx = indexOfOriginal.get(a) ?? i;
+      const bIdx = indexOfOriginal.get(b) ?? i + 1;
+      const lower = Math.min(aIdx, bIdx);
       layout.edges.push({
         kind: "spouse",
-        aId: sides[0],
-        bId: sides[1],
-        status: couple.status ?? "married",
+        aId: a,
+        bId: b,
+        status: couple.statuses[lower] ?? "married",
       });
     }
   }
@@ -1132,6 +1161,35 @@ export async function computeLayout(
           couple.id,
           parentBottomY + ELBOW_FIRST_OFFSET + i * ELBOW_SPACING,
         );
+      });
+    }
+  }
+
+  // Sweep divorced pairs and emit dashed marriage lines for any that didn't
+  // end up in the same couple unit — e.g. one ex remarried, so the other
+  // landed as a singleton. The line spans wherever the layout placed the
+  // two people; it's visually imperfect when the singleton lands far from
+  // the ex, but at least the relationship stays visible. Proper adjacency
+  // requires the marriage-as-DAG-primitive refactor (a person rendered
+  // once but represented as a member of multiple marriage units).
+  const emittedSpouseKey = new Set<string>();
+  for (const couple of couples) {
+    if (couple.members.length === 2) {
+      const [a, b] = couple.members;
+      emittedSpouseKey.add(a < b ? `${a}|${b}` : `${b}|${a}`);
+    }
+  }
+  for (const person of Object.values(tree.persons)) {
+    for (const exId of person.divorcedSpouseIds) {
+      const key =
+        person.id < exId ? `${person.id}|${exId}` : `${exId}|${person.id}`;
+      if (emittedSpouseKey.has(key)) continue;
+      emittedSpouseKey.add(key);
+      layout.edges.push({
+        kind: "spouse",
+        aId: person.id,
+        bId: exId,
+        status: "divorced",
       });
     }
   }
@@ -1299,6 +1357,17 @@ export function optimisticPatch(
         const s = byId.get(sid);
         if (s) {
           pos = { x: s.x + s.w + SPOUSE_GAP, y: s.y };
+          break;
+        }
+      }
+    }
+    if (!pos) {
+      // Newly-added ex-spouse — drop on the LEFT of the existing partner so
+      // we don't stack on top of a current spouse (typically to the right).
+      for (const sid of person.divorcedSpouseIds) {
+        const s = byId.get(sid);
+        if (s) {
+          pos = { x: s.x - NODE_W - SPOUSE_GAP, y: s.y };
           break;
         }
       }

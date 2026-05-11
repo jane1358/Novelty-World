@@ -1,8 +1,10 @@
 import { describe, it, expect } from "vitest";
 import {
+  NODE_W,
   ROOT_ID,
   ROOT_FIRST_NAME,
   ROOT_LAST_NAME,
+  SPOUSE_GAP,
   addChild,
   addParent,
   addSpouse,
@@ -607,6 +609,118 @@ describe("computeLayout", () => {
       if (ordered[i].bio !== ordered[i - 1].bio) transitions++;
     }
     expect(transitions).toBeLessThanOrEqual(1);
+  });
+
+  it("bundles a free ex + person + current spouse into one adjacent cluster", async () => {
+    // Gary is currently married to Marta and was previously married to
+    // Maya, who never remarried. The cluster lays out [Maya, Gary, Marta]
+    // side-by-side: ex on the LEFT, person in the middle, current on the
+    // RIGHT. Both marriage lines stay short, and child-drops for the
+    // Gary+Maya kids emerge from the dashed line midpoint — not from
+    // empty space several node-widths away.
+    const t = makeTree([
+      p("gary", "M", [], ["marta"], ["maya"]),
+      p("marta", "F", [], ["gary"], []),
+      p("maya", "F", [], [], ["gary"]),
+      p("james", "M", ["gary", "maya"]),
+      p("kathleen", "F", ["gary", "maya"]),
+    ]);
+
+    const layout = await computeLayout(t);
+    const maya = layout.nodes.find((node) => node.id === "maya")!;
+    const gary = layout.nodes.find((node) => node.id === "gary")!;
+    const marta = layout.nodes.find((node) => node.id === "marta")!;
+    expect(maya.y).toBe(gary.y);
+    expect(marta.y).toBe(gary.y);
+    expect(gary.x - (maya.x + maya.w)).toBe(SPOUSE_GAP);
+    expect(marta.x - (gary.x + gary.w)).toBe(SPOUSE_GAP);
+
+    const exEdge = layout.edges.find(
+      (e) =>
+        e.kind === "spouse" &&
+        e.status === "divorced" &&
+        ((e.aId === "maya" && e.bId === "gary") ||
+          (e.aId === "gary" && e.bId === "maya")),
+    );
+    expect(exEdge).toBeDefined();
+    const currentEdge = layout.edges.find(
+      (e) =>
+        e.kind === "spouse" &&
+        e.status === "married" &&
+        ((e.aId === "gary" && e.bId === "marta") ||
+          (e.aId === "marta" && e.bId === "gary")),
+    );
+    expect(currentEdge).toBeDefined();
+  });
+
+  it("orders siblings of a 3-member cluster by bio-parent attribution", async () => {
+    // Cluster [Maya, Gary, Marta]:
+    //   James, Kathleen — bio kids of Gary + Maya (the LEFT marriage)
+    //   Lucas, Sebastian — Marta's solo kids (from a prior unmodeled
+    //                      relationship), no Gary parentage
+    // Convention: scan left-to-right and the bio-parent group transitions
+    // at most once. Maya+Gary kids cluster on the cluster's LEFT side;
+    // Marta-solo kids cluster on the RIGHT side. Never interleaved.
+    const t = makeTree([
+      p("gary", "M", [], ["marta"], ["maya"]),
+      p("marta", "F", [], ["gary"], []),
+      p("maya", "F", [], [], ["gary"]),
+      p("james", "M", ["gary", "maya"]),
+      p("kathleen", "F", ["gary", "maya"]),
+      p("lucas", "M", ["marta"]),
+      p("sebastian", "M", ["marta"]),
+    ]);
+
+    const layout = await computeLayout(t);
+    const xOf = (id: string): number =>
+      layout.nodes.find((n) => n.id === id)?.x ?? -1;
+    const ordered = [
+      { id: "james", group: "maya-gary" },
+      { id: "kathleen", group: "maya-gary" },
+      { id: "lucas", group: "marta" },
+      { id: "sebastian", group: "marta" },
+    ].sort((a, b) => xOf(a.id) - xOf(b.id));
+    let transitions = 0;
+    for (let i = 1; i < ordered.length; i++) {
+      if (ordered[i].group !== ordered[i - 1].group) transitions++;
+    }
+    expect(transitions).toBeLessThanOrEqual(1);
+    // And specifically: Maya+Gary's kids are LEFT of Marta's solo kids
+    // (not the reverse), since Maya sits on the cluster's left.
+    const firstGroup = ordered[0].group;
+    expect(firstGroup).toBe("maya-gary");
+  });
+
+  it("leaves a remarried ex out of the cluster — long dashed line instead", async () => {
+    // Maya re-partnered with Bob. She belongs in HER cluster with Bob,
+    // not in Gary's cluster — so Maya/Gary aren't adjacent, but the
+    // post-layout sweep still emits a dashed marriage edge between them.
+    const t = makeTree([
+      p("gary", "M", [], ["marta"], ["maya"]),
+      p("marta", "F", [], ["gary"], []),
+      p("maya", "F", [], ["bob"], ["gary"]),
+      p("bob", "M", [], ["maya"], []),
+    ]);
+
+    const layout = await computeLayout(t);
+    const maya = layout.nodes.find((node) => node.id === "maya")!;
+    const gary = layout.nodes.find((node) => node.id === "gary")!;
+    const bob = layout.nodes.find((node) => node.id === "bob")!;
+    expect(maya.y).toBe(bob.y);
+    // Maya is adjacent to Bob (her current), NOT to Gary.
+    const mayaBobDistance = Math.abs(maya.x - bob.x);
+    const mayaGaryDistance = Math.abs(maya.x - gary.x);
+    expect(mayaBobDistance).toBe(NODE_W + SPOUSE_GAP);
+    expect(mayaGaryDistance).toBeGreaterThan(NODE_W + SPOUSE_GAP);
+
+    const exEdge = layout.edges.find(
+      (e) =>
+        e.kind === "spouse" &&
+        e.status === "divorced" &&
+        ((e.aId === "maya" && e.bId === "gary") ||
+          (e.aId === "gary" && e.bId === "maya")),
+    );
+    expect(exEdge).toBeDefined();
   });
 
   it("centers a single child under a couple", async () => {
