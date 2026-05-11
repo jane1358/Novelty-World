@@ -41,13 +41,6 @@ function rectsOverlap(a: LaidOutNode, b: LaidOutNode): boolean {
 
 interface InvariantOptions {
   layout?: ComputeLayoutOptions;
-  // True when the fixture is known to trigger the sugiyama-layer-vs-tree-gen
-  // mismatch (a couple's sugiyama layer disagrees with its tree generation,
-  // so the LP gap constraint doesn't apply between two couples we render on
-  // the same Y). The visible symptom is two nodes overlapping on a row.
-  // Tracked as a follow-up; tests for this fixture skip the overlap check
-  // until the layering hook lands.
-  knownOverlap?: boolean;
 }
 
 function defineInvariants(
@@ -71,8 +64,7 @@ function defineInvariants(
     }
   });
 
-  const overlapTest = options.knownOverlap ? it.skip : it;
-  overlapTest("does not overlap any two nodes", () => {
+  it("does not overlap any two nodes", () => {
     for (let i = 0; i < layout.nodes.length; i++) {
       for (let j = i + 1; j < layout.nodes.length; j++) {
         const a = layout.nodes[i];
@@ -185,7 +177,5 @@ describe.each(Object.entries(NAMED_FIXTURES))(
 describe("computeLayout invariants — productionTree (two-layer)", () => {
   defineInvariants("productionTree", productionTree, {
     layout: { decross: "two-layer" },
-    // See InvariantOptions.knownOverlap. Visible in fancy too as Allie/Lucas.
-    knownOverlap: true,
   });
 });

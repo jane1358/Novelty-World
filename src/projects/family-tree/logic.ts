@@ -4,6 +4,7 @@ import {
   graphStratify,
   sugiyama,
 } from "d3-dag";
+import type { Graph, Layering, Separation } from "d3-dag";
 import type {
   Gender,
   LaidOutEdge,
@@ -798,6 +799,46 @@ function buildLayered(couples: CoupleUnit[]): LayeredOrdering {
 
 export type DecrossStrategy = "opt" | "two-layer";
 
+interface CoupleData {
+  id: string;
+  parentIds: string[];
+  generation: number;
+}
+
+// Force sugiyama's layer assignment to match our tree-generation BFS. Without
+// this, the default `layeringSimplex` minimizes total edge length and is free
+// to put two couples we render on the same Y (same `gen`) in DIFFERENT sugiyama
+// layers — which means coordSimplex's per-layer gap constraints don't apply
+// between them, and they can land on top of each other. Setting node.y to a
+// shared integer layer index per generation makes every same-generation couple
+// share a sugiyama layer, so the LP's width/gap constraints are enforced where
+// they're visually needed.
+//
+// sugifyLayer reads node.uy as an integer layer index in [0, numLayers), where
+// numLayers = this function's return value + 1. Setting node.y here writes
+// node.uy under the hood (node.y is a throwing view onto node.uy). The `sep`
+// argument is irrelevant to integer-layer assignment — the real vertical
+// spacing is applied later by sugifyLayer using nodeHeight + gap.
+function layeringByGeneration<N extends CoupleData, L>(
+  graph: Graph<N, L>,
+  _sep: Separation<N, L>,
+): number {
+  const nodes = [...graph.nodes()];
+  if (nodes.length === 0) return 0;
+  let minGen = Infinity;
+  let maxGen = -Infinity;
+  for (const node of nodes) {
+    if (node.data.generation < minGen) minGen = node.data.generation;
+    if (node.data.generation > maxGen) maxGen = node.data.generation;
+  }
+  for (const node of nodes) {
+    (node as unknown as { y: number }).y = node.data.generation - minGen;
+  }
+  return maxGen - minGen;
+}
+
+const layeringByGenerationOp: Layering<CoupleData, unknown> = layeringByGeneration;
+
 // Hand the couple-DAG to d3-dag's sugiyama pipeline and return the per-couple
 // center x. The decross strategy picks the layer ordering: "opt" minimizes
 // crossings via an integer program (slow but optimal — exponential worst case);
@@ -813,10 +854,10 @@ async function layoutCouplesViaSugiyama(
   strategy: DecrossStrategy,
 ): Promise<Map<string, number> | null> {
   if (couples.length === 0) return null;
-  interface CoupleData { id: string; parentIds: string[] }
   const data: CoupleData[] = couples.map((c) => ({
     id: c.id,
     parentIds: parentCouplesOf.get(c.id) ?? [],
+    generation: c.generation,
   }));
   const widthById = new Map(couples.map((c) => [c.id, coupleWidth(c)] as const));
 
@@ -842,6 +883,7 @@ async function layoutCouplesViaSugiyama(
       decross = decrossTwoLayer();
     }
     const layout = sugiyama()
+      .layering(layeringByGenerationOp)
       .decross(decross)
       .coord(coordSimplex())
       .nodeSize((node: { data: CoupleData }) => [
@@ -1096,11 +1138,23 @@ export async function computeLayout(
     }
     if (unchanged) continue;
 
-    // Permute centerX values among siblings: the sorted children get the
-    // existing set of positions in ascending order.
-    const ascendingPositions = oldByX.map((id) => centerX.get(id) ?? 0);
-    for (let i = 0; i < sortedChildren.length; i++) {
-      centerX.set(sortedChildren[i], ascendingPositions[i]);
+    // Re-pack the siblings left-to-right in the new order. Earlier code
+    // permuted the existing center-x values among siblings, which silently
+    // broke spacing whenever the swapped children had different couple
+    // widths (e.g. a singleton getting the slot of a 3-member cluster):
+    // the destination position was sized for the original occupant, so the
+    // new one either overlapped its neighbor or left a giant gap.
+    let cursor = Math.min(
+      ...oldByX.map((id) => {
+        const c = coupleById.get(id);
+        return (centerX.get(id) ?? 0) - (c ? coupleWidth(c) : NODE_W) / 2;
+      }),
+    );
+    for (const cid of sortedChildren) {
+      const c = coupleById.get(cid);
+      const w = c ? coupleWidth(c) : NODE_W;
+      centerX.set(cid, cursor + w / 2);
+      cursor += w + SUBTREE_GAP;
     }
   }
 
