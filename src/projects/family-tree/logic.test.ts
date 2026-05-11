@@ -11,6 +11,7 @@ import {
   createInitialTree,
   deletePerson,
   describeRelation,
+  divorceSpouse,
   fullName,
   nearestInDirection,
   nextGender,
@@ -25,8 +26,17 @@ function p(
   gender: Gender = "M",
   parentIds: string[] = [],
   spouseIds: string[] = [],
+  divorcedSpouseIds: string[] = [],
 ): Person {
-  return { id, firstName: id, lastName: "", gender, parentIds, spouseIds };
+  return {
+    id,
+    firstName: id,
+    lastName: "",
+    gender,
+    parentIds,
+    spouseIds,
+    divorcedSpouseIds,
+  };
 }
 
 function makeTree(persons: Person[]): Tree {
@@ -99,6 +109,25 @@ describe("addChild", () => {
     t = addChild(t, ROOT_ID, "kid", "Kid", "", "M");
     expect(t.persons.kid.parentIds).toEqual([ROOT_ID]);
   });
+
+  it("respects an explicit co-parent, overriding the default spouse pick", () => {
+    let t = createInitialTree();
+    t = addSpouse(t, ROOT_ID, "wife1", "W1", "", "F");
+    t = addSpouse(t, ROOT_ID, "wife2", "W2", "", "F");
+    t = addChild(t, ROOT_ID, "kid", "Kid", "", "M", "wife2");
+    expect([...t.persons.kid.parentIds].sort()).toEqual(
+      [ROOT_ID, "wife2"].sort(),
+    );
+  });
+
+  it("treats explicit null coParentId as 'single parent in a marriage' (step-kid case)", () => {
+    let t = createInitialTree();
+    t = addSpouse(t, ROOT_ID, "spouse", "S", "", "F");
+    // null = user explicitly picked 'X only' in the +Child picker, even
+    // though X has a spouse. Spouse must NOT be auto-attached.
+    t = addChild(t, ROOT_ID, "stepKid", "SK", "", "M", null);
+    expect(t.persons.stepKid.parentIds).toEqual([ROOT_ID]);
+  });
 });
 
 describe("addSpouse", () => {
@@ -109,13 +138,15 @@ describe("addSpouse", () => {
     expect(t.persons.s.gender).toBe("F");
   });
 
-  it("auto-co-parents the new spouse onto existing single-parent kids", () => {
+  it("leaves existing single-parent kids alone (step-parent might not be bio)", () => {
     let t = createInitialTree();
     t = addParent(t, ROOT_ID, "mom", "Mom", "", "F");
     expect(t.persons[ROOT_ID].parentIds).toEqual(["mom"]);
-    t = addSpouse(t, "mom", "dad", "Dad", "", "M");
-    expect(t.persons[ROOT_ID].parentIds).toContain("dad");
-    expect(t.persons[ROOT_ID].parentIds).toHaveLength(2);
+    // Marrying mom must NOT silently promote her new spouse to be a parent
+    // of mom's existing kids — they might be from a prior unrecorded
+    // relationship. User assigns parentage explicitly.
+    t = addSpouse(t, "mom", "newSpouse", "NS", "", "M");
+    expect(t.persons[ROOT_ID].parentIds).toEqual(["mom"]);
   });
 
   it("does not touch kids who already have two parents", () => {
@@ -126,6 +157,50 @@ describe("addSpouse", () => {
     // re-touch root (already two parents).
     t = addSpouse(t, "mom", "third", "Third", "", "M");
     expect(t.persons[ROOT_ID].parentIds.sort()).toEqual(["dad", "mom"]);
+  });
+
+  it("does not auto-coparent on a second marriage (avoids step-parent corruption)", () => {
+    let t = createInitialTree();
+    t = addSpouse(t, ROOT_ID, "wife1", "W1", "", "F");
+    t = addChild(t, "wife1", "kid", "Kid", "", "M");
+    // wife1 now has a child with root. Marrying her to someone new must
+    // NOT make that new spouse a parent of root's kid.
+    t = addSpouse(t, "wife1", "newPartner", "NP", "", "M");
+    expect(t.persons.kid.parentIds.sort()).toEqual([ROOT_ID, "wife1"].sort());
+  });
+
+  it("adds a divorced spouse to divorcedSpouseIds, not spouseIds", () => {
+    const t = addSpouse(
+      createInitialTree(),
+      ROOT_ID,
+      "ex",
+      "Ex",
+      "",
+      "F",
+      "divorced",
+    );
+    expect(t.persons[ROOT_ID].spouseIds).toEqual([]);
+    expect(t.persons[ROOT_ID].divorcedSpouseIds).toEqual(["ex"]);
+    expect(t.persons.ex.divorcedSpouseIds).toEqual([ROOT_ID]);
+  });
+});
+
+describe("divorceSpouse", () => {
+  it("moves the partner from spouseIds to divorcedSpouseIds on both sides", () => {
+    let t = createInitialTree();
+    t = addSpouse(t, ROOT_ID, "ex", "Ex", "", "F");
+    t = divorceSpouse(t, ROOT_ID, "ex");
+    expect(t.persons[ROOT_ID].spouseIds).toEqual([]);
+    expect(t.persons[ROOT_ID].divorcedSpouseIds).toEqual(["ex"]);
+    expect(t.persons.ex.spouseIds).toEqual([]);
+    expect(t.persons.ex.divorcedSpouseIds).toEqual([ROOT_ID]);
+  });
+
+  it("is a no-op when the pair isn't currently married", () => {
+    let t = createInitialTree();
+    t = addSpouse(t, ROOT_ID, "stranger", "S", "", "F", "divorced");
+    const same = divorceSpouse(t, ROOT_ID, "stranger");
+    expect(same).toBe(t);
   });
 });
 
@@ -182,6 +257,15 @@ describe("describeRelation", () => {
     expect(describeRelation(t, "b", "a").label).toBe("husband");
   });
 
+  it("labels divorced spouses as ex-husband/ex-wife", () => {
+    const t = makeTree([
+      p("a", "M", [], [], ["b"]),
+      p("b", "F", [], [], ["a"]),
+    ]);
+    expect(describeRelation(t, "a", "b").label).toBe("ex-wife");
+    expect(describeRelation(t, "b", "a").label).toBe("ex-husband");
+  });
+
   it("uses the neutral 'spouse' label for NB partners", () => {
     const t = makeTree([
       p("a", "M", [], ["b"]),
@@ -224,7 +308,7 @@ describe("describeRelation", () => {
     expect(describeRelation(t, "a", "e").label).toBe("great-great-grandfather");
   });
 
-  it("labels siblings and half-siblings as siblings", () => {
+  it("labels full siblings (same parent set) as brother/sister", () => {
     const t = makeTree([
       p("me", "M", ["mom", "dad"]),
       p("mom", "F", [], ["dad"]),
@@ -232,6 +316,45 @@ describe("describeRelation", () => {
       p("sis", "F", ["mom", "dad"]),
     ]);
     expect(describeRelation(t, "me", "sis").label).toBe("sister");
+  });
+
+  it("labels half-siblings (one shared parent only)", () => {
+    const t = makeTree([
+      p("me", "M", ["mom", "dad1"]),
+      p("mom", "F", [], ["dad1", "dad2"]),
+      p("dad1", "M", [], ["mom"]),
+      p("dad2", "M", [], ["mom"]),
+      p("halfSis", "F", ["mom", "dad2"]),
+    ]);
+    expect(describeRelation(t, "me", "halfSis").label).toBe("half-sister");
+  });
+
+  it("labels step-parent (parent's spouse who isn't a bio parent)", () => {
+    const t = makeTree([
+      p("me", "M", ["dad"]),
+      p("dad", "M", [], ["stepMom"]),
+      p("stepMom", "F", [], ["dad"]),
+    ]);
+    expect(describeRelation(t, "me", "stepMom").label).toBe("step-mother");
+  });
+
+  it("labels step-child (spouse's child who isn't a bio child)", () => {
+    const t = makeTree([
+      p("me", "M", [], ["wife"]),
+      p("wife", "F", [], ["me"]),
+      p("stepKid", "M", ["wife"]),
+    ]);
+    expect(describeRelation(t, "me", "stepKid").label).toBe("step-son");
+  });
+
+  it("labels step-siblings (parent's spouse's child, no shared bio parent)", () => {
+    const t = makeTree([
+      p("me", "M", ["dad"]),
+      p("dad", "M", [], ["stepMom"]),
+      p("stepMom", "F", [], ["dad"]),
+      p("stepSis", "F", ["stepMom"]),
+    ]);
+    expect(describeRelation(t, "me", "stepSis").label).toBe("step-sister");
   });
 
   it("labels aunts and uncles, with great-aunts at extra distance", () => {
@@ -421,6 +544,38 @@ describe("computeLayout", () => {
         (e) => e.kind === "parent-child" && e.childId === "kid",
       ),
     ).toBe(true);
+  });
+
+  it("clusters blended-family kids by bio-parent attribution", async () => {
+    // Gary married Marta. James/Kathleen are Gary's bio kids (from a prior
+    // unmodeled relationship); Lucas/Sebastian are Marta's. After layout,
+    // each pair must be CONTIGUOUS left-to-right — Gary's kids on his side
+    // of the marriage, Marta's on hers — never interleaved.
+    let t = createInitialTree();
+    t = addSpouse(t, ROOT_ID, "gary", "Gary", "", "M");
+    t = addSpouse(t, "gary", "marta", "Marta", "", "F");
+    t = addChild(t, "gary", "james", "James", "", "M", null);
+    t = addChild(t, "gary", "kathleen", "Kathleen", "", "F", null);
+    t = addChild(t, "marta", "lucas", "Lucas", "", "M", null);
+    t = addChild(t, "marta", "sebastian", "Sebastian", "", "M", null);
+
+    const layout = await computeLayout(t);
+    const xOf = (id: string) =>
+      layout.nodes.find((n) => n.id === id)?.x ?? -1;
+    const ordered = [
+      { id: "james", bio: "gary" },
+      { id: "kathleen", bio: "gary" },
+      { id: "lucas", bio: "marta" },
+      { id: "sebastian", bio: "marta" },
+    ].sort((a, b) => xOf(a.id) - xOf(b.id));
+    // No interleaving: as we scan left-to-right, the bio-parent transitions
+    // at most once. Going gary→marta→gary or marta→gary→marta means kids
+    // are crossed.
+    let transitions = 0;
+    for (let i = 1; i < ordered.length; i++) {
+      if (ordered[i].bio !== ordered[i - 1].bio) transitions++;
+    }
+    expect(transitions).toBeLessThanOrEqual(1);
   });
 
   it("centers a single child under a couple", async () => {

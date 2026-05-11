@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Gender, Person } from "../types";
+import type { Gender, MarriageStatus, Person } from "../types";
 import { ROOT_ID, fullName } from "../logic";
 import { Button } from "@/shared/components/ui/button";
 
@@ -10,17 +10,36 @@ export type PanelMode =
   | "add-parent"
   | "add-child"
   | "add-spouse"
-  | "rename";
+  | "rename"
+  | "divorce";
+
+export interface MarriageOption {
+  partnerId: string;
+  partnerName: string;
+  status: MarriageStatus;
+}
 
 interface ActionPanelProps {
   person: Person;
   isViewRoot: boolean;
+  marriages: MarriageOption[];
   mode: PanelMode;
   onModeChange: (mode: PanelMode) => void;
   onClose: () => void;
   onAddParent: (firstName: string, lastName: string, gender: Gender) => void;
-  onAddChild: (firstName: string, lastName: string, gender: Gender) => void;
-  onAddSpouse: (firstName: string, lastName: string, gender: Gender) => void;
+  onAddChild: (
+    firstName: string,
+    lastName: string,
+    gender: Gender,
+    coParentId: string | null,
+  ) => void;
+  onAddSpouse: (
+    firstName: string,
+    lastName: string,
+    gender: Gender,
+    status: MarriageStatus,
+  ) => void;
+  onDivorce: (partnerId: string) => void;
   onRename: (firstName: string, lastName: string) => void;
   onSetGender: (gender: Gender) => void;
   onSetAsViewRoot: () => void;
@@ -31,6 +50,11 @@ const GENDER_OPTIONS: { value: Gender; label: string }[] = [
   { value: "M", label: "M" },
   { value: "F", label: "F" },
   { value: "NB", label: "NB" },
+];
+
+const STATUS_OPTIONS: { value: MarriageStatus; label: string }[] = [
+  { value: "married", label: "Current" },
+  { value: "divorced", label: "Divorced" },
 ];
 
 function GenderPicker({
@@ -66,15 +90,50 @@ function GenderPicker({
   );
 }
 
+function StatusPicker({
+  value,
+  onChange,
+}: {
+  value: MarriageStatus;
+  onChange: (s: MarriageStatus) => void;
+}) {
+  return (
+    <div className="flex gap-1" role="radiogroup" aria-label="Marriage status">
+      {STATUS_OPTIONS.map((opt) => {
+        const active = value === opt.value;
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => { onChange(opt.value); }}
+            className={[
+              "flex-1 rounded-md border px-2 py-1.5 text-xs font-medium transition-colors",
+              active
+                ? "border-brand-orange bg-surface-elevated text-text-primary"
+                : "border-border-default bg-surface-primary text-text-secondary hover:border-border-hover",
+            ].join(" ")}
+          >
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function ActionPanel({
   person,
   isViewRoot,
+  marriages,
   mode,
   onModeChange,
   onClose,
   onAddParent,
   onAddChild,
   onAddSpouse,
+  onDivorce,
   onRename,
   onSetGender,
   onSetAsViewRoot,
@@ -83,6 +142,16 @@ export function ActionPanel({
   const [firstDraft, setFirstDraft] = useState("");
   const [lastDraft, setLastDraft] = useState("");
   const [draftGender, setDraftGender] = useState<Gender | null>(null);
+  const [draftStatus, setDraftStatus] = useState<MarriageStatus>("married");
+  // null === "this person alone" for add-child; partnerId for a marriage.
+  const [draftCoParent, setDraftCoParent] = useState<string | null>(null);
+
+  const currentMarriages = marriages.filter((m) => m.status === "married");
+  // Show the marriage picker on +Child whenever the person has any spouse.
+  // Default picks the first current marriage (or the first ex if no current),
+  // so the common case is a single confirm-click — but step-children and
+  // single-parent cases are always reachable.
+  const showMarriagePicker = marriages.length > 0;
 
   // Reset draft state when mode changes (including hotkey-driven changes from
   // the parent). Tracking the previous prop in state is React's recommended
@@ -96,7 +165,7 @@ export function ActionPanel({
     if (mode === "rename") {
       setFirstDraft(person.firstName);
       setLastDraft(person.lastName);
-    } else if (mode === "menu") {
+    } else if (mode === "menu" || mode === "divorce") {
       setFirstDraft("");
       setLastDraft("");
     } else {
@@ -104,11 +173,17 @@ export function ActionPanel({
       setLastDraft(person.lastName);
     }
     setDraftGender(null);
+    setDraftStatus("married");
+    // Default: first current marriage if any, else first ex. marriages
+    // is ordered [...current, ...ex] so marriages[0] gives both correctly.
+    setDraftCoParent(marriages[0]?.partnerId ?? null);
   }
 
   const isCanonicalRoot = person.id === ROOT_ID;
   const canAddParent = person.parentIds.length < 2;
-  const needsGender = mode !== "rename" && mode !== "menu";
+  const canDivorce = currentMarriages.length > 0;
+  const needsGender =
+    mode === "add-parent" || mode === "add-child" || mode === "add-spouse";
   const trimmedFirst = firstDraft.trim();
   const canSubmit =
     mode === "rename"
@@ -124,10 +199,19 @@ export function ActionPanel({
     } else {
       if (!f || draftGender === null) return;
       if (mode === "add-parent") onAddParent(f, l, draftGender);
-      else if (mode === "add-child") onAddChild(f, l, draftGender);
-      else if (mode === "add-spouse") onAddSpouse(f, l, draftGender);
+      else if (mode === "add-child") onAddChild(f, l, draftGender, draftCoParent);
+      else if (mode === "add-spouse")
+        onAddSpouse(f, l, draftGender, draftStatus);
     }
     onModeChange("menu");
+  }
+
+  function handleDivorceClick() {
+    if (currentMarriages.length === 1) {
+      onDivorce(currentMarriages[0].partnerId);
+      return;
+    }
+    onModeChange("divorce");
   }
 
   return (
@@ -188,6 +272,18 @@ export function ActionPanel({
             >
               Rename
             </Button>
+            {canDivorce ? (
+              <Button
+                variant="secondary"
+                className="col-span-2"
+                onClick={handleDivorceClick}
+              >
+                Divorce
+                {currentMarriages.length === 1
+                  ? ` from ${currentMarriages[0].partnerName}`
+                  : "…"}
+              </Button>
+            ) : null}
             <Button
               variant="ghost"
               disabled={isCanonicalRoot}
@@ -195,6 +291,36 @@ export function ActionPanel({
               onClick={onDelete}
             >
               {isCanonicalRoot ? "Root can't be deleted" : "Delete"}
+            </Button>
+          </div>
+        </div>
+      ) : mode === "divorce" ? (
+        <div className="flex flex-col gap-3">
+          <div className="text-xs text-text-secondary">
+            Divorce {person.firstName} from…
+          </div>
+          <div className="flex flex-col gap-1">
+            {currentMarriages.map((m) => (
+              <button
+                key={m.partnerId}
+                type="button"
+                onClick={() => {
+                  onDivorce(m.partnerId);
+                  onModeChange("menu");
+                }}
+                className="rounded-md border border-border-default bg-surface-primary px-3 py-2 text-left text-sm text-text-primary transition-colors hover:border-border-hover"
+              >
+                {m.partnerName}
+              </button>
+            ))}
+          </div>
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => { onModeChange("menu"); }}
+            >
+              Cancel
             </Button>
           </div>
         </div>
@@ -235,6 +361,56 @@ export function ActionPanel({
             <div className="flex flex-col gap-1">
               <label className="text-xs text-text-secondary">Gender</label>
               <GenderPicker value={draftGender} onChange={setDraftGender} />
+            </div>
+          ) : null}
+
+          {mode === "add-spouse" ? (
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-text-secondary">Status</label>
+              <StatusPicker value={draftStatus} onChange={setDraftStatus} />
+            </div>
+          ) : null}
+
+          {mode === "add-child" && showMarriagePicker ? (
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-text-secondary">Parents</label>
+              <div className="flex flex-col gap-1">
+                {marriages.map((m) => {
+                  const id = m.partnerId;
+                  const active = draftCoParent === id;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => { setDraftCoParent(id); }}
+                      className={[
+                        "rounded-md border px-3 py-1.5 text-left text-xs transition-colors",
+                        active
+                          ? "border-brand-orange bg-surface-elevated text-text-primary"
+                          : "border-border-default bg-surface-primary text-text-secondary hover:border-border-hover",
+                      ].join(" ")}
+                    >
+                      {person.firstName} & {m.partnerName}{" "}
+                      <span className="text-text-muted">
+                        ({m.status === "married" ? "current" : "divorced"})
+                      </span>
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={() => { setDraftCoParent(null); }}
+                  className={[
+                    "rounded-md border px-3 py-1.5 text-left text-xs transition-colors",
+                    draftCoParent === null
+                      ? "border-brand-orange bg-surface-elevated text-text-primary"
+                      : "border-border-default bg-surface-primary text-text-secondary hover:border-border-hover",
+                  ].join(" ")}
+                >
+                  {person.firstName} only{" "}
+                  <span className="text-text-muted">(single parent)</span>
+                </button>
+              </div>
             </div>
           ) : null}
 

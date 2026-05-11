@@ -26,6 +26,7 @@ function p(
   gender: Gender,
   parents: string[] = [],
   spouses: string[] = [],
+  divorced: string[] = [],
 ): Person {
   return {
     id,
@@ -34,6 +35,7 @@ function p(
     gender,
     parentIds: [...parents],
     spouseIds: [...spouses],
+    divorcedSpouseIds: [...divorced],
   };
 }
 

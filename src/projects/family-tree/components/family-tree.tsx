@@ -17,7 +17,7 @@ import type { Layout, Tree } from "../types";
 import { PanZoom } from "./pan-zoom";
 import { Node } from "./node";
 import { Edges } from "./edges";
-import { ActionPanel, type PanelMode } from "./action-panel";
+import { ActionPanel, type MarriageOption, type PanelMode } from "./action-panel";
 import { Button } from "@/shared/components/ui/button";
 
 function arrowDirection(key: string): NavDirection | null {
@@ -66,6 +66,7 @@ export function FamilyTree() {
   const addParent = useFamilyTreeStore((s) => s.addParent);
   const addChild = useFamilyTreeStore((s) => s.addChild);
   const addSpouse = useFamilyTreeStore((s) => s.addSpouse);
+  const divorce = useFamilyTreeStore((s) => s.divorce);
   const rename = useFamilyTreeStore((s) => s.rename);
   const setGender = useFamilyTreeStore((s) => s.setGender);
   const remove = useFamilyTreeStore((s) => s.remove);
@@ -196,6 +197,22 @@ export function FamilyTree() {
   const personCount = Object.keys(tree.persons).length;
   const showResetView = effectiveViewRootId !== ROOT_ID;
 
+  const selectedMarriages: MarriageOption[] = useMemo(() => {
+    if (!selectedPerson) return [];
+    const toOption = (
+      partnerId: string,
+      status: "married" | "divorced",
+    ): MarriageOption => ({
+      partnerId,
+      partnerName: fullName(tree.persons[partnerId]),
+      status,
+    });
+    return [
+      ...selectedPerson.spouseIds.map((id) => toOption(id, "married")),
+      ...selectedPerson.divorcedSpouseIds.map((id) => toOption(id, "divorced")),
+    ];
+  }, [selectedPerson, tree.persons]);
+
   return (
     <div className="relative flex h-[calc(100vh-4rem)] w-full flex-col bg-surface-primary">
       <header className="flex items-center justify-between gap-3 border-b border-border-default px-4 py-3">
@@ -279,12 +296,24 @@ export function FamilyTree() {
             key={selectedPerson.id}
             person={selectedPerson}
             isViewRoot={selectedPerson.id === effectiveViewRootId}
+            marriages={selectedMarriages}
             mode={panelMode}
             onModeChange={setPanelMode}
             onClose={() => { setSelected(null); }}
             onAddParent={(firstName, lastName, gender) => { addParent(selectedPerson.id, firstName, lastName, gender); }}
-            onAddChild={(firstName, lastName, gender) => { addChild(selectedPerson.id, firstName, lastName, gender); }}
-            onAddSpouse={(firstName, lastName, gender) => { addSpouse(selectedPerson.id, firstName, lastName, gender); }}
+            onAddChild={(firstName, lastName, gender, coParentId) => {
+              // Pass null through unchanged — addChild treats null as
+              // "explicit single parent" and undefined as "use default".
+              addChild(
+                selectedPerson.id,
+                firstName,
+                lastName,
+                gender,
+                coParentId,
+              );
+            }}
+            onAddSpouse={(firstName, lastName, gender, status) => { addSpouse(selectedPerson.id, firstName, lastName, gender, status); }}
+            onDivorce={(partnerId) => { divorce(selectedPerson.id, partnerId); }}
             onRename={(firstName, lastName) => { rename(selectedPerson.id, firstName, lastName); }}
             onSetGender={(gender) => { setGender(selectedPerson.id, gender); }}
             onSetAsViewRoot={() => { setViewRoot(selectedPerson.id); }}

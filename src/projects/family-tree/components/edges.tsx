@@ -24,6 +24,7 @@ export function Edges({ layout }: EdgesProps) {
           const y = a.y + a.h / 2;
           const x1 = a.x + a.w;
           const x2 = b.x;
+          const isDivorced = edge.status === "divorced";
           return (
             <line
               key={`s-${i}`}
@@ -33,6 +34,8 @@ export function Edges({ layout }: EdgesProps) {
               y2={y}
               stroke="var(--color-brand-pink)"
               strokeWidth={2}
+              strokeDasharray={isDivorced ? "6 4" : undefined}
+              opacity={isDivorced ? 0.7 : 1}
             />
           );
         }

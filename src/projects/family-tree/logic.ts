@@ -9,11 +9,12 @@ import type {
   LaidOutEdge,
   LaidOutNode,
   Layout,
+  MarriageStatus,
   Person,
   Tree,
 } from "./types";
 
-export const NODE_W = 160;
+export const NODE_W = 180;
 export const NODE_H = 64;
 export const SPOUSE_GAP = 28;
 export const ROW_GAP = 96;
@@ -40,6 +41,7 @@ export function createInitialTree(): Tree {
         gender: "M",
         parentIds: [],
         spouseIds: [],
+        divorcedSpouseIds: [],
       },
     },
   };
@@ -48,7 +50,12 @@ export function createInitialTree(): Tree {
 function clone(tree: Tree): Tree {
   const persons: Record<string, Person> = {};
   for (const [id, p] of Object.entries(tree.persons)) {
-    persons[id] = { ...p, parentIds: [...p.parentIds], spouseIds: [...p.spouseIds] };
+    persons[id] = {
+      ...p,
+      parentIds: [...p.parentIds],
+      spouseIds: [...p.spouseIds],
+      divorcedSpouseIds: [...p.divorcedSpouseIds],
+    };
   }
   return { rootId: tree.rootId, persons };
 }
@@ -71,6 +78,7 @@ export function addParent(
     gender,
     parentIds: [],
     spouseIds: [],
+    divorcedSpouseIds: [],
   };
   child.parentIds.push(newId);
 
@@ -93,11 +101,23 @@ export function addChild(
   firstName: string,
   lastName: string,
   gender: Gender,
+  // Co-parent selector with three meanings, intentionally distinct:
+  //   string  — use this person as the second parent.
+  //   null    — EXPLICIT single parent (UI picker chose "X only").
+  //   omitted — no choice provided; fall back to parent's first current
+  //             spouse (back-compat for single-marriage callers).
+  coParentId?: string | null,
 ): Tree {
   const next = clone(tree);
   const parent = next.persons[parentId];
   const parents = [parentId];
-  if (parent.spouseIds.length > 0) parents.push(parent.spouseIds[0]);
+  if (coParentId === null) {
+    // Explicit single parent — leave the parents array at [parentId].
+  } else if (coParentId !== undefined && coParentId !== parentId) {
+    parents.push(coParentId);
+  } else if (parent.spouseIds.length > 0) {
+    parents.push(parent.spouseIds[0]);
+  }
   next.persons[newId] = {
     id: newId,
     firstName,
@@ -105,6 +125,7 @@ export function addChild(
     gender,
     parentIds: parents,
     spouseIds: [],
+    divorcedSpouseIds: [],
   };
   return next;
 }
@@ -116,6 +137,7 @@ export function addSpouse(
   firstName: string,
   lastName: string,
   gender: Gender,
+  status: MarriageStatus = "married",
 ): Tree {
   const next = clone(tree);
   const person = next.persons[personId];
@@ -125,19 +147,35 @@ export function addSpouse(
     lastName,
     gender,
     parentIds: [],
-    spouseIds: [personId],
+    spouseIds: status === "married" ? [personId] : [],
+    divorcedSpouseIds: status === "divorced" ? [personId] : [],
   };
-  person.spouseIds.push(newId);
-  // Without divorce in the model, marrying X means becoming the second
-  // parent of any of X's children who only have X listed.
-  for (const candidate of Object.values(next.persons)) {
-    if (
-      candidate.parentIds.length === 1 &&
-      candidate.parentIds[0] === personId
-    ) {
-      candidate.parentIds.push(newId);
-    }
+  if (status === "married") {
+    person.spouseIds.push(newId);
+  } else {
+    person.divorcedSpouseIds.push(newId);
   }
+  // Intentionally NO auto-coparenting of existing single-parent children:
+  // a new spouse may or may not be the missing second parent (step-children
+  // exist), and the silent promotion silently corrupted data when wrong.
+  // Users assign parentage explicitly via the +Child marriage picker.
+  return next;
+}
+
+export function divorceSpouse(
+  tree: Tree,
+  aId: string,
+  bId: string,
+): Tree {
+  const a = tree.persons[aId];
+  if (!a.spouseIds.includes(bId)) return tree;
+  const next = clone(tree);
+  const na = next.persons[aId];
+  const nb = next.persons[bId];
+  na.spouseIds = na.spouseIds.filter((id) => id !== bId);
+  nb.spouseIds = nb.spouseIds.filter((id) => id !== aId);
+  if (!na.divorcedSpouseIds.includes(bId)) na.divorcedSpouseIds.push(bId);
+  if (!nb.divorcedSpouseIds.includes(aId)) nb.divorcedSpouseIds.push(aId);
   return next;
 }
 
@@ -166,20 +204,21 @@ export function deletePerson(tree: Tree, id: string): Tree {
   for (const p of Object.values(next.persons)) {
     p.parentIds = p.parentIds.filter((pid) => pid !== id);
     p.spouseIds = p.spouseIds.filter((sid) => sid !== id);
+    p.divorcedSpouseIds = p.divorcedSpouseIds.filter((sid) => sid !== id);
   }
   return next;
 }
 
-// Reconcile any children who only list one parent when that parent has a
-// (single) spouse — the spouse becomes the second parent. This heals data
-// written before addSpouse propagated to existing single-parent kids.
-// `changed` reports whether any normalization actually modified the input,
-// so callers can decide whether to persist the fix back.
+// Backfill schema fields added later (currently: divorcedSpouseIds) so older
+// persisted rows hydrate without crashing. Returns `changed: true` when a
+// field had to be added — callers can use that to write the healed row back.
 export function normalizeTree(raw: unknown): { tree: Tree; changed: boolean } {
   const t = raw as Tree;
   let changed = false;
   const persons: Record<string, Person> = {};
   for (const [id, person] of Object.entries(t.persons)) {
+    const divorced = person.divorcedSpouseIds as string[] | undefined;
+    if (divorced === undefined) changed = true;
     persons[id] = {
       id: person.id,
       firstName: person.firstName,
@@ -187,15 +226,8 @@ export function normalizeTree(raw: unknown): { tree: Tree; changed: boolean } {
       gender: person.gender,
       parentIds: [...person.parentIds],
       spouseIds: [...person.spouseIds],
+      divorcedSpouseIds: divorced ? [...divorced] : [],
     };
-  }
-  for (const child of Object.values(persons)) {
-    if (child.parentIds.length !== 1) continue;
-    const onlyParent = persons[child.parentIds[0]];
-    if (onlyParent.spouseIds.length === 1) {
-      child.parentIds.push(onlyParent.spouseIds[0]);
-      changed = true;
-    }
   }
   return { tree: { rootId: t.rootId, persons }, changed };
 }
@@ -283,6 +315,22 @@ function siblingTerm(gender: Gender): string {
   return pickByGender(gender, "brother", "sister", "sibling");
 }
 
+function halfSiblingTerm(gender: Gender): string {
+  return "half-" + pickByGender(gender, "brother", "sister", "sibling");
+}
+
+function stepSiblingTerm(gender: Gender): string {
+  return "step-" + pickByGender(gender, "brother", "sister", "sibling");
+}
+
+function stepParentTerm(gender: Gender): string {
+  return "step-" + pickByGender(gender, "father", "mother", "parent");
+}
+
+function stepChildTerm(gender: Gender): string {
+  return "step-" + pickByGender(gender, "son", "daughter", "child");
+}
+
 function auntUncleTerm(greats: number, gender: Gender): string {
   const base = pickByGender(gender, "uncle", "aunt", "aunt/uncle");
   return greats === 0 ? base : "great-".repeat(greats) + base;
@@ -328,6 +376,10 @@ function spouseTerm(gender: Gender): string {
   return pickByGender(gender, "husband", "wife", "spouse");
 }
 
+function exSpouseTerm(gender: Gender): string {
+  return "ex-" + spouseTerm(gender);
+}
+
 function siblingInLawTerm(gender: Gender): string {
   return pickByGender(gender, "brother-in-law", "sister-in-law", "sibling-in-law");
 }
@@ -359,14 +411,53 @@ function describeStructured(
   const root = tree.persons[rootId];
   const target = tree.persons[targetId];
 
-  // 1. Direct spouse.
+  // 1. Direct spouse (current or divorced).
   if (root.spouseIds.includes(targetId)) return spouseTerm(target.gender);
+  if (root.divorcedSpouseIds.includes(targetId)) return exSpouseTerm(target.gender);
 
-  // 2. Blood relation.
+  // 2. Blood relation. Sibling distance gets full/half discrimination by
+  //    comparing parent sets — sharing all known parents is a full sibling,
+  //    sharing some-but-not-all is a half-sibling.
   const blood = findBloodPath(tree, rootId, targetId);
-  if (blood !== null) return classifyBlood(blood, target.gender);
+  if (blood !== null) {
+    if (blood.distFrom === 1 && blood.distTo === 1) {
+      const shared = root.parentIds.filter((id) =>
+        target.parentIds.includes(id),
+      ).length;
+      const maxKnown = Math.max(root.parentIds.length, target.parentIds.length);
+      return shared === maxKnown
+        ? siblingTerm(target.gender)
+        : halfSiblingTerm(target.gender);
+    }
+    return classifyBlood(blood, target.gender);
+  }
 
-  // 3. Sibling-in-law: spouse of any sibling, or sibling of any spouse.
+  // 3. Step-parent: root's parent's spouse. Bio parents are caught by the
+  //    blood branch above, so anyone reaching here is a non-bio spouse.
+  for (const parentId of root.parentIds) {
+    if (tree.persons[parentId].spouseIds.includes(targetId)) {
+      return stepParentTerm(target.gender);
+    }
+  }
+
+  // 4. Step-child: child of root's spouse. Bio children also caught above.
+  for (const spouseId of root.spouseIds) {
+    if (target.parentIds.includes(spouseId)) {
+      return stepChildTerm(target.gender);
+    }
+  }
+
+  // 5. Step-sibling: target's parent is married to root's parent, with no
+  //    shared bio parent (half-siblings would have been caught in #2).
+  for (const rp of root.parentIds) {
+    const rpSpouses = tree.persons[rp].spouseIds;
+    for (const tp of target.parentIds) {
+      if (rp === tp) continue;
+      if (rpSpouses.includes(tp)) return stepSiblingTerm(target.gender);
+    }
+  }
+
+  // 6. Sibling-in-law: spouse of any sibling, or sibling of any spouse.
   for (const spouseId of root.spouseIds) {
     const path = findBloodPath(tree, spouseId, targetId);
     if (path !== null && path.distFrom === 1 && path.distTo === 1) {
@@ -380,7 +471,7 @@ function describeStructured(
     }
   }
 
-  // 4. Parent-in-law: parent of any spouse.
+  // 7. Parent-in-law: parent of any spouse.
   for (const spouseId of root.spouseIds) {
     const path = findBloodPath(tree, spouseId, targetId);
     if (path !== null && path.distFrom === 1 && path.distTo === 0) {
@@ -388,7 +479,7 @@ function describeStructured(
     }
   }
 
-  // 5. Child-in-law: spouse of any child.
+  // 8. Child-in-law: spouse of any child.
   for (const targetSpouseId of target.spouseIds) {
     const path = findBloodPath(tree, rootId, targetSpouseId);
     if (path !== null && path.distFrom === 0 && path.distTo === 1) {
@@ -396,7 +487,7 @@ function describeStructured(
     }
   }
 
-  // 6. Through one of root's spouses to a blood relative of that spouse.
+  // 9. Through one of root's spouses to a blood relative of that spouse.
   for (const spouseId of root.spouseIds) {
     const path = findBloodPath(tree, spouseId, targetId);
     if (path === null) continue;
@@ -407,7 +498,7 @@ function describeStructured(
     }
   }
 
-  // 7. Target is married into the family — spouse of root's blood relative.
+  // 10. Target is married into the family — spouse of root's blood relative.
   // English folds spouses-of-aunts/uncles into "aunt"/"uncle" themselves, so
   // gender-flip when the inner relation is an aunt/uncle (or great-).
   for (const targetSpouseId of target.spouseIds) {
@@ -558,6 +649,9 @@ interface CoupleUnit {
   id: string;
   members: string[]; // [primary] or [primary, partner]
   generation: number;
+  // When members has 2 entries, this is the marriage status between them.
+  // Singletons leave it undefined.
+  status?: MarriageStatus;
 }
 
 function childrenOf(tree: Tree, parentId: string): string[] {
@@ -578,6 +672,7 @@ function bfsOrder(tree: Tree): string[] {
     const neighbours = [
       ...p.parentIds,
       ...p.spouseIds,
+      ...p.divorcedSpouseIds,
       ...childrenOf(tree, id),
     ];
     for (const rel of neighbours) {
@@ -609,12 +704,33 @@ function computeGenerations(tree: Tree): Map<string, number> {
     };
     for (const parentId of person.parentIds) visit(parentId, g - 1);
     for (const spouseId of person.spouseIds) visit(spouseId, g);
+    for (const exId of person.divorcedSpouseIds) visit(exId, g);
     for (const childId of childrenIdx.get(id) ?? []) visit(childId, g + 1);
   }
   for (const id of Object.keys(tree.persons)) {
     if (!gen.has(id)) gen.set(id, 0);
   }
   return gen;
+}
+
+// Which "marriage within a parent couple" produced a child. Returns:
+//   -1   child's bio parents are the LEFT spouse only
+//    0   shared (both spouses are bio parents) — or neither, defensively
+//   +1   child's bio parents are the RIGHT spouse only
+// First structural step toward marriage-as-DAG-primitive: today only used
+// to permute sibling positions post-sugiyama; later this is the natural
+// grouping key for promoting marriages to first-class DAG nodes.
+function marriageSideOfChild(
+  childParentIds: string[],
+  leftSpouseId: string,
+  rightSpouseId: string,
+): -1 | 0 | 1 {
+  const hasLeft = childParentIds.includes(leftSpouseId);
+  const hasRight = childParentIds.includes(rightSpouseId);
+  if (hasLeft && hasRight) return 0;
+  if (hasLeft) return -1;
+  if (hasRight) return 1;
+  return 0;
 }
 
 function buildCoupleUnits(
@@ -627,11 +743,26 @@ function buildCoupleUnits(
   for (const id of order) {
     if (coupleOf.has(id)) continue;
     const p = tree.persons[id];
-    const partner = p.spouseIds.find((sid) => !coupleOf.has(sid)) ?? null;
+    // Prefer a current partner; fall back to a divorced partner so the ex
+    // still lays out adjacent (with a dashed marriage edge). This is the
+    // single-marriage-or-ex case; multi-marriage layout is future work.
+    const currentPartner =
+      p.spouseIds.find((sid) => !coupleOf.has(sid)) ?? null;
+    const partner =
+      currentPartner ??
+      p.divorcedSpouseIds.find((sid) => !coupleOf.has(sid)) ??
+      null;
+    const status: MarriageStatus | undefined =
+      partner === null
+        ? undefined
+        : currentPartner !== null
+          ? "married"
+          : "divorced";
     couples.push({
       id,
       members: partner !== null ? [id, partner] : [id],
       generation: gen.get(id)!,
+      status,
     });
     coupleOf.set(id, id);
     if (partner !== null) coupleOf.set(partner, id);
@@ -902,6 +1033,67 @@ export async function computeLayout(
     spouseSideOrder.set(couple.id, [leftId, rightId]);
   }
 
+  // Marriage-aware child reordering. Within each parent couple, cluster its
+  // children by which marriage produced them: left-spouse-only kids on the
+  // left, shared kids in the middle, right-spouse-only kids on the right.
+  // This makes blended families read correctly without the full marriage-
+  // as-DAG-primitive refactor (doc step 4). Limited to leaf children for
+  // now — translating non-leaf subtrees risks descending crossings, which
+  // the full refactor handles properly.
+  const coupleById = new Map(couples.map((c) => [c.id, c] as const));
+  for (const parent of couples) {
+    const childIds = childCouplesOf.get(parent.id) ?? [];
+    if (childIds.length < 2) continue;
+    const sides = spouseSideOrder.get(parent.id);
+    if (!sides || sides.length < 2) continue;
+    const allLeaves = childIds.every(
+      (cid) => (childCouplesOf.get(cid) ?? []).length === 0,
+    );
+    if (!allLeaves) continue;
+
+    const [leftId, rightId] = sides;
+    const sideOf = new Map<string, number>();
+    for (const cid of childIds) {
+      const child = coupleById.get(cid);
+      if (!child) continue;
+      // Walk the child couple's members to find parent IDs that belong to
+      // THIS parent couple. Other-side parents (e.g. an in-law's lineage)
+      // are irrelevant for grouping within this couple.
+      const bioParentIds: string[] = [];
+      for (const memberId of child.members) {
+        for (const pid of tree.persons[memberId].parentIds) {
+          if (pid === leftId || pid === rightId) bioParentIds.push(pid);
+        }
+      }
+      sideOf.set(cid, marriageSideOfChild(bioParentIds, leftId, rightId));
+    }
+
+    const oldByX = [...childIds].sort(
+      (a, b) => (centerX.get(a) ?? 0) - (centerX.get(b) ?? 0),
+    );
+    const sortedChildren = [...childIds].sort((a, b) => {
+      const diff = (sideOf.get(a) ?? 0) - (sideOf.get(b) ?? 0);
+      if (diff !== 0) return diff;
+      // Stable within a side: preserve sugiyama's left-to-right order.
+      return (centerX.get(a) ?? 0) - (centerX.get(b) ?? 0);
+    });
+    let unchanged = true;
+    for (let i = 0; i < oldByX.length; i++) {
+      if (oldByX[i] !== sortedChildren[i]) {
+        unchanged = false;
+        break;
+      }
+    }
+    if (unchanged) continue;
+
+    // Permute centerX values among siblings: the sorted children get the
+    // existing set of positions in ascending order.
+    const ascendingPositions = oldByX.map((id) => centerX.get(id) ?? 0);
+    for (let i = 0; i < sortedChildren.length; i++) {
+      centerX.set(sortedChildren[i], ascendingPositions[i]);
+    }
+  }
+
   for (const couple of couples) {
     const center = centerX.get(couple.id)!;
     const y = yFor(couple.generation);
@@ -921,6 +1113,7 @@ export async function computeLayout(
         kind: "spouse",
         aId: sides[0],
         bId: sides[1],
+        status: couple.status ?? "married",
       });
     }
   }
@@ -1072,7 +1265,8 @@ export function diffTree(prev: Tree, next: Tree): TreeDiff {
       const b = next.persons[id];
       if (
         !sameStringArray(a.parentIds, b.parentIds) ||
-        !sameStringArray(a.spouseIds, b.spouseIds)
+        !sameStringArray(a.spouseIds, b.spouseIds) ||
+        !sameStringArray(a.divorcedSpouseIds, b.divorcedSpouseIds)
       ) {
         structurallyEqual = false;
         break;
@@ -1138,13 +1332,16 @@ export function optimisticPatch(
   const seenSpouse = new Set<string>();
   for (const person of Object.values(nextTree.persons)) {
     if (!byId.has(person.id)) continue;
-    for (const sid of person.spouseIds) {
-      if (!byId.has(sid)) continue;
-      const key = person.id < sid ? `${person.id}|${sid}` : `${sid}|${person.id}`;
-      if (seenSpouse.has(key)) continue;
+    const emitSpouse = (sid: string, status: MarriageStatus): void => {
+      if (!byId.has(sid)) return;
+      const key =
+        person.id < sid ? `${person.id}|${sid}` : `${sid}|${person.id}`;
+      if (seenSpouse.has(key)) return;
       seenSpouse.add(key);
-      edges.push({ kind: "spouse", aId: person.id, bId: sid });
-    }
+      edges.push({ kind: "spouse", aId: person.id, bId: sid, status });
+    };
+    for (const sid of person.spouseIds) emitSpouse(sid, "married");
+    for (const sid of person.divorcedSpouseIds) emitSpouse(sid, "divorced");
     if (person.parentIds.length === 0) continue;
     const parent = byId.get(person.parentIds[0]);
     if (!parent) continue;

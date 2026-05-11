@@ -1,5 +1,7 @@
 export type Gender = "M" | "F" | "NB";
 
+export type MarriageStatus = "married" | "divorced";
+
 export interface Person {
   id: string;
   firstName: string;
@@ -9,6 +11,7 @@ export interface Person {
   gender: Gender;
   parentIds: string[];
   spouseIds: string[];
+  divorcedSpouseIds: string[];
 }
 
 export interface Tree {
@@ -25,7 +28,7 @@ export interface LaidOutNode {
 }
 
 export type LaidOutEdge =
-  | { kind: "spouse"; aId: string; bId: string }
+  | { kind: "spouse"; aId: string; bId: string; status: MarriageStatus }
   | {
       kind: "parent-child";
       parentAId: string;

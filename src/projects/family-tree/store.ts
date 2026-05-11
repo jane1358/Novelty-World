@@ -3,7 +3,7 @@
 import { create } from "zustand";
 import { createClient } from "@/shared/lib/supabase/client";
 import { getProjectStorage } from "@/shared/lib/storage";
-import type { Gender, Tree } from "./types";
+import type { Gender, MarriageStatus, Tree } from "./types";
 import {
   ROOT_ID,
   addChild as logicAddChild,
@@ -11,6 +11,7 @@ import {
   addSpouse as logicAddSpouse,
   createInitialTree,
   deletePerson as logicDeletePerson,
+  divorceSpouse as logicDivorceSpouse,
   normalizeTree,
   renamePerson as logicRenamePerson,
   setGender as logicSetGender,
@@ -38,8 +39,21 @@ interface FamilyTreeState {
   setViewRoot: (id: string) => void;
   resetViewRoot: () => void;
   addParent: (childId: string, firstName: string, lastName: string, gender: Gender) => void;
-  addChild: (parentId: string, firstName: string, lastName: string, gender: Gender) => void;
-  addSpouse: (personId: string, firstName: string, lastName: string, gender: Gender) => void;
+  addChild: (
+    parentId: string,
+    firstName: string,
+    lastName: string,
+    gender: Gender,
+    coParentId?: string | null,
+  ) => void;
+  addSpouse: (
+    personId: string,
+    firstName: string,
+    lastName: string,
+    gender: Gender,
+    status?: MarriageStatus,
+  ) => void;
+  divorce: (aId: string, bId: string) => void;
   rename: (id: string, firstName: string, lastName: string) => void;
   setGender: (id: string, gender: Gender) => void;
   remove: (id: string) => void;
@@ -147,21 +161,29 @@ export const useFamilyTreeStore = create<FamilyTreeState>((set, get) => ({
     scheduleSave(next, (b) => { set({ saving: b }); });
   },
 
-  addChild: (parentId, firstName, lastName, gender) => {
+  addChild: (parentId, firstName, lastName, gender, coParentId) => {
     const { tree } = get();
     const f = firstName.trim() || "Unnamed";
     const l = lastName.trim();
-    const next = logicAddChild(tree, parentId, newId(), f, l, gender);
+    const next = logicAddChild(tree, parentId, newId(), f, l, gender, coParentId);
     if (next === tree) return;
     set({ tree: next });
     scheduleSave(next, (b) => { set({ saving: b }); });
   },
 
-  addSpouse: (personId, firstName, lastName, gender) => {
+  addSpouse: (personId, firstName, lastName, gender, status) => {
     const { tree } = get();
     const f = firstName.trim() || "Unnamed";
     const l = lastName.trim();
-    const next = logicAddSpouse(tree, personId, newId(), f, l, gender);
+    const next = logicAddSpouse(tree, personId, newId(), f, l, gender, status);
+    if (next === tree) return;
+    set({ tree: next });
+    scheduleSave(next, (b) => { set({ saving: b }); });
+  },
+
+  divorce: (aId, bId) => {
+    const { tree } = get();
+    const next = logicDivorceSpouse(tree, aId, bId);
     if (next === tree) return;
     set({ tree: next });
     scheduleSave(next, (b) => { set({ saving: b }); });
