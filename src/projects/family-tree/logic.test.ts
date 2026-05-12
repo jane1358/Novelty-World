@@ -722,6 +722,48 @@ describe("computeLayout", () => {
     expect(firstGroup).toBe("maya-gary");
   });
 
+  it("gives step-siblings in a 3-member cluster distinct elbow Ys", async () => {
+    // Regression: in [Maya, Gary, Marta] with Maya+Gary kids and Marta-solo
+    // kids, both groups used to share one elbow Y keyed by couple unit. If a
+    // Marta-solo kid's center landed on the Maya|Gary marriage midpoint
+    // (which happened on the live tree), the two groups' horizontal sibling
+    // bars kissed at exactly that x and read as one merged bar covering all
+    // five step-siblings. Step-sibling groups must get separate elbow rows.
+    const t = makeTree([
+      p("gary", "M", [], ["marta"], ["maya"]),
+      p("marta", "F", [], ["gary"], []),
+      p("maya", "F", [], [], ["gary"]),
+      p("james", "M", ["gary", "maya"]),
+      p("kathleen", "F", ["gary", "maya"]),
+      p("lucas", "M", ["marta"]),
+      p("sebastian", "M", ["marta"]),
+    ]);
+
+    const layout = await computeLayout(t);
+    const edgeFor = (childId: string) =>
+      layout.edges.find((e) => e.kind === "parent-child" && e.childId === childId);
+    const jamesEdge = edgeFor("james");
+    const kathleenEdge = edgeFor("kathleen");
+    const lucasEdge = edgeFor("lucas");
+    const sebastianEdge = edgeFor("sebastian");
+    expect(jamesEdge?.kind).toBe("parent-child");
+    expect(lucasEdge?.kind).toBe("parent-child");
+    if (
+      jamesEdge?.kind !== "parent-child" ||
+      kathleenEdge?.kind !== "parent-child" ||
+      lucasEdge?.kind !== "parent-child" ||
+      sebastianEdge?.kind !== "parent-child"
+    ) {
+      throw new Error("expected parent-child edges");
+    }
+    // Siblings within the same marriage share an elbow row.
+    expect(jamesEdge.elbowY).toBe(kathleenEdge.elbowY);
+    expect(lucasEdge.elbowY).toBe(sebastianEdge.elbowY);
+    // Step-siblings (different marriages) get DIFFERENT elbow rows so their
+    // sibling bars can't merge into one.
+    expect(jamesEdge.elbowY).not.toBe(lucasEdge.elbowY);
+  });
+
   it("doesn't orphan a current spouse when the partner's ex is processed first", async () => {
     // John reaches BFS before Kristin (he's connected via parents). John has
     // no current spouse, only a divorced one (Kristin), and Kristin is

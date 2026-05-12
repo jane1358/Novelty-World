@@ -4,7 +4,7 @@ import {
   graphStratify,
   sugiyama,
 } from "d3-dag";
-import type { Graph, Layering, Separation } from "d3-dag";
+import type { Decross, Graph, Layering, Separation } from "d3-dag";
 import type {
   Gender,
   LaidOutEdge,
@@ -812,7 +812,7 @@ function buildLayered(couples: CoupleUnit[]): LayeredOrdering {
 
 export type DecrossStrategy = "opt" | "two-layer";
 
-interface CoupleData {
+export interface CoupleData {
   id: string;
   parentIds: string[];
   generation: number;
@@ -865,6 +865,7 @@ async function layoutCouplesViaSugiyama(
   couples: CoupleUnit[],
   parentCouplesOf: Map<string, string[]>,
   strategy: DecrossStrategy,
+  decrossOverride: Decross<CoupleData, unknown> | undefined,
 ): Promise<Map<string, number> | null> {
   if (couples.length === 0) return null;
   const data: CoupleData[] = couples.map((c) => ({
@@ -889,7 +890,9 @@ async function layoutCouplesViaSugiyama(
     // (which is the sole caller of computeLayout) ever fetches this chunk.
     // For "two-layer" we keep d3-dag's barycenter heuristic.
     let decross;
-    if (strategy === "opt") {
+    if (decrossOverride !== undefined) {
+      decross = decrossOverride;
+    } else if (strategy === "opt") {
       const mod = await import("./decross-highs");
       decross = mod.decrossHighs(await mod.loadHighs());
     } else {
@@ -947,6 +950,10 @@ function fallbackLayout(
 
 export interface ComputeLayoutOptions {
   decross?: DecrossStrategy;
+  // Benchmarking hook: when set, replaces the d3-dag decross plugin used inside
+  // sugiyama. The `decross` strategy is ignored. Used by layout-phases.bench.ts
+  // to wrap the real plugin with timing/recording/warm-start logic.
+  decrossOverride?: Decross<CoupleData, unknown>;
 }
 
 export async function computeLayout(
@@ -998,6 +1005,7 @@ export async function computeLayout(
     couples,
     parentCouplesOf,
     decross,
+    options.decrossOverride,
   );
   const rawCenterX =
     sugiyamaCenterX ?? fallbackLayout(couples, layered, fallbackOrder);
@@ -1014,24 +1022,43 @@ export async function computeLayout(
   const centerX = new Map<string, number>();
   for (const [id, x] of rawCenterX) centerX.set(id, x + shift);
 
-  // Each parent couple gets its own elbow row (so child-drops from different
-  // parents don't visually merge). We need at least ELBOW_FIRST_OFFSET below
-  // the parent for the topmost elbow, ELBOW_SPACING between elbows, and
-  // ELBOW_LAST_MARGIN below the bottommost elbow before the child top. When
-  // a generation has many parent couples this grows the row gap dynamically.
+  // Each distinct parent ID set in a generation gets its own elbow row (so
+  // child-drops from different marriages don't visually merge). Keying by
+  // parent SET — not by couple unit — matters for 3-member [ex, person,
+  // current] clusters: a kid from the left marriage and a kid from the right
+  // marriage share a couple unit but represent different parent sets, and
+  // their horizontal sibling bars can otherwise touch at the inner marriage
+  // midpoint when a kid's x happens to land there. We need at least
+  // ELBOW_FIRST_OFFSET below the parent for the topmost elbow, ELBOW_SPACING
+  // between elbows, and ELBOW_LAST_MARGIN below the bottommost elbow before
+  // the child top. When a generation has many parent sets this grows the row
+  // gap dynamically.
   const ELBOW_FIRST_OFFSET = 28;
   const ELBOW_SPACING = 32;
   const ELBOW_LAST_MARGIN = 28;
 
+  const parentSetKey = (ids: readonly string[]): string =>
+    [...ids].sort().join("|");
+
+  const parentSetKeysByGen = new Map<number, string[]>();
+  for (const person of Object.values(tree.persons)) {
+    if (person.parentIds.length === 0) continue;
+    const parentGen = gen.get(person.parentIds[0]) ?? 0;
+    const key = parentSetKey(person.parentIds);
+    let arr = parentSetKeysByGen.get(parentGen);
+    if (arr === undefined) {
+      arr = [];
+      parentSetKeysByGen.set(parentGen, arr);
+    }
+    if (!arr.includes(key)) arr.push(key);
+  }
+
   const rowGapAfter = (g: number): number => {
-    const inGen = layered.byGen.get(g) ?? [];
-    const numParentCouples = inGen.filter(
-      (c) => (childCouplesOf.get(c.id) ?? []).length > 0,
-    ).length;
-    if (numParentCouples <= 1) return ROW_GAP;
+    const numParentSets = parentSetKeysByGen.get(g)?.length ?? 0;
+    if (numParentSets <= 1) return ROW_GAP;
     const required =
       ELBOW_FIRST_OFFSET +
-      (numParentCouples - 1) * ELBOW_SPACING +
+      (numParentSets - 1) * ELBOW_SPACING +
       ELBOW_LAST_MARGIN;
     return Math.max(ROW_GAP, required);
   };
@@ -1207,25 +1234,41 @@ export async function computeLayout(
     }
   }
 
-  // Assign each parent couple its own elbow Y, sorted left-to-right by x.
-  // Spacing is absolute (ELBOW_SPACING) so adjacent rows are visually
-  // distinct regardless of how many parents share a generation.
-  const elbowYByCouple = new Map<string, number>();
+  // Assign each parent SET its own elbow Y, sorted left-to-right by the
+  // x where the drop emerges. Spacing is absolute (ELBOW_SPACING) so
+  // adjacent rows are visually distinct regardless of how many parent sets
+  // share a generation. parentMidX matches the renderer's drop x: midpoint
+  // of the inner marriage gap for two-parent sets, single-parent center
+  // otherwise.
+  const nodeById = new Map(layout.nodes.map((n) => [n.id, n] as const));
+  const parentMidXForSet = (key: string): number => {
+    const ids = key.split("|");
+    if (ids.length === 2) {
+      const a = nodeById.get(ids[0]);
+      const b = nodeById.get(ids[1]);
+      if (a === undefined || b === undefined) return 0;
+      const left = a.x <= b.x ? a : b;
+      const right = a.x <= b.x ? b : a;
+      return (left.x + left.w + right.x) / 2;
+    }
+    const node = nodeById.get(ids[0]);
+    return node === undefined ? 0 : node.x + node.w / 2;
+  };
+
+  const elbowYByParentSet = new Map<string, number>();
   for (const g of layered.sortedGens) {
-    const inGen = layered.byGen.get(g) ?? [];
-    const parentCouples = inGen.filter(
-      (c) => (childCouplesOf.get(c.id) ?? []).length > 0,
-    );
-    parentCouples.sort(
-      (a, b) => (centerX.get(a.id) ?? 0) - (centerX.get(b.id) ?? 0),
+    const keys = parentSetKeysByGen.get(g) ?? [];
+    if (keys.length === 0) continue;
+    const sortedKeys = [...keys].sort(
+      (a, b) => parentMidXForSet(a) - parentMidXForSet(b),
     );
     const parentBottomY = yFor(g) + NODE_H;
-    if (parentCouples.length === 1) {
-      elbowYByCouple.set(parentCouples[0].id, parentBottomY + ROW_GAP / 2);
+    if (sortedKeys.length === 1) {
+      elbowYByParentSet.set(sortedKeys[0], parentBottomY + ROW_GAP / 2);
     } else {
-      parentCouples.forEach((couple, i) => {
-        elbowYByCouple.set(
-          couple.id,
+      sortedKeys.forEach((key, i) => {
+        elbowYByParentSet.set(
+          key,
           parentBottomY + ELBOW_FIRST_OFFSET + i * ELBOW_SPACING,
         );
       });
@@ -1266,13 +1309,10 @@ export async function computeLayout(
   // child — so in-laws naturally get their own visible drop into their child.
   for (const person of Object.values(tree.persons)) {
     if (person.parentIds.length === 0) continue;
-    const parentCoupleId = coupleOf.get(person.parentIds[0]);
-    const parentGen = parentCoupleId !== undefined
-      ? gen.get(person.parentIds[0]) ?? 0
-      : 0;
-    const elbowY = parentCoupleId !== undefined
-      ? elbowYByCouple.get(parentCoupleId) ?? yFor(parentGen) + NODE_H + ROW_GAP / 2
-      : yFor(parentGen) + NODE_H + ROW_GAP / 2;
+    const parentGen = gen.get(person.parentIds[0]) ?? 0;
+    const key = parentSetKey(person.parentIds);
+    const elbowY =
+      elbowYByParentSet.get(key) ?? yFor(parentGen) + NODE_H + ROW_GAP / 2;
     layout.edges.push({
       kind: "parent-child",
       parentAId: person.parentIds[0],
