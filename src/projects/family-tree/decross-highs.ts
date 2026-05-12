@@ -60,7 +60,7 @@ export function decrossHighs<N, L>(highs: HighsInstance): Decross<N, L> {
 }
 
 function decrossInPlace(
-  highs: HighsInstance,
+  _highs: HighsInstance,
   layers: SugiNode<unknown, unknown>[][],
 ): void {
   if (layers.length < 2) return;
@@ -72,12 +72,53 @@ function decrossInPlace(
   const lp = buildLp(layers, idx);
   if (lp === null) return;
 
-  const result = highs.solve(lp.text);
+  // Remote-solve mode: POST the LP to the hosted HiGHS API via synchronous
+  // XHR. d3-dag's Decross callback must be sync; this runs inside a Web
+  // Worker where blocking XHR is the standard escape hatch. To revert to
+  // the local WASM solve, swap `solveRemote(lp.text)` for `_highs.solve(lp.text)`.
+  // const result = _highs.solve(lp.text);
+  const result = solveRemote(lp.text);
   if (result.Status !== "Optimal") {
     throw new Error(`HiGHS solve returned ${result.Status}`);
   }
 
   applyOrdering(result, layers);
+}
+
+const REMOTE_SOLVE_URL =
+  "https://stronger-spy-retired-internship.trycloudflare.com/solve";
+
+interface RemoteSolveResponse {
+  status: string;
+  columns: Record<string, number>;
+  total_time_s: number;
+}
+
+// Adapts the remote API's flat `{columns: {name: number}}` response into the
+// WASM solver's `{Columns: {name: {Primal: number}}}` shape so applyOrdering
+// stays unchanged. Synchronous XHR is intentional — see decrossInPlace.
+function solveRemote(lpText: string): ReturnType<HighsInstance["solve"]> {
+  const xhr = new XMLHttpRequest();
+  xhr.open("POST", REMOTE_SOLVE_URL, false);
+  xhr.setRequestHeader("Content-Type", "application/json");
+  const t0 = performance.now();
+  xhr.send(JSON.stringify({ lp: lpText }));
+  const roundTripMs = performance.now() - t0;
+  if (xhr.status !== 200) {
+    throw new Error(`Remote solver HTTP ${xhr.status}: ${xhr.responseText}`);
+  }
+  const json = JSON.parse(xhr.responseText) as RemoteSolveResponse;
+  console.log(
+    `[decross-highs] remote solve total_time_s=${json.total_time_s} round_trip_ms=${roundTripMs.toFixed(0)}`,
+  );
+  const Columns: Record<string, { Primal: number }> = {};
+  for (const [name, value] of Object.entries(json.columns)) {
+    Columns[name] = { Primal: value };
+  }
+  return {
+    Status: json.status,
+    Columns,
+  } as unknown as ReturnType<HighsInstance["solve"]>;
 }
 
 interface BuiltLp {
