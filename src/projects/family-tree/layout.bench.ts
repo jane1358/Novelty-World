@@ -26,14 +26,14 @@ import {
 
 describe("productionTree (real family_tree row)", () => {
   const tree = productionTree();
-  // Single-iteration by default. The opt pass dropped from ~70s (d3-dag's
+  // Single-iteration by default. computeLayout dropped from ~70s (d3-dag's
   // bundled javascript-lp-solver) to ~1.8s after we swapped in HiGHS-WASM
   // for crossing minimization (see decross-highs.ts). Re-run a few times
   // if a change looks marginal and you need to defeat run-to-run variance.
   bench(
-    "decross=opt (fancy)",
+    "computeLayout",
     async () => {
-      await computeLayout(tree, { decross: "opt" });
+      await computeLayout(tree);
     },
     { time: 0, iterations: 1 },
   );
@@ -41,11 +41,8 @@ describe("productionTree (real family_tree row)", () => {
 
 describe("kitchenSink (synthetic ~50 ppl, narrower than production)", () => {
   const tree = kitchenSink();
-  bench("decross=opt (fancy)", async () => {
-    await computeLayout(tree, { decross: "opt" });
-  });
-  bench("decross=two-layer (nice)", async () => {
-    await computeLayout(tree, { decross: "two-layer" });
+  bench("computeLayout", async () => {
+    await computeLayout(tree);
   });
 });
 
@@ -54,7 +51,7 @@ describe("chain — depth sweep (W=1)", () => {
   for (const L of [5, 20, 50]) {
     const tree = chain(L);
     bench(`L=${L} (N=${L})`, async () => {
-      await computeLayout(tree, { decross: "opt" });
+      await computeLayout(tree);
     });
   }
 });
@@ -67,7 +64,7 @@ describe("ancestorPedigree — width sweep", () => {
     const N = (1 << depth) - 1;
     const W = depth >= 2 ? 1 << (depth - 2) : 1;
     bench(`depth=${depth} (N=${N}, W=${W})`, async () => {
-      await computeLayout(tree, { decross: "opt" });
+      await computeLayout(tree);
     });
   }
 });
@@ -80,7 +77,7 @@ describe("siblingFan — width sweep (single parent couple)", () => {
     const tree = siblingFanOfWidth(K);
     const N = Object.keys(tree.persons).length;
     bench(`K=${K} (N=${N})`, async () => {
-      await computeLayout(tree, { decross: "opt" });
+      await computeLayout(tree);
     });
   }
 });
@@ -97,7 +94,7 @@ describe("branching — joint W/L sweep", () => {
     const tree = branching(b, d);
     const N = Object.keys(tree.persons).length;
     bench(`b=${b}, d=${d} (N=${N})`, async () => {
-      await computeLayout(tree, { decross: "opt" });
+      await computeLayout(tree);
     });
   }
 });

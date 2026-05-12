@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
+  EMPTY_LAYOUT,
+  NODE_H,
   NODE_W,
   ROOT_ID,
   ROOT_FIRST_NAME,
@@ -13,14 +15,17 @@ import {
   createInitialTree,
   deletePerson,
   describeRelation,
+  diffTree,
   divorceSpouse,
   fullName,
   nearestInDirection,
   nextGender,
+  optimisticPatch,
   renamePerson,
   setGender,
+  topologyHash,
 } from "./logic";
-import type { LaidOutNode } from "./types";
+import type { LaidOutNode, Layout } from "./types";
 import type { Gender, NameFields, Person, Tree } from "./types";
 
 // Test-local helper: build a NameFields object positionally so test calls
@@ -975,5 +980,146 @@ describe("countChildren", () => {
     t = addChild(t, ROOT_ID, "b", n("B"), "F");
     expect(countChildren(t, ROOT_ID)).toBe(2);
     expect(countChildren(t, "a")).toBe(0);
+  });
+});
+
+describe("topologyHash", () => {
+  it("is stable across cosmetic changes (rename, gender)", () => {
+    const base = createInitialTree();
+    const h0 = topologyHash(base);
+    const renamed = renamePerson(base, ROOT_ID, n("Renamed"));
+    expect(topologyHash(renamed)).toBe(h0);
+    const regendered = setGender(renamed, ROOT_ID, "F");
+    expect(topologyHash(regendered)).toBe(h0);
+  });
+
+  it("changes when a person is added", () => {
+    const t0 = createInitialTree();
+    const t1 = addChild(t0, ROOT_ID, "kid", n("K"), "M");
+    expect(topologyHash(t1)).not.toBe(topologyHash(t0));
+  });
+
+  it("changes when a person is removed", () => {
+    let t = createInitialTree();
+    t = addChild(t, ROOT_ID, "kid", n("K"), "M");
+    const removed = deletePerson(t, "kid");
+    expect(topologyHash(removed)).not.toBe(topologyHash(t));
+  });
+
+  it("changes when a marriage is added", () => {
+    const t0 = createInitialTree();
+    const married = addSpouse(t0, ROOT_ID, "s", n("S"), "F");
+    expect(topologyHash(married)).not.toBe(topologyHash(t0));
+  });
+
+  it("changes when a marriage transitions to divorced", () => {
+    let t = createInitialTree();
+    t = addSpouse(t, ROOT_ID, "s", n("S"), "F");
+    const divorced = divorceSpouse(t, ROOT_ID, "s");
+    expect(topologyHash(divorced)).not.toBe(topologyHash(t));
+  });
+
+  it("is deterministic — equal inputs produce identical hashes", () => {
+    const a = createInitialTree();
+    const b = createInitialTree();
+    expect(topologyHash(a)).toBe(topologyHash(b));
+  });
+});
+
+describe("optimisticPatch overlap avoidance", () => {
+  // Bake a tiny pre-existing layout for ROOT alone (mirrors what the
+  // store would have after a fresh load), then run the patch against
+  // trees where the user has rapid-fired multiple adds without giving
+  // the worker a chance to re-solve.
+  function rootOnlyLayout(): Layout {
+    return {
+      nodes: [{ id: ROOT_ID, x: 0, y: 0, w: NODE_W, h: NODE_H }],
+      edges: [],
+      width: NODE_W,
+      height: NODE_H,
+    };
+  }
+
+  function rectsOverlap(a: LaidOutNode, b: LaidOutNode): boolean {
+    const xOverlap = !(a.x + a.w <= b.x || b.x + b.w <= a.x);
+    const yOverlap = !(a.y + a.h <= b.y || b.y + b.h <= a.y);
+    return xOverlap && yOverlap;
+  }
+
+  it("places three children of one parent without overlap", () => {
+    let tree = createInitialTree();
+    const base = rootOnlyLayout();
+    let layout = base;
+    let prev = createInitialTree();
+    for (const id of ["k1", "k2", "k3"]) {
+      const nextTree = addChild(tree, ROOT_ID, id, n(id), "M", null);
+      const diff = diffTree(prev, nextTree);
+      layout = optimisticPatch(layout, nextTree, diff);
+      prev = nextTree;
+      tree = nextTree;
+    }
+    expect(layout.nodes).toHaveLength(4);
+    for (let i = 0; i < layout.nodes.length; i++) {
+      for (let j = i + 1; j < layout.nodes.length; j++) {
+        if (rectsOverlap(layout.nodes[i], layout.nodes[j])) {
+          throw new Error(
+            `nodes overlap: ${layout.nodes[i].id} vs ${layout.nodes[j].id}`,
+          );
+        }
+      }
+    }
+  });
+
+  it("places a bulk batch of children (cold-load case) without overlap", () => {
+    // Simulate hydration: no prior layout for the kids, every one shows
+    // up as `added` in the diff.
+    let tree = createInitialTree();
+    for (let i = 0; i < 5; i++) {
+      tree = addChild(tree, ROOT_ID, `k${i}`, n(`k${i}`), "M", null);
+    }
+    const diff = diffTree(createInitialTree(), tree);
+    const layout = optimisticPatch(rootOnlyLayout(), tree, diff);
+    expect(layout.nodes).toHaveLength(6);
+    for (let i = 0; i < layout.nodes.length; i++) {
+      for (let j = i + 1; j < layout.nodes.length; j++) {
+        if (rectsOverlap(layout.nodes[i], layout.nodes[j])) {
+          throw new Error(
+            `nodes overlap: ${layout.nodes[i].id} vs ${layout.nodes[j].id}`,
+          );
+        }
+      }
+    }
+  });
+
+  it("does not move surviving nodes", () => {
+    const base = rootOnlyLayout();
+    const tree = addChild(
+      createInitialTree(),
+      ROOT_ID,
+      "kid",
+      n("K"),
+      "M",
+      null,
+    );
+    const diff = diffTree(createInitialTree(), tree);
+    const patched = optimisticPatch(base, tree, diff);
+    const root = patched.nodes.find((n) => n.id === ROOT_ID);
+    expect(root?.x).toBe(0);
+    expect(root?.y).toBe(0);
+  });
+
+  it("places every added person from an empty base (cold load)", () => {
+    let tree = createInitialTree();
+    for (let i = 0; i < 4; i++) {
+      tree = addChild(tree, ROOT_ID, `k${i}`, n(`k${i}`), "M", null);
+    }
+    const diff = diffTree(createInitialTree(), tree);
+    const layout = optimisticPatch(EMPTY_LAYOUT, tree, {
+      ...diff,
+      added: Object.keys(tree.persons),
+      removed: [],
+      structurallyEqual: false,
+    });
+    expect(layout.nodes).toHaveLength(Object.keys(tree.persons).length);
   });
 });

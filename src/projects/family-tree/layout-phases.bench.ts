@@ -35,7 +35,7 @@ describe("productionTree — phase breakdown", () => {
     async () => {
       highsSolveMs = 0;
       const t0 = performance.now();
-      await computeLayout(tree, { decross: "opt" });
+      await computeLayout(tree);
       const totalMs = performance.now() - t0;
       const restMs = totalMs - highsSolveMs;
       const pct = (highsSolveMs / totalMs) * 100;

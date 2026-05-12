@@ -78,7 +78,8 @@ export function FamilyTree() {
 
   useEffect(() => { void hydrate(); }, [hydrate]);
 
-  const { layout, kind } = useLayoutWorker(tree);
+  const { layout, inSync, optimizing, optimize, cancelOptimize } =
+    useLayoutWorker();
 
   const [panelMode, setPanelMode] = useState<PanelMode>("menu");
   // Reset to the menu whenever the active selection changes — tracking the
@@ -243,26 +244,17 @@ export function FamilyTree() {
             viewing from{" "}
             <span className="text-brand-blue">{fullName(viewRoot)}</span>
             {status === "loading" ? " · loading…" : null}
-            {status === "error" ? " · offline (local only)" : null}
+            {status === "error" ? " · failed to load" : null}
             {saving ? " · saving…" : null}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          {layout.nodes.length > 0 && (kind === "simple" || kind === "nice") ? (
-            <span
-              className="flex items-center gap-1.5 rounded-full border border-border-default bg-surface-elevated px-2 py-1 text-xs text-text-secondary sm:px-2.5"
-              aria-live="polite"
-              aria-label="Optimizing layout"
-              title="Showing an approximate layout while we compute the optimal one."
-            >
-              <span
-                className="inline-block h-2 w-2 animate-pulse rounded-full bg-brand-orange"
-                aria-hidden
-              />
-              <span className="hidden sm:inline">Optimizing layout…</span>
-              <span className="sm:hidden">Optimizing…</span>
-            </span>
-          ) : null}
+          <OptimizeControl
+            inSync={inSync}
+            optimizing={optimizing}
+            onOptimize={optimize}
+            onCancel={cancelOptimize}
+          />
           {showResetView ? (
             <Button variant="ghost" onClick={resetViewRoot}>
               Reset to {ROOT_FIRST_NAME}
@@ -338,5 +330,68 @@ export function FamilyTree() {
         ) : null}
       </div>
     </div>
+  );
+}
+
+interface OptimizeControlProps {
+  inSync: boolean;
+  optimizing: boolean;
+  onOptimize: () => void;
+  onCancel: () => void;
+}
+
+// Three visual states packed into a single control next to "saving…":
+//   - in sync           → muted "In sync" pill, non-clickable.
+//   - drifted, idle     → primary "Optimize" button.
+//   - drifted, running  → "Optimizing…" with a pulse + cancel affordance.
+// The mobile breakpoint compresses the label to "Optimize"/"…" so the
+// header stays single-row on a phone.
+function OptimizeControl({
+  inSync,
+  optimizing,
+  onOptimize,
+  onCancel,
+}: OptimizeControlProps) {
+  if (optimizing) {
+    return (
+      <button
+        type="button"
+        onClick={onCancel}
+        className="flex items-center gap-1.5 rounded-md border border-border-default bg-surface-elevated px-3 py-2 text-sm font-medium text-text-primary transition-colors hover:border-border-hover"
+        title="Cancel the in-flight solve."
+        aria-live="polite"
+      >
+        <span
+          className="inline-block h-2 w-2 animate-pulse rounded-full bg-brand-orange"
+          aria-hidden
+        />
+        <span className="hidden sm:inline">Optimizing… (cancel)</span>
+        <span className="sm:hidden">Cancel</span>
+      </button>
+    );
+  }
+  if (inSync) {
+    return (
+      <span
+        className="flex items-center gap-1.5 rounded-md border border-border-default bg-surface-elevated px-3 py-2 text-xs text-text-muted"
+        title="The displayed layout matches the cached optimal solve."
+      >
+        <span
+          className="inline-block h-2 w-2 rounded-full bg-brand-green"
+          aria-hidden
+        />
+        <span className="hidden sm:inline">Layout in sync</span>
+        <span className="sm:hidden">In sync</span>
+      </span>
+    );
+  }
+  return (
+    <Button
+      variant="primary"
+      onClick={onOptimize}
+      title="Compute the optimal layout for the current tree and cache it for everyone."
+    >
+      Optimize layout
+    </Button>
   );
 }

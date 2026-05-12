@@ -1,13 +1,14 @@
 // Behavioral invariants that must hold for any layout `computeLayout`
-// produces, run against every fixture in NAMED_FIXTURES plus the live
-// productionTree snapshot. These are hard-correctness checks — anything
-// tripping here is a bug, not a quality regression. Quality metrics
-// (crossing counts, edge lengths, etc.) live elsewhere.
+// produces, run against every fixture in NAMED_FIXTURES. These are hard-
+// correctness checks — anything tripping here is a bug, not a quality
+// regression. Quality metrics (crossing counts, edge lengths, etc.) live
+// elsewhere. The productionTree variant lives in the slow suite because
+// the HiGHS solve on its full size takes a few seconds.
 
 import { beforeAll, describe, it, expect } from "vitest";
-import { computeLayout, type ComputeLayoutOptions } from "./logic";
+import { computeLayout } from "./logic";
 import type { LaidOutNode, Layout, Tree } from "./types";
-import { NAMED_FIXTURES, productionTree } from "./__fixtures__/trees";
+import { NAMED_FIXTURES } from "./__fixtures__/trees";
 
 interface Couple {
   members: string[]; // [a] or [a, b]
@@ -39,21 +40,16 @@ function rectsOverlap(a: LaidOutNode, b: LaidOutNode): boolean {
   return xOverlap && yOverlap;
 }
 
-interface InvariantOptions {
-  layout?: ComputeLayoutOptions;
-}
-
-function defineInvariants(
-  name: string,
-  build: () => Tree,
-  options: InvariantOptions = {},
-): void {
+export function defineLayoutInvariants(name: string, build: () => Tree): void {
   let tree: Tree;
   let layout: Layout;
+  // 180s mirrors layout-snapshot.slow.test.ts — the HiGHS solve on
+  // productionTree (~3-30s depending on the machine) blows past the
+  // vitest 10s default for synchronous hooks.
   beforeAll(async () => {
     tree = build();
-    layout = await computeLayout(tree, options.layout);
-  });
+    layout = await computeLayout(tree);
+  }, 180_000);
 
   it("places every person in the tree", () => {
     const placed = new Set(layout.nodes.map((n) => n.id));
@@ -140,17 +136,21 @@ function defineInvariants(
     }
   });
 
-  it("is deterministic across repeated runs", async () => {
-    const a = await computeLayout(build(), options.layout);
-    const b = await computeLayout(build(), options.layout);
-    const fmt = (l: Layout): string =>
-      l.nodes
-        .slice()
-        .sort((x, y) => (x.id < y.id ? -1 : 1))
-        .map((n) => `${n.id}:${n.x},${n.y}`)
-        .join("|");
-    expect(fmt(b)).toBe(fmt(a));
-  });
+  it(
+    "is deterministic across repeated runs",
+    { timeout: 180_000 },
+    async () => {
+      const a = await computeLayout(build());
+      const b = await computeLayout(build());
+      const fmt = (l: Layout): string =>
+        l.nodes
+          .slice()
+          .sort((x, y) => (x.id < y.id ? -1 : 1))
+          .map((n) => `${n.id}:${n.x},${n.y}`)
+          .join("|");
+      expect(fmt(b)).toBe(fmt(a));
+    },
+  );
 
   it("reports width and height that bound every node", () => {
     for (const n of layout.nodes) {
@@ -165,17 +165,6 @@ function defineInvariants(
 describe.each(Object.entries(NAMED_FIXTURES))(
   "computeLayout invariants — %s",
   (name, build) => {
-    defineInvariants(name, build);
+    defineLayoutInvariants(name, build);
   },
 );
-
-// Production tree runs with the two-layer (nice) decross strategy. With
-// HiGHS the opt pass is now fast enough (~2s) for the test suite, but
-// we keep this on two-layer because invariants are correctness checks
-// that should hold under either strategy and the bench covers opt
-// separately.
-describe("computeLayout invariants — productionTree (two-layer)", () => {
-  defineInvariants("productionTree", productionTree, {
-    layout: { decross: "two-layer" },
-  });
-});

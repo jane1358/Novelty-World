@@ -1,176 +1,128 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useMemo, useState } from "react";
+import { useFamilyTreeStore } from "./store";
 import {
   EMPTY_LAYOUT,
   diffTree,
   optimisticPatch,
+  topologyHash,
 } from "./logic";
-import type { LayoutRequest, LayoutResponse } from "./layout.worker";
 import type { Layout, Tree } from "./types";
+import type { TreeDiff } from "./logic";
 
-// "none"   — no layout yet (cold load before first worker reply).
-// "simple" — main-thread optimistic patch; placed near a relative.
-// "nice"   — fast heuristic from the worker; real sugiyama, suboptimal crossings.
-// "fancy"  — optimal layout from the worker; minimal crossings.
-export type LayoutKind = "none" | "simple" | "nice" | "fancy";
+// "cached" — the layout came from a previous fancy solve cached in Supabase
+//   and the current tree's topology still matches. This is the terminal,
+//   optimal state — nothing to compute.
+// "fast"   — local-shift derived: surviving nodes keep their cached positions,
+//   new arrivals slotted in via overlap-avoiding placement. Visible
+//   immediately, but not crossing-minimized. The user clicks "Optimize" to
+//   upgrade to "cached".
+// "none"   — never reached in practice: there is always at least an empty
+//   layout (which is itself a valid LayoutKind). Kept as the typed default
+//   for the initial render before the first tree mutation lands.
+export type LayoutKind = "cached" | "fast" | "none";
 
 interface UseLayoutWorker {
   layout: Layout;
   kind: LayoutKind;
-  computing: boolean;
+  // Tree topology matches the cached layout's hash — nothing for the user
+  // to do. When false, clicking Optimize is meaningful.
+  inSync: boolean;
+  // A worker is currently solving. Triggers spinner + cancel affordance.
+  optimizing: boolean;
+  // Spawn the worker. No-op if already optimizing or already in sync.
+  optimize: () => void;
+  // Terminate the in-flight worker. Used by the cancel UI; the store
+  // separately auto-cancels when the user edits the tree.
+  cancelOptimize: () => void;
 }
 
-// Owns the layout worker and produces progressively-better layouts per tree
-// change:
-//   1. "simple" — optimistic patch (sync, ~0ms). Only useful for single-node
-//      edits; bulk changes (hydration) skip straight to "none" + worker.
-//   2. "nice"   — heuristic worker pass (~tens of ms). First real layout the
-//      user sees on cold load. Skipped after fancy has ever completed —
-//      see `skipNice` below.
-//   3. "fancy"  — optimal worker pass (seconds for large n). Replaces "nice".
+// Render-time derivation of the on-screen layout from the store's tree +
+// cached layout. The hook itself owns NO async work — the worker lives in
+// the store so a single global `optimize()` call coordinates compute,
+// conditional upload, and state updates.
 //
-// Once fancy has completed at least once, subsequent incremental edits skip
-// the nice pass: the on-screen layout is already at fancy quality (a single
-// optimistic tweak on top of a fancy result), and re-running the heuristic
-// would visibly *downgrade* the layout for a beat before fancy catches up.
-// The skip only applies when we kept the previous layout (currentKind ==
-// "simple"); bulk replacements blank to "none" and still need the nice pass
-// so the user isn't staring at an empty canvas while fancy grinds.
+// State machine:
+//   - tree hash matches the cached hash      → render the cached layout.
+//   - tree changed and topology drifted      → optimisticPatch on the prior
+//                                              layout (cached or last fast).
+//   - cache landed and now matches the tree  → swap to the cached layout
+//                                              (e.g. solve just completed).
 //
-// The optimistic patch runs synchronously *during render* so the layout we
-// return always matches the tree we were called with — otherwise a deletion
-// would render once with a stale layout still containing the deleted node,
-// and node lookups in the parent would crash. React's "deriving state from
-// props" pattern: https://react.dev/reference/react/useState#storing-information-from-previous-renders
-//
-// Rapid edits terminate the in-flight worker (its remaining "fancy" pass
-// would otherwise tie up the queue for seconds with a stale result).
-interface PendingDispatch {
-  tick: number;
-  skipNice: boolean;
-}
+// The "derive state from props" branch below follows React's recommended
+// pattern for resetting derived state without an effect:
+// https://react.dev/reference/react/useState#storing-information-from-previous-renders
+export function useLayoutWorker(): UseLayoutWorker {
+  const tree = useFamilyTreeStore((s) => s.tree);
+  const cachedLayout = useFamilyTreeStore((s) => s.cachedLayout);
+  const cachedLayoutHash = useFamilyTreeStore((s) => s.cachedLayoutHash);
+  const optimizing = useFamilyTreeStore((s) => s.optimizing);
+  const optimize = useFamilyTreeStore((s) => s.optimize);
+  const cancelOptimize = useFamilyTreeStore((s) => s.cancelOptimize);
 
-export function useLayoutWorker(tree: Tree): UseLayoutWorker {
+  // Memoize by tree identity. Cosmetic edits (rename, gender) still produce
+  // a new tree reference; the recomputed hash will simply equal the previous
+  // one and inSync stays true — no cascade.
+  const currentHash = useMemo(() => topologyHash(tree), [tree]);
+  const inSync =
+    cachedLayoutHash !== null && cachedLayoutHash === currentHash;
+
   const [layout, setLayout] = useState<Layout>(EMPTY_LAYOUT);
   const [kind, setKind] = useState<LayoutKind>("none");
   const [prevTree, setPrevTree] = useState<Tree | null>(null);
-  // Latches true on the first fancy result and stays true for the lifetime
-  // of the hook. Gates the "skip nice" optimization for incremental edits.
-  // Held in state (not a ref) so the render path can read it without
-  // tripping react-hooks/refs.
-  const [everCompletedFancy, setEverCompletedFancy] = useState(false);
-  // Bumped whenever a real (non-rename) tree change happens; carries the
-  // skip-nice decision alongside the tick so the dispatch effect doesn't
-  // need to re-derive it. Bundled into one state so a single setState
-  // commits both atomically and the effect's dep list stays minimal.
-  const [pending, setPending] = useState<PendingDispatch>({
-    tick: 0,
-    skipNice: false,
-  });
-
-  const workerRef = useRef<Worker | null>(null);
-  const generationRef = useRef(0);
-  const latestRequestedRef = useRef(0);
-  // Read inside the dispatch effect so tree changes don't trigger it on their
-  // own — only pending bumps do. Without this, a cosmetic edit (rename,
-  // commonName, gender) re-runs the worker because `tree` is a new reference
-  // even though diffTree returned structurallyEqual.
-  const treeRef = useRef(tree);
-  useEffect(() => { treeRef.current = tree; }, [tree]);
+  const [prevCachedHash, setPrevCachedHash] = useState<string | null>(null);
 
   let currentLayout = layout;
   let currentKind = kind;
 
-  if (prevTree !== tree) {
-    setPrevTree(tree);
-    if (prevTree === null) {
-      currentLayout = EMPTY_LAYOUT;
-      currentKind = "none";
-      setLayout(currentLayout);
-      setKind(currentKind);
-      setPending((p) => ({ tick: p.tick + 1, skipNice: false }));
-    } else {
+  const treeChanged = prevTree !== tree;
+  const cacheChanged = prevCachedHash !== cachedLayoutHash;
+
+  if (treeChanged || cacheChanged) {
+    if (inSync && cachedLayout !== null) {
+      currentLayout = cachedLayout;
+      currentKind = "cached";
+    } else if (treeChanged && prevTree !== null) {
       const diff = diffTree(prevTree, tree);
       if (!diff.structurallyEqual) {
-        // Optimistic patch only makes sense for one-at-a-time user edits — it
-        // places a new node next to a relative whose position is already
-        // known. For bulk changes (hydration, restore-from-local) most new
-        // nodes have no placed relative yet and pile up at the origin;
-        // better to blank the canvas and let the heuristic worker pass
-        // produce the first real layout.
-        const isIncrementalEdit =
-          diff.added.length <= 1 && diff.removed.length <= 1;
-        const haveExistingLayout = currentLayout.nodes.length > 0;
-        if (isIncrementalEdit && haveExistingLayout) {
-          currentLayout = optimisticPatch(currentLayout, tree, diff);
-          currentKind = "simple";
-        } else {
-          currentLayout = EMPTY_LAYOUT;
-          currentKind = "none";
-        }
-        setLayout(currentLayout);
-        setKind(currentKind);
-        const skipNice = currentKind === "simple" && everCompletedFancy;
-        setPending((p) => ({ tick: p.tick + 1, skipNice }));
+        currentLayout = optimisticPatch(layout, tree, diff);
+        currentKind = "fast";
       }
-      // structurallyEqual: rename/gender — leave layout/kind alone, no dispatch.
+      // structurallyEqual: rename/gender — leave layout/kind alone.
+    } else if (treeChanged && prevTree === null) {
+      // Cold load. Diff the cached layout's node set against the current
+      // tree so optimisticPatch knows which IDs to slot in — works the
+      // same whether the cache is fresh-but-mismatched, missing entirely
+      // (treats every person as newly added), or perfectly aligned with
+      // the tree (handled by the inSync branch above).
+      const base = cachedLayout ?? EMPTY_LAYOUT;
+      const baseIds = new Set(base.nodes.map((n) => n.id));
+      const added = Object.keys(tree.persons).filter(
+        (id) => !baseIds.has(id),
+      );
+      const removed = [...baseIds].filter((id) => !(id in tree.persons));
+      const diff: TreeDiff = {
+        added,
+        removed,
+        structurallyEqual: added.length === 0 && removed.length === 0,
+      };
+      currentLayout = optimisticPatch(base, tree, diff);
+      currentKind = "fast";
     }
+
+    if (currentLayout !== layout) setLayout(currentLayout);
+    if (currentKind !== kind) setKind(currentKind);
+    if (treeChanged) setPrevTree(tree);
+    if (cacheChanged) setPrevCachedHash(cachedLayoutHash);
   }
-
-  useEffect(() => {
-    return () => {
-      workerRef.current?.terminate();
-      workerRef.current = null;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (pending.tick === 0) return;
-    // Tear down any in-flight worker. Its pending "fancy" pass could be
-    // seconds away from finishing on a now-stale tree; letting it run
-    // would block this new request and burn CPU on a result we'd ignore.
-    workerRef.current?.terminate();
-    const worker = new Worker(
-      new URL("./layout.worker.ts", import.meta.url),
-      { type: "module" },
-    );
-    worker.onmessage = (e: MessageEvent<LayoutResponse>) => {
-      const msg = e.data;
-      if (msg.id !== latestRequestedRef.current) return;
-      if (msg.ok) {
-        setLayout(msg.layout);
-        setKind(msg.kind);
-        if (msg.kind === "fancy") {
-          // Idempotent — React bails on equal values, so setting true
-          // every fancy result is fine.
-          setEverCompletedFancy(true);
-        }
-      } else {
-        // Worker errored — pretend we're done so the spinner stops. Layout
-        // stays at whatever was last rendered. The graph code has its own
-        // fallback layout so this branch should be unreachable in practice.
-        setKind("fancy");
-      }
-    };
-    workerRef.current = worker;
-
-    const id = generationRef.current + 1;
-    generationRef.current = id;
-    latestRequestedRef.current = id;
-    const req: LayoutRequest = {
-      id,
-      tree: treeRef.current,
-      skipNice: pending.skipNice,
-    };
-    worker.postMessage(req);
-  }, [pending]);
 
   return {
     layout: currentLayout,
     kind: currentKind,
-    // "fancy" is the terminal state — anything else means a worker pass is
-    // in flight (or about to be: cold-load before the dispatch effect runs).
-    computing: currentKind !== "fancy",
+    inSync,
+    optimizing,
+    optimize,
+    cancelOptimize,
   };
 }

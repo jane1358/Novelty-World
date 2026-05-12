@@ -1,6 +1,5 @@
 import {
   coordSimplex,
-  decrossTwoLayer,
   graphStratify,
   sugiyama,
 } from "d3-dag";
@@ -810,8 +809,6 @@ function buildLayered(couples: CoupleUnit[]): LayeredOrdering {
   return { byGen, sortedGens };
 }
 
-export type DecrossStrategy = "opt" | "two-layer";
-
 interface CoupleData {
   id: string;
   parentIds: string[];
@@ -853,18 +850,19 @@ function layeringByGeneration<N extends CoupleData, L>(
 const layeringByGenerationOp: Layering<CoupleData, unknown> = layeringByGeneration;
 
 // Hand the couple-DAG to d3-dag's sugiyama pipeline and return the per-couple
-// center x. The decross strategy picks the layer ordering: "opt" minimizes
-// crossings via an integer program (slow but optimal — exponential worst case);
-// "two-layer" is a fast barycenter heuristic (good enough for a progressive
-// first pass while the optimal pass runs). coordSimplex assigns x via an LP
-// that pulls children under their parents (subject to the layer ordering and
-// width/gap constraints).
+// center x. Crossing minimization runs via HiGHS-WASM (~30× faster than
+// d3-dag's bundled javascript-lp-solver) — the whole decross-highs module
+// (and the ~600KB highs WASM) is dynamic-imported so the React component
+// bundle that imports logic.ts for types/helpers doesn't pull in any of it.
+// Only the layout Web Worker (which is the sole caller of computeLayout)
+// ever fetches this chunk. coordSimplex assigns x via an LP that pulls
+// children under their parents (subject to layer ordering and width/gap
+// constraints).
 // Returns null on failure (degenerate graph the LP solver can't handle); the
 // caller falls back to a flat per-layer placement.
 async function layoutCouplesViaSugiyama(
   couples: CoupleUnit[],
   parentCouplesOf: Map<string, string[]>,
-  strategy: DecrossStrategy,
 ): Promise<Map<string, number> | null> {
   if (couples.length === 0) return null;
   const data: CoupleData[] = couples.map((c) => ({
@@ -880,21 +878,8 @@ async function layoutCouplesViaSugiyama(
     // accepts our typed dag. The runtime is unaffected — nodeSize only ever
     // needs node.data.id, which is present on the stratified data.
     const dag = graphStratify()(data);
-    // For "opt", we hand d3-dag a custom decross plugin that solves the
-    // crossing-minimization MIP via HiGHS-WASM (~30× faster than d3-dag's
-    // bundled javascript-lp-solver on the production tree). The whole
-    // decross-highs module (and the ~600KB highs WASM it loads) is dynamic-
-    // imported so the React component bundle that imports logic.ts for
-    // types/helpers doesn't pull in any of it. Only the layout Web Worker
-    // (which is the sole caller of computeLayout) ever fetches this chunk.
-    // For "two-layer" we keep d3-dag's barycenter heuristic.
-    let decross;
-    if (strategy === "opt") {
-      const mod = await import("./decross-highs");
-      decross = mod.decrossHighs(await mod.loadHighs());
-    } else {
-      decross = decrossTwoLayer();
-    }
+    const mod = await import("./decross-highs");
+    const decross = mod.decrossHighs(await mod.loadHighs());
     const layout = sugiyama()
       .layering(layeringByGenerationOp)
       .decross(decross)
@@ -945,15 +930,7 @@ function fallbackLayout(
   return centerX;
 }
 
-export interface ComputeLayoutOptions {
-  decross?: DecrossStrategy;
-}
-
-export async function computeLayout(
-  tree: Tree,
-  options: ComputeLayoutOptions = {},
-): Promise<Layout> {
-  const decross: DecrossStrategy = options.decross ?? "opt";
+export async function computeLayout(tree: Tree): Promise<Layout> {
   const order = bfsOrder(tree);
   const gen = computeGenerations(tree);
   const { couples, coupleOf } = buildCoupleUnits(tree, order, gen);
@@ -997,7 +974,6 @@ export async function computeLayout(
   const sugiyamaCenterX = await layoutCouplesViaSugiyama(
     couples,
     parentCouplesOf,
-    decross,
   );
   const rawCenterX =
     sugiyamaCenterX ?? fallbackLayout(couples, layered, fallbackOrder);
@@ -1397,6 +1373,49 @@ function sameStringArray(a: string[], b: string[]): boolean {
   return true;
 }
 
+// Fingerprint the parts of a tree that affect layout: which persons exist
+// (and in what insertion order — BFS layer ordering depends on it), their
+// parent/spouse/divorced-spouse ID lists (order included, since the renderer
+// keys off the first parent/spouse), and the root. Names and genders are
+// deliberately excluded — they don't change positions, so a rename shouldn't
+// invalidate the cached optimal layout.
+//
+// Two clients with the same topology produce identical hashes, which is the
+// whole point: the cached fancy layout in Supabase lives keyed by this hash,
+// and any client whose tree currently matches can render it directly with
+// zero solve work.
+//
+// FNV-1a-32 is a non-cryptographic hash. For ~150-person trees the collision
+// probability across an indefinite session is ~150 / 2^32 ≈ 3.5e-8 — well
+// below "two random topologies happen to collide and one client serves the
+// wrong layout to another". A collision would not be silently wrong forever:
+// the next Optimize run would overwrite with the right layout for that hash.
+export function topologyHash(tree: Tree): string {
+  const parts: string[] = [tree.rootId];
+  for (const id of Object.keys(tree.persons)) {
+    const p = tree.persons[id];
+    parts.push(
+      id,
+      p.parentIds.join(","),
+      p.spouseIds.join(","),
+      p.divorcedSpouseIds.join(","),
+    );
+  }
+  return fnv1a32(parts.join("\n"));
+}
+
+function fnv1a32(s: string): string {
+  // Standard FNV-1a constants. Math.imul keeps the multiply in 32-bit-signed
+  // space (JS numbers would lose precision past 2^53 on the raw mul). The
+  // final >>> 0 reinterprets the signed accumulator as unsigned for the hex.
+  let h = 0x811c9dc5 | 0;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(16).padStart(8, "0");
+}
+
 // Topology only — names and genders don't count, since they don't affect the
 // layout. Used to skip worker dispatch on cosmetic-only edits.
 export function diffTree(prev: Tree, next: Tree): TreeDiff {
@@ -1428,8 +1447,100 @@ export function diffTree(prev: Tree, next: Tree): TreeDiff {
 
 // Reuse positions from `current` for surviving nodes. For each newly-added
 // person, place them near a known relative: below a parent, beside a spouse,
-// or above a child. Then rebuild edges from `nextTree` (so newly-added
-// relationships render right away) and shift everything so min x/y = 0.
+// or above a child. Each new node is checked against everything already on
+// its row and shifted left or right until no overlap remains — so a parent
+// can take a quick succession of "add child" clicks without the new kids
+// piling on top of each other. Then rebuild edges from `nextTree` (so newly-
+// added relationships render right away) and shift everything so min x/y = 0.
+//
+// Existing nodes keep their cached fancy positions; only the new arrivals
+// move. The result is "approximate but readable" — the user sees their
+// additions land in obviously-distinct slots and can click Optimize to get
+// the proper sugiyama layout when they're done editing.
+interface Candidate {
+  x: number;
+  y: number;
+  // Which way to scan first when the candidate slot is occupied. We prefer
+  // extending in the same direction as the anchor relationship (a new child
+  // pushes the row rightward; a newly added ex-spouse anchored to the LEFT
+  // of an existing partner stays on the left side).
+  preferLeft: boolean;
+}
+
+function findCandidate(
+  id: string,
+  nextTree: Tree,
+  byId: Map<string, LaidOutNode>,
+): Candidate {
+  const person = nextTree.persons[id];
+  for (const pid of person.parentIds) {
+    const p = byId.get(pid);
+    if (p) return { x: p.x, y: p.y + p.h + ROW_GAP, preferLeft: false };
+  }
+  for (const sid of person.spouseIds) {
+    const s = byId.get(sid);
+    if (s) return { x: s.x + s.w + SPOUSE_GAP, y: s.y, preferLeft: false };
+  }
+  // Newly-added ex-spouse — drop on the LEFT of the existing partner so we
+  // don't stack on top of a current spouse (typically to the right).
+  for (const sid of person.divorcedSpouseIds) {
+    const s = byId.get(sid);
+    if (s) {
+      return { x: s.x - NODE_W - SPOUSE_GAP, y: s.y, preferLeft: true };
+    }
+  }
+  // Newly-added person is somebody else's parent.
+  for (const candidate of Object.values(nextTree.persons)) {
+    if (!candidate.parentIds.includes(id)) continue;
+    const c = byId.get(candidate.id);
+    if (c) return { x: c.x, y: c.y - c.h - ROW_GAP, preferLeft: false };
+  }
+  return { x: 0, y: 0, preferLeft: false };
+}
+
+// Slide a new node along its row until it no longer overlaps any existing
+// node on that row. Scans both directions from the candidate and picks the
+// closer non-conflicting slot (ties broken by `preferLeft`). Existing nodes
+// keep their positions — only the newcomer moves, so the cached fancy layout
+// stays visually intact for everyone already placed.
+function placeWithoutOverlap(
+  candidate: Candidate,
+  obstacles: readonly LaidOutNode[],
+): { x: number; y: number } {
+  const onSameRow = (n: LaidOutNode): boolean => n.y === candidate.y;
+  const collidesAt = (x: number): LaidOutNode | null => {
+    for (const n of obstacles) {
+      if (!onSameRow(n)) continue;
+      const xOverlap = !(x + NODE_W <= n.x || n.x + n.w <= x);
+      if (xOverlap) return n;
+    }
+    return null;
+  };
+  if (collidesAt(candidate.x) === null) {
+    return { x: candidate.x, y: candidate.y };
+  }
+  const scan = (dir: 1 | -1): number => {
+    let x = candidate.x;
+    let c = collidesAt(x);
+    // Bounded by the obstacle count — each iteration must clear past a
+    // distinct obstacle, and a finite row has finitely many.
+    let safety = obstacles.length + 2;
+    while (c !== null && safety-- > 0) {
+      x = dir === 1 ? c.x + c.w + SUBTREE_GAP : c.x - NODE_W - SUBTREE_GAP;
+      c = collidesAt(x);
+    }
+    return x;
+  };
+  const rightX = scan(1);
+  const leftX = scan(-1);
+  const rightDist = rightX - candidate.x;
+  const leftDist = candidate.x - leftX;
+  const chooseLeft = candidate.preferLeft
+    ? leftDist <= rightDist
+    : leftDist < rightDist;
+  return { x: chooseLeft ? leftX : rightX, y: candidate.y };
+}
+
 export function optimisticPatch(
   current: Layout,
   nextTree: Tree,
@@ -1441,50 +1552,9 @@ export function optimisticPatch(
   const byId = new Map(nodes.map((n) => [n.id, n]));
 
   for (const id of diff.added) {
-    const person = nextTree.persons[id];
-    let pos: { x: number; y: number } | null = null;
-
-    for (const pid of person.parentIds) {
-      const p = byId.get(pid);
-      if (p) {
-        pos = { x: p.x, y: p.y + p.h + ROW_GAP };
-        break;
-      }
-    }
-    if (!pos) {
-      for (const sid of person.spouseIds) {
-        const s = byId.get(sid);
-        if (s) {
-          pos = { x: s.x + s.w + SPOUSE_GAP, y: s.y };
-          break;
-        }
-      }
-    }
-    if (!pos) {
-      // Newly-added ex-spouse — drop on the LEFT of the existing partner so
-      // we don't stack on top of a current spouse (typically to the right).
-      for (const sid of person.divorcedSpouseIds) {
-        const s = byId.get(sid);
-        if (s) {
-          pos = { x: s.x - NODE_W - SPOUSE_GAP, y: s.y };
-          break;
-        }
-      }
-    }
-    if (!pos) {
-      // Newly-added person is somebody else's parent.
-      for (const candidate of Object.values(nextTree.persons)) {
-        if (!candidate.parentIds.includes(id)) continue;
-        const c = byId.get(candidate.id);
-        if (c) {
-          pos = { x: c.x, y: c.y - c.h - ROW_GAP };
-          break;
-        }
-      }
-    }
-    if (!pos) pos = { x: 0, y: 0 };
-
-    const node: LaidOutNode = { id, x: pos.x, y: pos.y, w: NODE_W, h: NODE_H };
+    const candidate = findCandidate(id, nextTree, byId);
+    const { x, y } = placeWithoutOverlap(candidate, nodes);
+    const node: LaidOutNode = { id, x, y, w: NODE_W, h: NODE_H };
     nodes.push(node);
     byId.set(id, node);
   }

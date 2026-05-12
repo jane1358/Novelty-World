@@ -1,30 +1,26 @@
-// Web Worker that runs the (potentially seconds-long) sugiyama layout off the
-// main thread. Bundled by Next.js via `new Worker(new URL(...))`.
+// Web Worker that runs the (potentially seconds-long) sugiyama layout off
+// the main thread. Bundled by Next.js via `new Worker(new URL(...))`.
 //
-// Two-pass progressive layout:
-//   "nice"  — fast barycenter heuristic, ~tens of ms. Posted first so the UI
-//             gets a real-looking layout quickly.
-//   "fancy" — optimal crossing minimization via integer program, seconds for
-//             large trees. Replaces "nice" when it lands.
+// One pass: the optimal HiGHS-backed sugiyama layout. The previous "nice"
+// heuristic pass is gone — the main thread shows a cached layout (or an
+// optimistic fast patch) in the meantime, so there's no value in posting a
+// suboptimal intermediate result that would visibly downgrade the canvas
+// before the fancy result lands.
 //
-// When `skipNice` is set, the heuristic pass is skipped and only fancy is
-// computed. The caller sets this when the on-screen layout is already at
-// fancy quality (an optimistic patch on top of a previously-fancy result),
-// so emitting "nice" would visibly downgrade the layout before fancy lands.
+// The worker stays dumb: it computes a Layout for the tree it's handed and
+// posts it back. Staleness checks (did the DB change while we were solving?)
+// live in the store; the worker itself is a pure compute pipe.
 
 import { computeLayout } from "./logic";
 import type { Layout, Tree } from "./types";
 
-export type LayoutKind = "nice" | "fancy";
-
 export interface LayoutRequest {
   id: number;
   tree: Tree;
-  skipNice: boolean;
 }
 
 export type LayoutResponse =
-  | { id: number; ok: true; layout: Layout; kind: LayoutKind }
+  | { id: number; ok: true; layout: Layout }
   | { id: number; ok: false; error: string };
 
 interface WorkerScope {
@@ -38,16 +34,11 @@ interface WorkerScope {
 const ctx = self as unknown as WorkerScope;
 
 ctx.onmessage = (e) => {
-  const { id, tree, skipNice } = e.data;
+  const { id, tree } = e.data;
   void (async () => {
     try {
-      if (!skipNice) {
-        const nice = await computeLayout(tree, { decross: "two-layer" });
-        ctx.postMessage({ id, ok: true, layout: nice, kind: "nice" });
-      }
-
-      const fancy = await computeLayout(tree, { decross: "opt" });
-      ctx.postMessage({ id, ok: true, layout: fancy, kind: "fancy" });
+      const layout = await computeLayout(tree);
+      ctx.postMessage({ id, ok: true, layout });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       ctx.postMessage({ id, ok: false, error: message });
