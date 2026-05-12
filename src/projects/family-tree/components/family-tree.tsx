@@ -250,6 +250,7 @@ export function FamilyTree() {
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <OptimizeControl
+            ready={status === "ready"}
             inSync={inSync}
             optimizing={optimizing}
             onOptimize={optimize}
@@ -334,6 +335,7 @@ export function FamilyTree() {
 }
 
 interface OptimizeControlProps {
+  ready: boolean;
   inSync: boolean;
   optimizing: boolean;
   onOptimize: () => void;
@@ -344,14 +346,20 @@ interface OptimizeControlProps {
 //   - in sync           → muted "In sync" pill, non-clickable.
 //   - drifted, idle     → primary "Optimize" button.
 //   - drifted, running  → "Optimizing…" with a pulse + cancel affordance.
+// Hidden entirely until the initial hydrate finishes — clicking Optimize
+// before then would solve against the placeholder createInitialTree
+// (just root) instead of the real tree the user is about to see. The
+// "loading…" text in the header subtitle already covers the gap.
 // The mobile breakpoint compresses the label to "Optimize"/"…" so the
 // header stays single-row on a phone.
 function OptimizeControl({
+  ready,
   inSync,
   optimizing,
   onOptimize,
   onCancel,
 }: OptimizeControlProps) {
+  if (!ready) return null;
   if (optimizing) {
     return (
       <button

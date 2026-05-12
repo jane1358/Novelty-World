@@ -1157,6 +1157,29 @@ describe("topologyHash", () => {
     const b = createInitialTree();
     expect(topologyHash(a)).toBe(topologyHash(b));
   });
+
+  it("is invariant to persons-object key insertion order", () => {
+    // Postgres jsonb canonicalizes object keys on write (sorts by length,
+    // then bytewise), so a tree hashed locally before persistence and the
+    // "same" tree re-fetched from Supabase iterate persons in different
+    // orders. Sort-by-id inside topologyHash absorbs that difference;
+    // pin it with two hand-built trees whose persons records differ only
+    // in iteration order.
+    const persons = {
+      a: p("a", "M", [], ["b"]),
+      b: p("b", "F", [], ["a"]),
+      c: p("c", "M", ["a", "b"]),
+    };
+    const reordered = {
+      c: persons.c,
+      a: persons.a,
+      b: persons.b,
+    };
+    const t1: Tree = { rootId: "a", persons };
+    const t2: Tree = { rootId: "a", persons: reordered };
+    expect(Object.keys(t1.persons)).not.toEqual(Object.keys(t2.persons));
+    expect(topologyHash(t1)).toBe(topologyHash(t2));
+  });
 });
 
 describe("optimisticPatch overlap avoidance", () => {

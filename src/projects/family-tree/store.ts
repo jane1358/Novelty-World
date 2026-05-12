@@ -288,7 +288,7 @@ export const useFamilyTreeStore = create<FamilyTreeState>((set, get) => {
             set({ optimizing: false });
             return;
           }
-          await supabase
+          const updateResult = await supabase
             .from(TABLE)
             .update({
               layout: msg.layout,
@@ -296,6 +296,18 @@ export const useFamilyTreeStore = create<FamilyTreeState>((set, get) => {
               updated_at: new Date().toISOString(),
             })
             .eq("id", ROW_ID);
+          if (updateResult.error) throw updateResult.error;
+          // Final guard: if the local tree drifted between solve start and
+          // upload completion (an edit that didn't terminate this callback
+          // in time, e.g. because the worker had already posted), committing
+          // `cachedLayoutHash = solveHash` would leave the UI showing
+          // "In sync" against a stale hash. Skip the local commit; the
+          // upload to Supabase is still valid for whoever pulls a tree
+          // matching solveHash.
+          if (topologyHash(get().tree) !== solveHash) {
+            set({ optimizing: false });
+            return;
+          }
           set({
             cachedLayout: msg.layout,
             cachedLayoutHash: solveHash,
