@@ -728,6 +728,43 @@ describe("computeLayout", () => {
     expect(firstGroup).toBe("maya-gary");
   });
 
+  it("places non-conflicting sibling bars at the midpoint between parents and children", async () => {
+    // Two unrelated families share a grandparent so the tree is connected,
+    // but each branch's kids cluster under their own parents so the sibling
+    // bars don't collide. By standard genealogical convention each bar
+    // should sit exactly at the midpoint between its parent row and child
+    // row — not stair-stepped or pushed off-center because some other pair
+    // of bars elsewhere in the layout happens to conflict.
+    const t = makeTree([
+      p("anc", "M"),
+      p("a-dad", "M", ["anc"], ["a-mom"]),
+      p("b-dad", "M", ["anc"], ["b-mom"]),
+      p("a-mom", "F", [], ["a-dad"]),
+      p("b-mom", "F", [], ["b-dad"]),
+      p("a-kid", "M", ["a-dad", "a-mom"]),
+      p("b-kid", "M", ["b-dad", "b-mom"]),
+    ]);
+
+    const layout = await computeLayout(t);
+    const aEdge = layout.edges.find(
+      (e) => e.kind === "parent-child" && e.childId === "a-kid",
+    );
+    const bEdge = layout.edges.find(
+      (e) => e.kind === "parent-child" && e.childId === "b-kid",
+    );
+    if (aEdge?.kind !== "parent-child" || bEdge?.kind !== "parent-child") {
+      throw new Error("expected parent-child edges");
+    }
+    const aDad = layout.nodes.find((n) => n.id === "a-dad");
+    const aKid = layout.nodes.find((n) => n.id === "a-kid");
+    if (aDad === undefined || aKid === undefined) {
+      throw new Error("expected nodes to be laid out");
+    }
+    const midpoint = (aDad.y + aDad.h + aKid.y) / 2;
+    expect(aEdge.elbowY).toBe(midpoint);
+    expect(bEdge.elbowY).toBe(midpoint);
+  });
+
   it("groups same-marriage siblings on one elbow row in a 3-member cluster", async () => {
     // In [Maya, Gary, Marta] with Maya+Gary kids and Marta-solo kids, the
     // two parent sets are keyed separately so their bars are analyzed

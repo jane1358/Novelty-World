@@ -1235,10 +1235,13 @@ export async function computeLayout(tree: Tree): Promise<Layout> {
     return x ?? 0;
   };
 
-  // Build each parent set's sibling-bar X-interval and pack them into the
-  // minimum number of elbow rows per generation. See packElbowRows above.
-  const rowIndexByParentSet = new Map<string, number>();
-  const numRowsByGen = new Map<number, number>();
+  // Build each parent set's sibling-bar X-interval, then split into "free"
+  // bars (no overlap with anything else) and "conflicting" bars (overlap or
+  // endpoint-touch with at least one other bar). Free bars always render at
+  // the midpoint between parents and children — the standard genealogical
+  // convention — regardless of what conflicting bars elsewhere in the
+  // generation are doing. Only the conflicting bars get packed into rows.
+  const intervalsByGen = new Map<number, ElbowBarInterval[]>();
   for (const [parentGen, keys] of parentSetKeysByGen) {
     const intervals: ElbowBarInterval[] = [];
     for (const key of keys) {
@@ -1258,15 +1261,44 @@ export async function computeLayout(tree: Tree): Promise<Layout> {
       const right = Math.max(parentMidX, maxChildX);
       intervals.push({ key, left, right });
     }
-    const packing = packElbowRows(intervals);
-    for (const [key, idx] of packing.rowIndexByKey) {
-      rowIndexByParentSet.set(key, idx);
-    }
-    numRowsByGen.set(parentGen, packing.rowCount);
+    intervalsByGen.set(parentGen, intervals);
   }
 
+  const freeKeys = new Set<string>();
+  const conflictRowIndexByKey = new Map<string, number>();
+  const numConflictRowsByGen = new Map<number, number>();
+  for (const [parentGen, intervals] of intervalsByGen) {
+    // Two bars conflict iff their X-intervals overlap or touch endpoints.
+    // The touch case matches packElbowRows' strict-< placement: an endpoint
+    // collision is treated as a conflict so the bars don't visually merge.
+    const conflicting = new Set<string>();
+    for (let i = 0; i < intervals.length; i++) {
+      for (let j = i + 1; j < intervals.length; j++) {
+        const a = intervals[i];
+        const b = intervals[j];
+        if (Math.max(a.left, b.left) <= Math.min(a.right, b.right)) {
+          conflicting.add(a.key);
+          conflicting.add(b.key);
+        }
+      }
+    }
+    for (const iv of intervals) {
+      if (!conflicting.has(iv.key)) freeKeys.add(iv.key);
+    }
+    const conflictIntervals = intervals.filter((iv) =>
+      conflicting.has(iv.key),
+    );
+    const packing = packElbowRows(conflictIntervals);
+    for (const [key, idx] of packing.rowIndexByKey) {
+      conflictRowIndexByKey.set(key, idx);
+    }
+    numConflictRowsByGen.set(parentGen, packing.rowCount);
+  }
+
+  // Row gap only needs to grow when conflicting bars stack — free bars all
+  // sit at the midpoint and don't add rows.
   const rowGapAfter = (g: number): number => {
-    const nRows = numRowsByGen.get(g) ?? 0;
+    const nRows = numConflictRowsByGen.get(g) ?? 0;
     if (nRows <= 1) return ROW_GAP;
     const required =
       ELBOW_FIRST_OFFSET + (nRows - 1) * ELBOW_SPACING + ELBOW_LAST_MARGIN;
@@ -1320,24 +1352,29 @@ export async function computeLayout(tree: Tree): Promise<Layout> {
     }
   }
 
-  // Translate the packed row index for each parent set into an elbow Y.
-  // Single-row generations keep the ROW_GAP/2 convention (elbows sit halfway
-  // down the gap); multi-row generations stack from ELBOW_FIRST_OFFSET down
-  // by ELBOW_SPACING per row.
+  // Standard genealogical convention: the elbow sits halfway between parents
+  // and children. Free bars (no conflicts) always land on this midpoint.
+  // Conflicting bars form a stack centered around the midpoint — the
+  // leftmost lands on the topmost row, the next below it, etc. — so the
+  // elbow group's visual center stays at the midpoint regardless of how
+  // many rows it spans.
   const elbowYByParentSet = new Map<string, number>();
   for (const g of layered.sortedGens) {
     const keys = parentSetKeysByGen.get(g) ?? [];
     if (keys.length === 0) continue;
     const parentBottomY = yFor(g) + NODE_H;
-    const nRows = numRowsByGen.get(g) ?? 0;
+    const midpointY = parentBottomY + rowGapAfter(g) / 2;
+    const nConflictRows = numConflictRowsByGen.get(g) ?? 0;
+    const stackTopY =
+      midpointY - ((nConflictRows - 1) * ELBOW_SPACING) / 2;
     for (const key of keys) {
-      const rowIdx = rowIndexByParentSet.get(key);
+      if (freeKeys.has(key)) {
+        elbowYByParentSet.set(key, midpointY);
+        continue;
+      }
+      const rowIdx = conflictRowIndexByKey.get(key);
       if (rowIdx === undefined) continue;
-      const elbowY =
-        nRows <= 1
-          ? parentBottomY + ROW_GAP / 2
-          : parentBottomY + ELBOW_FIRST_OFFSET + rowIdx * ELBOW_SPACING;
-      elbowYByParentSet.set(key, elbowY);
+      elbowYByParentSet.set(key, stackTopY + rowIdx * ELBOW_SPACING);
     }
   }
 
@@ -1471,26 +1508,29 @@ function sameStringArray(a: string[], b: string[]): boolean {
   return true;
 }
 
-// Fingerprint the parts of a tree that affect layout: which persons exist
-// (and in what insertion order — BFS layer ordering depends on it), their
-// parent/spouse/divorced-spouse ID lists (order included, since the renderer
-// keys off the first parent/spouse), and the root. Names and genders are
-// deliberately excluded — they don't change positions, so a rename shouldn't
-// invalidate the cached optimal layout.
+// Fingerprint the parts of a tree that affect layout: which persons exist,
+// their parent/spouse/divorced-spouse ID lists (order included, since the
+// renderer keys off the first parent/spouse), and the root. Names and
+// genders are deliberately excluded — they don't change positions, so a
+// rename shouldn't invalidate the cached optimal layout.
 //
-// Two clients with the same topology produce identical hashes, which is the
-// whole point: the cached fancy layout in Supabase lives keyed by this hash,
-// and any client whose tree currently matches can render it directly with
-// zero solve work.
+// Person IDs are sorted before hashing so the hash is invariant to
+// `Object.keys` iteration order. This matters because PostgreSQL jsonb
+// canonicalizes object keys (by length, then lex) on write, so a tree
+// hashed before persisting and the same tree hashed after a Supabase
+// roundtrip would otherwise produce different hashes — breaking the
+// cache-staleness check.
 //
-// FNV-1a-32 is a non-cryptographic hash. For ~150-person trees the collision
-// probability across an indefinite session is ~150 / 2^32 ≈ 3.5e-8 — well
-// below "two random topologies happen to collide and one client serves the
-// wrong layout to another". A collision would not be silently wrong forever:
-// the next Optimize run would overwrite with the right layout for that hash.
+// FNV-1a-32 is a non-cryptographic hash. For ~150-person trees the
+// collision probability across an indefinite session is ~150 / 2^32 ≈
+// 3.5e-8 — well below "two random topologies happen to collide and one
+// client serves the wrong layout to another". A collision would not be
+// silently wrong forever: the next Optimize run overwrites with the right
+// layout for that hash.
 export function topologyHash(tree: Tree): string {
   const parts: string[] = [tree.rootId];
-  for (const id of Object.keys(tree.persons)) {
+  const sortedIds = Object.keys(tree.persons).slice().sort();
+  for (const id of sortedIds) {
     const p = tree.persons[id];
     parts.push(
       id,
