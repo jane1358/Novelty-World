@@ -39,7 +39,7 @@ interface PinchSnapshot {
 export function PanZoom({
   contentWidth,
   contentHeight,
-  minScale = 0.2,
+  minScale = 0.1,
   maxScale = 3,
   refitKey,
   onBackgroundPointerDown,
