@@ -86,7 +86,7 @@ function decrossInPlace(
 }
 
 const REMOTE_SOLVE_URL =
-  "https://stronger-spy-retired-internship.trycloudflare.com/solve";
+  "https://employed-instrumentation-ampland-firewall.trycloudflare.com/solve";
 
 interface RemoteSolveResponse {
   status: string;
