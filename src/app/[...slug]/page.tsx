@@ -34,6 +34,9 @@ const PROJECT_COMPONENTS: Partial<Record<string, React.ComponentType>> = {
   "family-tree": dynamic(() =>
     import("@/projects/family-tree").then((m) => ({ default: m.FamilyTree })),
   ),
+  monopoly: dynamic(() =>
+    import("@/projects/monopoly").then((m) => ({ default: m.Monopoly })),
+  ),
 };
 
 interface Props {
