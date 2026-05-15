@@ -86,7 +86,7 @@ function decrossInPlace(
 }
 
 const REMOTE_SOLVE_URL =
-  "https://employed-instrumentation-ampland-firewall.trycloudflare.com/solve";
+  "https://solver-kyle.eastus.cloudapp.azure.com/solve";
 
 interface RemoteSolveResponse {
   status: string;
