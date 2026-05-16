@@ -16,24 +16,29 @@ export const MOCK_STATE: GameState = {
     // Browns — Kyle holds the monopoly (one mortgaged)
     1: "p1",
     3: "p1",
-    // Light blues — Alex holds the monopoly (developed)
+    // Light blues — Alex holds the monopoly
     6: "p2",
     8: "p2",
     9: "p2",
-    // Pinks — Alex has 2 of 3
+    // Pinks — Alex holds the monopoly (hotels on all three)
     11: "p2",
     13: "p2",
-    // Oranges — Sam has 2 of 3
+    14: "p2",
+    // Oranges — Sam holds the monopoly (1, 2, 3 houses)
     16: "p3",
     18: "p3",
-    // Reds — Jordan holds the monopoly (hotel on Illinois)
+    19: "p3",
+    // Reds — Jordan holds the monopoly (hotels on all three)
     21: "p4",
     23: "p4",
     24: "p4",
-    // Yellows — Jordan holds the monopoly (hotel on Atlantic)
+    // Yellows — Jordan has 2 of 3
     26: "p4",
     27: "p4",
-    29: "p4",
+    // Greens — Jordan holds the monopoly (4 houses on each)
+    31: "p4",
+    32: "p4",
+    34: "p4",
     // Dark blues — Jordan has Boardwalk
     39: "p4",
     // Railroads
@@ -45,11 +50,24 @@ export const MOCK_STATE: GameState = {
     28: "p4",
   },
   mortgaged: {
-    3: true,  // Baltic Avenue
-    23: true, // Indiana Avenue
+    3: true, // Baltic Avenue
   },
   houses: {
-    9: 4,  // Connecticut Avenue — 4 houses
-    26: 5, // Atlantic Avenue — hotel
+    // Pinks — hotels
+    11: 5, // St. Charles Place
+    13: 5, // States Avenue
+    14: 5, // Virginia Avenue
+    // Oranges — 1, 2, 3 houses
+    16: 1, // St. James Place
+    18: 2, // Tennessee Avenue
+    19: 3, // New York Avenue
+    // Reds — hotels
+    21: 5, // Kentucky Avenue
+    23: 5, // Indiana Avenue
+    24: 5, // Illinois Avenue
+    // Greens — 4 houses on each
+    31: 4, // Pacific Avenue
+    32: 4, // North Carolina Avenue
+    34: 4, // Pennsylvania Avenue
   },
 };

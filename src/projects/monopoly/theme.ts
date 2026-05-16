@@ -13,10 +13,13 @@ export const MONOPOLY_THEME = {
   "--mono-yellow": "#fef200",
   "--mono-green": "#1fb25a",
   "--mono-dark-blue": "#0072bb",
-  "--mono-board": "#c7e9d0",
-  "--mono-card": "#f4efdc",
-  "--mono-ink": "#1a1a1a",
-  "--mono-frame": "#2a2a2a",
+  "--mono-board": "#1e1e1e",
+  "--mono-card": "#141414",
+  "--mono-ink": "#f5f5f5",
+  "--mono-frame": "#000000",
+  // Mid-gray for railroad/utility chips and icons that need to read against
+  // the dark card without taking on a property-color identity.
+  "--mono-neutral": "#525252",
   "--mono-player-crimson": "#b91c1c",
   "--mono-player-violet": "#7c3aed",
   "--mono-player-teal": "#0d9488",

@@ -1,13 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
-import {
-  Diamond,
-  Dice5,
-  Droplets,
-  House,
-  Package,
-  Train,
-  Zap,
-} from "lucide-react";
+import { Diamond, Dice5, Droplets, Package, Train, Zap } from "lucide-react";
 import { SPACES } from "../data";
 import { rentAt, type RentDisplay } from "../logic";
 import { PLAYER_COLOR_VAR, PROPERTY_COLOR_VAR } from "../theme";
@@ -82,34 +74,37 @@ export function SquareRow({ state, position }: Props) {
 function Development({ houses }: { houses: number }) {
   if (houses === 0) return null;
   if (houses === 5) {
-    // "Hotel" is just a wider House — stretched horizontally via scaleX so the
-    // silhouette reads as a bigger building than a single house.
     return (
       <div className="flex w-full items-center justify-center">
-        <House
-          size={26}
-          strokeWidth={2.5}
-          stroke="white"
-          fill="currentColor"
+        <div
+          className="rounded-sm border-2 border-black"
           style={{
-            color: "var(--mono-red)",
-            transform: "scaleX(1.6)",
+            width: "36px",
+            height: "24px",
+            backgroundColor: "var(--mono-red)",
           }}
         />
       </div>
     );
   }
   return (
-    <div className="flex w-full items-center justify-start gap-0.5">
-      {Array.from({ length: houses }).map((_, i) => (
-        <House
+    <div className="flex w-full items-center px-1.5">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div
           key={i}
-          size={14}
-          strokeWidth={2.25}
-          stroke="white"
-          fill="currentColor"
-          style={{ color: "var(--mono-green)" }}
-        />
+          className="flex flex-1 items-center justify-center"
+        >
+          {i < houses && (
+            <div
+              className="rounded-sm border-2 border-black"
+              style={{
+                width: "12px",
+                height: "24px",
+                backgroundColor: "var(--mono-green)",
+              }}
+            />
+          )}
+        </div>
       ))}
     </div>
   );
@@ -135,7 +130,7 @@ function SpaceIcon({
       return (
         <Icon
           strokeWidth={1.75}
-          style={{ ...iconStyle, color: "var(--mono-frame)" }}
+          style={{ ...iconStyle, color: "var(--mono-neutral)" }}
         />
       );
     }

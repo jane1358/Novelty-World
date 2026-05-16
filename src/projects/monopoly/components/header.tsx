@@ -98,7 +98,7 @@ function OwnedChip({
         <div
           className={baseClasses}
           style={{
-            backgroundColor: "var(--mono-frame)",
+            backgroundColor: "var(--mono-neutral)",
             ...mortgageOverlay,
           }}
         >
@@ -114,7 +114,7 @@ function OwnedChip({
         <div
           className={baseClasses}
           style={{
-            backgroundColor: "var(--mono-frame)",
+            backgroundColor: "var(--mono-neutral)",
             ...mortgageOverlay,
           }}
         >
