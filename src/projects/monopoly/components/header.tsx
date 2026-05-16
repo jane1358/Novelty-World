@@ -77,13 +77,7 @@ function OwnedChip({
 }) {
   const space = SPACES[position];
   const baseClasses =
-    "flex h-4 w-4 shrink-0 items-center justify-center rounded-sm";
-  const mortgageOverlay = mortgaged
-    ? {
-        backgroundImage:
-          "repeating-linear-gradient(135deg, transparent 0 2px, var(--mono-frame) 2px 3px)",
-      }
-    : {};
+    "relative flex h-4 w-4 shrink-0 items-center justify-center rounded-sm";
 
   switch (space.kind) {
     case "property":
@@ -93,23 +87,22 @@ function OwnedChip({
           style={{
             backgroundColor: PROPERTY_COLOR_VAR[space.color],
             boxShadow: "inset 0 0 0 1px var(--mono-frame)",
-            ...mortgageOverlay,
           }}
-        />
+        >
+          {mortgaged && <MortgageMarker />}
+        </div>
       );
     case "railroad":
       return (
         <div
           className={baseClasses}
-          style={{
-            backgroundColor: "var(--mono-neutral)",
-            ...mortgageOverlay,
-          }}
+          style={{ backgroundColor: "var(--mono-neutral)" }}
         >
           <Train
             strokeWidth={2}
             style={{ width: "70%", height: "70%", color: "white" }}
           />
+          {mortgaged && <MortgageMarker />}
         </div>
       );
     case "utility": {
@@ -117,15 +110,13 @@ function OwnedChip({
       return (
         <div
           className={baseClasses}
-          style={{
-            backgroundColor: "var(--mono-neutral)",
-            ...mortgageOverlay,
-          }}
+          style={{ backgroundColor: "var(--mono-neutral)" }}
         >
           <Icon
             strokeWidth={2}
             style={{ width: "70%", height: "70%", color: "white" }}
           />
+          {mortgaged && <MortgageMarker />}
         </div>
       );
     }
@@ -134,4 +125,34 @@ function OwnedChip({
       // unreachable in practice but keeps the switch exhaustive.
       return null;
   }
+}
+
+function MortgageMarker() {
+  return (
+    <svg
+      className="pointer-events-none absolute inset-0 h-full w-full"
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+    >
+      <line
+        x1="0"
+        y1="0"
+        x2="100"
+        y2="100"
+        stroke="white"
+        strokeWidth="1.5"
+        vectorEffect="non-scaling-stroke"
+      />
+      <line
+        x1="100"
+        y1="0"
+        x2="0"
+        y2="100"
+        stroke="white"
+        strokeWidth="1.5"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
+  );
 }

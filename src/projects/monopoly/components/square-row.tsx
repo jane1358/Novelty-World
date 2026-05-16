@@ -38,12 +38,6 @@ export function SquareRow({ state, position }: Props) {
     width: "72px",
     backgroundColor: leftBackground,
     boxShadow: dividerShadow,
-    ...(mortgaged && isProperty
-      ? {
-          backgroundImage:
-            "repeating-linear-gradient(135deg, transparent 0 3px, var(--mono-frame) 3px 4px)",
-        }
-      : {}),
   };
   const contextTint = owner
     ? `color-mix(in srgb, ${PLAYER_COLOR_VAR[owner.color]} 28%, var(--mono-card))`
@@ -55,7 +49,7 @@ export function SquareRow({ state, position }: Props) {
       style={{ color: "var(--mono-ink)" }}
     >
       <div
-        className="flex shrink-0 items-center justify-center"
+        className="relative flex shrink-0 items-center justify-center"
         style={leftStyle}
       >
         {isProperty ? (
@@ -63,6 +57,7 @@ export function SquareRow({ state, position }: Props) {
         ) : (
           <SpaceIcon space={space} />
         )}
+        {mortgaged && <MortgageMarker />}
       </div>
       <div
         className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden px-2"
@@ -71,7 +66,7 @@ export function SquareRow({ state, position }: Props) {
         <NameCell space={space} mortgaged={mortgaged} />
         <TokenStrip tokens={tokens} />
         <div className="flex-1" />
-        <CostCell space={space} owned={Boolean(owner)} rent={rent} />
+        <CostCell space={space} mortgaged={mortgaged} rent={rent} />
       </div>
     </div>
   );
@@ -215,18 +210,44 @@ function NameCell({
       className="flex shrink-0 items-center gap-1.5 overflow-hidden"
       style={{ width: "150px" }}
     >
-      <span className="truncate text-xs font-semibold">
+      <span
+        className={`truncate text-xs font-semibold${
+          mortgaged ? " line-through" : ""
+        }`}
+      >
         {displayName(space)}
       </span>
-      {mortgaged && (
-        <span
-          className="shrink-0 text-[10px] font-bold"
-          style={{ color: "var(--mono-red)" }}
-        >
-          MTG
-        </span>
-      )}
     </div>
+  );
+}
+
+function MortgageMarker() {
+  return (
+    <svg
+      className="pointer-events-none absolute inset-0 h-full w-full"
+      viewBox="0 0 100 100"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+    >
+      <line
+        x1="0"
+        y1="0"
+        x2="100"
+        y2="100"
+        stroke="white"
+        strokeWidth="2"
+        vectorEffect="non-scaling-stroke"
+      />
+      <line
+        x1="100"
+        y1="0"
+        x2="0"
+        y2="100"
+        stroke="white"
+        strokeWidth="2"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
   );
 }
 
@@ -291,56 +312,48 @@ function JailedToken({ player }: { player: Player }) {
 
 function CostCell({
   space,
-  owned,
+  mortgaged,
   rent,
 }: {
   space: Space;
-  owned: boolean;
+  mortgaged: boolean;
   rent: RentDisplay | null;
 }) {
-  const content = costContent(space, owned, rent);
+  const content = costContent(space, rent);
   if (!content) return <div style={{ width: "60px" }} />;
   return (
     <div
-      className={`shrink-0 text-right font-mono text-xs ${
-        content.muted ? "opacity-50" : "font-semibold"
+      className={`shrink-0 text-right font-mono text-xs font-semibold ${
+        mortgaged ? "opacity-50" : ""
       }`}
       style={{ minWidth: "60px" }}
     >
-      {content.node}
+      {content}
     </div>
   );
 }
 
-function costContent(
-  space: Space,
-  owned: boolean,
-  rent: RentDisplay | null,
-): { node: ReactNode; muted: boolean } | null {
+function costContent(space: Space, rent: RentDisplay | null): ReactNode {
   if (rent) {
     if (rent.kind === "dollars") {
-      return { node: `$${rent.amount.toLocaleString("en-US")}`, muted: false };
+      return `$${rent.amount.toLocaleString("en-US")}`;
     }
-    return {
-      node: (
-        <span className="inline-flex items-center justify-end gap-0.5">
-          <span>×{rent.multiplier}</span>
-          <Dice5 className="h-3 w-3" strokeWidth={2} />
-        </span>
-      ),
-      muted: false,
-    };
+    return (
+      <span className="inline-flex items-center justify-end gap-0.5">
+        <span>×{rent.multiplier}</span>
+        <Dice5 className="h-3 w-3" strokeWidth={2} />
+      </span>
+    );
   }
   if (
-    !owned &&
-    (space.kind === "property" ||
-      space.kind === "railroad" ||
-      space.kind === "utility")
+    space.kind === "property" ||
+    space.kind === "railroad" ||
+    space.kind === "utility"
   ) {
-    return { node: `$${space.price.toLocaleString("en-US")}`, muted: true };
+    return `$${space.price.toLocaleString("en-US")}`;
   }
   if (space.kind === "tax") {
-    return { node: `$${space.amount.toLocaleString("en-US")}`, muted: false };
+    return `$${space.amount.toLocaleString("en-US")}`;
   }
   return null;
 }

@@ -50,7 +50,11 @@ export const MOCK_STATE: GameState = {
     28: "p4",
   },
   mortgaged: {
-    3: true, // Baltic Avenue
+    3: true,  // Baltic Avenue (property)
+    9: true,  // Connecticut Avenue (property in monopoly)
+    15: true, // Pennsylvania Railroad
+    28: true, // Water Works (utility)
+    39: true, // Boardwalk (dark blue)
   },
   houses: {
     // Pinks — hotels
