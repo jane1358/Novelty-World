@@ -60,12 +60,11 @@ export function SquareRow({ state, position }: Props) {
         {mortgaged && <MortgageMarker />}
       </div>
       <div
-        className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden px-2"
+        className="flex min-w-0 flex-1 items-center overflow-hidden px-2"
         style={{ background: contextTint, boxShadow: dividerShadow }}
       >
         <NameCell space={space} mortgaged={mortgaged} />
         <TokenStrip tokens={tokens} />
-        <div className="flex-1" />
         <CostCell space={space} mortgaged={mortgaged} rent={rent} />
       </div>
     </div>
@@ -277,20 +276,39 @@ function displayName(space: Space): string {
 }
 
 function TokenStrip({ tokens }: { tokens: readonly Player[] }) {
-  if (tokens.length === 0) return null;
+  const n = tokens.length;
+  // Each token occupies a "slot" whose width is the horizontal pitch
+  // between consecutive tokens. The token itself is always 1.925rem wide
+  // (70% of the 2.75rem row); when slots are narrower than that, each
+  // token bleeds rightward into the next slot and the leftmost-on-top
+  // z-index turns the row into a left-to-right avatar pile.
+  //
+  // The pitch is (strip width - token width) / (n - 1), so the rightmost
+  // token's right edge lands at the strip's right edge — the whole pile
+  // fits no matter how crowded the row gets. Capped at 2.3rem (token
+  // width + 0.375rem of breathing room) so tokens don't spread apart
+  // arbitrarily when there's slack but still get visible gaps when room
+  // allows. Always rendered (even empty) so the strip absorbs leftover
+  // width and keeps the cost cell pinned to the right.
+  const slotWidth =
+    n <= 1
+      ? "1.925rem"
+      : `clamp(0px, calc((100% - 1.925rem) / ${n - 1}), 2.3rem)`;
   return (
-    <div className="flex h-full shrink-0 items-center gap-px">
-      {tokens.map((p) =>
-        p.inJail ? (
-          <JailedToken key={p.id} player={p} />
-        ) : (
-          <PlayerToken
-            key={p.id}
-            player={p}
-            className="aspect-square h-[70%]"
-          />
-        ),
-      )}
+    <div className="flex h-full min-w-0 flex-1 items-center overflow-hidden">
+      {tokens.map((p, i) => (
+        <div
+          key={p.id}
+          className="relative flex h-full items-center"
+          style={{ width: slotWidth, zIndex: n - i }}
+        >
+          {p.inJail ? (
+            <JailedToken player={p} />
+          ) : (
+            <PlayerToken player={p} className="aspect-square h-[70%]" />
+          )}
+        </div>
+      ))}
     </div>
   );
 }
@@ -320,7 +338,10 @@ function CostCell({
   rent: RentDisplay | null;
 }) {
   const content = costContent(space, rent);
-  if (!content) return <div style={{ width: "60px" }} />;
+  // Squares without a cost (Go, Jail, Chance, etc.) render no cell at all
+  // so the token strip can absorb the freed width — useful for crowded
+  // squares like Jail where many tokens can pile up.
+  if (!content) return null;
   return (
     <div
       className={`shrink-0 text-right font-mono text-xs font-semibold ${
