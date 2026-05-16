@@ -9,8 +9,16 @@ interface Props {
 }
 
 export function Header({ state }: Props) {
+  // When five or more players are present the header would crowd the board
+  // off-screen, so cap it at 4.5 rows (each row is h-11) and scroll the
+  // overflow. The half-row peek signals there's more below.
+  const scrollable = state.players.length > 4;
   return (
-    <div className="flex shrink-0 flex-col">
+    <div
+      className={`flex shrink-0 flex-col ${
+        scrollable ? "max-h-[12.375rem] overflow-y-auto" : ""
+      }`}
+    >
       {state.players.map((player) => (
         <PlayerRow
           key={player.id}
@@ -38,7 +46,7 @@ function PlayerRow({
     .sort((a, b) => a - b);
   return (
     <div
-      className="flex items-center gap-2 px-2 py-1.5"
+      className="flex h-11 shrink-0 items-center gap-2 px-2"
       style={{
         backgroundColor: "var(--mono-board)",
         color: "var(--mono-ink)",
