@@ -15,9 +15,17 @@ export function Header({ state }: Props) {
   const scrollable = state.players.length > 4;
   return (
     <div
-      className={`flex shrink-0 flex-col ${
+      className={`relative z-10 flex shrink-0 flex-col ${
         scrollable ? "max-h-[12.375rem] overflow-y-auto" : ""
       }`}
+      // Sharp 1px frame line acts as the section divider; the soft shadow
+      // below makes the header read as elevated above the scrolling board.
+      // Box-shadow renders outside the box without changing layout, so the
+      // flex math (header + flex-1 squares + footer = 100dvh) is unaffected.
+      style={{
+        boxShadow:
+          "0 1px 0 var(--mono-frame), 0 6px 12px rgba(0, 0, 0, 0.75)",
+      }}
     >
       {state.players.map((player) => (
         <PlayerRow
