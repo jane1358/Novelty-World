@@ -5434,4 +5434,171 @@ export const IDEAS: Idea[] = [
     website: "https://www.raflaamo.fi/en/restaurant/helsinki/kappeli",
     tags: ["food", "historical", "landmark"],
   },
+  {
+    slug: "bistro-telakka",
+    title: "Ravintola Bistro Telakka",
+    shortDescription:
+      "An unpretentious neighbourhood bistro tucked into the Pursiseura Sindbad yacht-club clubhouse on Lauttasaari's eastern shore — house-smoked salmon, hand-made meatballs, a short Finnish-Mediterranean menu, and a waterfront terrace looking straight out over the masts of the Lohiapajanlahti marina.",
+    longDescription: [
+      "Bistro Telakka (\"the shipyard bistro\") sits in the clubhouse of Pursiseura Sindbad ry, one of the eight yacht clubs that line Lauttasaari's southern and eastern shore. Sindbad has ~420 members and around 180 boats moored in the sheltered Lohiapajanlahti inlet on the eastern side of Vattuniemi, and the clubhouse at Vattuniemenranta 5 doubles as a public restaurant — Bistro Telakka by day and evening, with the larger sister space Blue Peter a short walk away at HSK on the southern shore. You walk straight in off the waterfront promenade past the rigging and dinghies; no membership needed, no front door to find.",
+      "The kitchen is honest and seasonal in the way Lauttasaari neighbourhood places tend to be: house-smoked salmon as the signature, hand-made meatballs (lihapullat) as the comfort-food anchor, a Wallenberg steak that's the chef's pet dish, fish-and-chips with pike-perch (kuha) when the catch is in, and a rotation of Mediterranean-leaning plates — Vietnamese summer rolls, roasted cauliflower with North African spice, a properly built bistro burger. Lunch is a weekday buffet, around €14 with retiree discount, salads and a main and bread and coffee included — the value play and the way most regulars come. Dinner à la carte mains run €18–27, burgers €21–23, and wine is mid-range with bottles around €35, considered reasonable for Helsinki.",
+      "The terrace is the reason to come from May through September. Built out over the marina, a few metres above the water, with the boats at eye level and the eastern Helsinki skyline across the bay — it's the kind of view that earns the trip even before the food arrives. Inside, the clubhouse is warm wood and yacht-club casual, fully open through the dark months when the boats are on land and Sindbad's storage yard fills the view instead. Closed Sundays year-round; closing times stretch to midnight on Fri–Sat.",
+      "It's a 5–10 minute walk from Lauttasaari metro station south through Vattuniemi to Vattuniemenranta 5, or a few minutes more from HSK Marina along the shoreline. Bus 21 from anywhere on the island stops nearby. Walk-in is fine for most weekday lunches and winter evenings; for the terrace on a sunny Friday or Saturday evening in summer, reserve a few days ahead. The space also takes private bookings for events and small parties — the room scales well to a 20-person dinner.",
+    ],
+    thumbnailUrl: "https://reijosfood.com/wp-content/uploads/2015/05/image26.jpg",
+    galleryUrls: [
+      "https://reijosfood.com/wp-content/uploads/2017/05/img_3044.jpg",
+      "https://reijosfood.com/wp-content/uploads/2017/05/img_3048.jpg",
+      "https://reijosfood.com/wp-content/uploads/2017/05/img_3094.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Lauttasaaren_rantaa_Vattuniemessä_Itälahdessa_maaliskuussa_-_N212814_-_hkm.HKMS000005-000010e0.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Lauttasaari,_Vattuniemen_rantaa_Itälahdessa_jäiden_lähdön_aikaan_-_N212815_-_hkm.HKMS000005-000010e1.jpg",
+    ],
+    availability: {
+      suitableMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      weeklySchedule:
+        "Mon–Thu 11:00–22:00 (kitchen to 21:00), Fri 11:00–00:00, Sat 12:00–00:00, Sun closed. Lunch buffet Mon–Fri 11:00–14:00.",
+      notes:
+        "Year-round but the terrace is the May–September draw — the indoor clubhouse is the October–April experience. Lunch buffet is the weekday value play.",
+    },
+    location: {
+      region: ["Helsinki", "Lauttasaari", "Uusimaa"],
+      address: "Vattuniemenranta 5, 00210 Helsinki",
+    },
+    accessFromLauttasaari: {
+      complexity: "simple",
+      duration: "~5–10 min walk",
+      notes:
+        "Same island. ~5–10-min walk south from Lauttasaari metro station through Vattuniemi to Vattuniemenranta 5 on the eastern shore. Bus 21 along Lauttasaarentie/Vattuniemenkatu stops a few minutes' walk away. Short waterfront stroll along the shoreline from HSK Marina to the south.",
+    },
+    cost: {
+      perPersonEur: 30,
+      notes:
+        "Lunch buffet ~€14 (€13 retirees), includes salads, main, bread, and coffee. Dinner à la carte: mains €18–27 (burgers €21–23, Wallenberg steak and pike-perch fish-and-chips at the top of the range). Wine bottles average ~€35. A typical sit-down dinner with a glass of wine lands around €35–45 per person; lunch is closer to €15–20.",
+    },
+    booking: {
+      leadTime: "few-days",
+      notes:
+        "Walk-in fine for weekday lunches and most winter evenings. Reserve a few days ahead for the summer terrace on sunny Fri–Sat evenings. Larger groups (6+) should book; the room takes private hires for events.",
+    },
+    suitableAgeRange: { min: 0 },
+    childrenNotes:
+      "Daytime and lunch-buffet service is family-friendly — high chairs available, the kitchen does kid-friendly plates from the buffet and the meatballs are toddler-tested. The terrace railings have wide gaps over the water; keep small kids close on the outdoor side. Stroller-accessible at the clubhouse entrance.",
+    indoorOutdoor: "mixed",
+    physicalIntensity: "low",
+    duration: "1-3h",
+    website: "https://www.bistrotelakka.fi/",
+    tags: ["food", "nautical"],
+  },
+  {
+    slug: "kirkuk-leipomo",
+    title: "Ravintola Kirkuk / Kirkuk Leipomo",
+    shortDescription:
+      "The local kebab-pizzeria of Vattuniemi — a Kurdish family-run kebab joint and naan bakery in one, opened in 2014 on a side street in southern Lauttasaari. The signature is the freshly baked Kurdish naan that the place is built around: hot bread folded around a kebab plate, kebabrulla, Iskender, or one of the dozen pizzas off the same oven.",
+    longDescription: [
+      "Kebab-pizzeriat — the kebab-and-pizza takeaway joints that Kurdish, Turkish, and other Middle-Eastern arrivals opened across Finland from the 1990s onwards — are by now a piece of how everyday life works in this country. Every Helsinki neighbourhood has one (often two), every small town has one on the high street, and they all serve roughly the same short vocabulary of dishes: doner kebab in bread or on a plate, kebab-with-fries (kebabranskalaiset), the wrap (rullakebab), kebab pizza with garlic, falafel, a long pizza menu off the same oven. The food is generous, the price is honest (€10–15 a plate), and the place is open from late morning to late night. This is the Finnish equivalent of the British curry house or the American diner — the genre, not the venue, and one of the more visible everyday traces of recent immigration in Finland.",
+      "Kirkuk Leipomo at Vattuniemenkatu 9, on a quiet side street two minutes from Lauttasaari metro, is the Vattuniemi neighbourhood's version of the form. Run by a Kurdish family from northern Iraq (Kirkuk, the namesake city, is the multi-ethnic Kurdish/Arab/Turkmen oil-city in Iraqi Kurdistan), it opened on 13 August 2014 and is unusual in the genre for being a proper bakery — \"leipomo\" in the name means bakery — built around an in-house oven that turns out fresh Kurdish naan all day. The naan is the thing: hot, charred, folded around the kebab or torn into the salad. Most kebab-pizzerias use industrial flatbread; Kirkuk bakes its own and you can taste the difference. The pizzas come off the same oven.",
+      "The menu is the standard kebab-pizzeria vocabulary executed well: Kebab lisukkeilla (with your choice of fries, rice, or potatoes) €13.99, kebabrulla (wrap) €13.99, Iskender kebab €13.99, pitakebab, falafel plates, vegan and vegan family pizzas, Aurarulla with blue cheese, the \"Driver Special\" pizza (pepperoni, jalapeño, mozzarella, garlic) €14, family-sized pizzas, a kids' portion, fish and chips and burgers as the outliers, a small selection of grilled chicken plates. Vöner — vegan döner — at €14.90 is a nice touch that not every kebab-pizzeria carries. Salad and sauces (garlic, hot, smetana) come with the plates. No alcohol; sodas and the usual canned drinks at €3.50.",
+      "The room is a narrow front-of-house with a few tables, the counter dominating, the cones rotating, the oven visible at the back. The neighbourhood comes in for takeaway; sit-down works fine but most regulars walk in, order, wait five minutes for fresh naan, and walk out with foil. Wolt and Foodora deliver to anywhere on Lauttasaari in ~25 minutes. Open Mon–Thu 10:00–21:30, Fri 10:00–22:00, Sat 11:00–22:00, Sun 11:00–21:00. This is the place to know about when it's a Tuesday evening and you don't want to cook, when you're walking home along Vattuniemenkatu late on a Saturday, or when you need to feed a kid right now and the answer is kebabranskalaiset with garlic sauce and a piece of warm naan on the side. Lauttasaari has half a dozen kebab-pizzerias; Kirkuk's bakery angle is what makes it the local default.",
+    ],
+    thumbnailUrl:
+      "https://imageproxy.wolt.com/menu/menu-images/shared/f34fbbfa-02d6-11ef-982c-5667f1203e61_kebab_ranskalaisilla.png",
+    galleryUrls: [
+      "https://imageproxy.wolt.com/menu/menu-images/shared/fa65e5b8-02d6-11ef-b4e1-0e2c5c825b03_rullakebab.png",
+      "https://imageproxy.wolt.com/menu/menu-images/shared/f4ee7c4e-02d6-11ef-a58f-322e32dd0ac2_kebab_iskender.png",
+      "https://imageproxy.wolt.com/menu/menu-images/shared/f7dc1998-02d6-11ef-9232-8e4bcb3ed07e_pitakebab.png",
+      "https://imageproxy.wolt.com/menu/menu-images/shared/36c1b664-02d6-11ef-bca8-be244921361b_14._driver_special.png",
+      "https://imageproxy.wolt.com/menu/menu-images/shared/72904084-02d6-11ef-b754-72ab02cf4907_margherita.jpg",
+    ],
+    availability: {
+      suitableMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      weeklySchedule:
+        "Mon–Thu 10:00–21:30, Fri 10:00–22:00, Sat 11:00–22:00, Sun 11:00–21:00.",
+      notes:
+        "Year-round, every day. The freshly baked naan is the reason to come — busiest service is the lunch hour and the post-work 17:00–19:00 stretch.",
+    },
+    location: {
+      region: ["Helsinki", "Lauttasaari", "Uusimaa"],
+      address: "Vattuniemenkatu 9, 00210 Helsinki",
+    },
+    accessFromLauttasaari: {
+      complexity: "simple",
+      duration: "~5 min walk",
+      notes:
+        "Same island. ~5-min walk south from Lauttasaari metro station down Tallbergin puistotie to Vattuniemenkatu. Bus 21 along Lauttasaarentie/Vattuniemenkatu stops 2 minutes away. Wolt and Foodora deliver to anywhere on Lauttasaari in ~25 minutes.",
+    },
+    cost: {
+      perPersonEur: 14,
+      notes:
+        "Kebab plates and wraps €13.99 (kebab lisukkeilla, kebabrulla, Iskender, pitakebab, Aurarulla). Vegan vöner €14.90. Pizzas €12–14 (Driver Special €14, omavalinta with three toppings €14). Family pizzas €19–24. Falafel plates and lunch specials a euro or two cheaper. A full meal with a soft drink runs €15–18 per person.",
+    },
+    booking: {
+      leadTime: "same-day",
+      notes:
+        "Walk-in or order online via Wolt or Foodora. No reservations needed for the few tables in the room. Phone orders for takeaway are common: 044 066 8855.",
+    },
+    suitableAgeRange: { min: 3 },
+    childrenNotes:
+      "Casual and fast — counter-service vibe, no high chairs guaranteed. Kids' portions on the menu; the falafel and the margherita slice both work for most kids. Family-friendly enough that the neighbourhood brings strollers in. Most families order delivery and eat at home.",
+    indoorOutdoor: "indoor",
+    physicalIntensity: "low",
+    duration: "<1h",
+    website: "https://www.ravintolakirkuk.fi/",
+    tags: ["food"],
+  },
+  {
+    slug: "mutteri-kahvila",
+    title: "Kahvila Mutteri",
+    shortDescription:
+      "The tiny nut-shaped wooden kiosk-café at the Lauttasaari end of the bridge — built in 1927 as a Drumsö steam-ferry ticket office, protected by the city plan, and still selling coffee and pastries on the same spot a century later. It's the smallest landmark in Lauttasaari and arguably the most beloved.",
+    longDescription: [
+      "Kahvila Mutteri is a hand-built wooden kiosk-café that has stood at Lauttasaarentie 2, on the strip of land between the Lauttasaari bridge and the island itself, since 1927. The architect was Bertel Liljequist (1885–1954), better known for the workers' housing he designed for Kone ja Silta and the industrial buildings of interwar Helsinki. The building is shaped like a hex-nut — six wooden walls, a stubby pyramid roof, a door on one face and a serving window on the next. The name (\"mutteri\" = hardware nut in Finnish) is the etymology; locals just call it the little polygon café. Inside it's surprisingly roomy for the footprint — one café-blog described the effect as a TARDIS.",
+      "The kiosk sits where the old Drumsö Strandcafé burned down in November 1926. That café had served passengers waiting for the Drumsö steam-ferry, which ran between Lauttasaari and Helsinki proper from 1914 to 1935 — Lauttasaari was a rural island in those years and the ferry was the only way across. The replacement kiosk opened in 1927 and sold what the era needed: \"ferry tickets, pastries, cranberry juice, coffee and tobacco.\" The first bridge to the mainland was built next to Mutteri in 1935, the ferry stopped soon after, and the building's purpose narrowed to just the café — which is what it has been ever since. The Lauttasaari Foundation took ownership in 1945, briefly sold it in 1995 to a senior-services organisation, watched the building decay through the 80s and 90s as the surrounding city grew up around it, and finally restored it to its original 1927 condition in 1998 because the kiosk was protected in the city plan and couldn't be torn down. It is now one of the oldest cafés in Helsinki operating continuously in its original location.",
+      "The current operator (since 2012) keeps it as a traditional Finnish café: filter coffee with free refills, korvapuusti (cinnamon buns), pulla, sweet and savoury pastries from the counter, a few daytime savouries — a properly built ham-cheese toast on sourdough with Dijon and arugula is the regular surprise on the menu — plus seasonal pastries and small cakes through the year. Prices are honest: coffee with a refill ~€3, a pastry €4–5, a savoury toast €8–10. The café occasionally hosts small music evenings (\"musiikki-illat\") which fill the room with maybe twenty people and constitute the only time you'd have to plan ahead to get a seat. There is a tiny terrace on the south side for the warmer months and the bridge view; in winter the room glows yellow from the bridge approach and is one of the genuinely cosy spots on the island.",
+      "Open Mon–Fri 8:00–17:00, Sat 10:00–18:00, Sun 10:00–17:00. From central Lauttasaari it's a 1–2 minute walk north along Lauttasaarentie from the metro station; bus 21 or 22 from downtown stops right outside. The café is the first thing you reach when you walk onto the island and the last thing when you walk off, which is part of why it's so embedded in everyone's mental map of Lauttasaari. Drop in once for the coffee and the architecture; come back for a cinnamon bun on a winter Saturday and admire the fact that this tiny wooden polygon has outlasted nearly everything else within a kilometre.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Kioski-Cafe_Mutteri_Lauttasaarentie_2_-_panoramio.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Mutterikahvila.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Mutterikahvila_in_winter.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Mutterikahvila_in_March.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Mutterikahvila_plaque.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Kioski_Lauttasaarentiellä_-_N11718_-_hkm.HKMS000005-km0023s0.jpg",
+    ],
+    availability: {
+      suitableMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      weeklySchedule:
+        "Mon–Fri 8:00–17:00, Sat 10:00–18:00, Sun 10:00–17:00.",
+      notes:
+        "Year-round. The terrace is the May–September experience; winter is the warm yellow-glow indoor experience. Occasional music evenings book the small room out — check the café's site if you want a specific evening.",
+    },
+    location: {
+      region: ["Helsinki", "Lauttasaari", "Uusimaa"],
+      address: "Lauttasaarentie 2, 00200 Helsinki",
+    },
+    accessFromLauttasaari: {
+      complexity: "simple",
+      duration: "~5 min walk",
+      notes:
+        "Same island. ~2-min walk north from Lauttasaari metro station along Lauttasaarentie to the bridge — the kiosk sits at the very start of the island where Lauttasaarentie meets the bridge. Bus 21 or 22 from downtown stops directly outside.",
+    },
+    cost: {
+      perPersonEur: 8,
+      notes:
+        "Coffee with free refills ~€3; pastries (korvapuusti, pulla, cakes) €4–5; savoury toast ~€8–10. A coffee-and-bun stop runs €6–8; a longer sit with a toast and refills €10–12.",
+    },
+    booking: {
+      leadTime: "same-day",
+      notes:
+        "Walk-in. No reservations except for the occasional music evening, which is announced on the café's website and Facebook.",
+    },
+    suitableAgeRange: { min: 0 },
+    childrenNotes:
+      "Family-friendly daytime café — the room is small but kids are welcome, and there's pulla and juice for the under-5 set. No high chairs guaranteed; stroller access is fine but the doorway is narrow. The terrace in summer is the easy choice with a buggy.",
+    indoorOutdoor: "mixed",
+    physicalIntensity: "low",
+    duration: "<1h",
+    website: "https://www.kahvilamutteri.com/",
+    tags: ["food", "café", "historical", "landmark"],
+  },
 ];

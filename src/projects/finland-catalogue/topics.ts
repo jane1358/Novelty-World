@@ -922,4 +922,382 @@ export const TOPICS: Topic[] = [
       "https://commons.wikimedia.org/wiki/Special:FilePath/Lussekatt_con_Glögg_(2019).jpg",
     ],
   },
+  {
+    slug: "hesburger",
+    title: "Hesburger",
+    aliases: ["Hesburger"],
+    shortDescription:
+      "Finland's home-grown burger chain — 270-plus orange-and-yellow outlets, a cucumber-mayo on every burger, and a market share that has out-stubborned McDonald's for forty years on the strength of one thing: it tastes like home.",
+    longDescription: [
+      "Hesburger is the burger chain that beat McDonald's in Finland. Founded in 1966 as a small Naantali grill kiosk by Heikki and Kirsti Salmela, the Hesburger-branded chain opened its first proper restaurant in 1980 in Turku's Hansa shopping centre. The corporate headquarters are still in Turku, the city remains the unofficial Hesburger capital (at one count Turku had 21 Hesburgers to McDonald's two), and the orange-and-yellow logo is now visible on around 270 Finnish high streets and motorway stops, plus another two hundred-odd outlets in the Baltics and Eastern Europe.",
+      "The defining ingredient is the mayonnaise. Hesburger runs its own sauce factory and the chain's signature cucumber mayo — slightly sweet, slightly pickled, drawn across the bun in a generous stripe — is what most Finns mean when they say a Hesburger \"tastes Finnish.\" The flagship product is the Kerroshampurilainen, a double-decker that's been on the menu since the start. The Ruishampurilainen — a burger served between two slabs of dense Finnish rye bread (ruisleipä) instead of a wheat bun — is the regional flex, occasionally returning to the menu as a limited run and unavailable in any other country's burger chain because nowhere else has the rye bread for it.",
+      "The McDonald's rivalry is the story Finns enjoy telling and it is mostly true. McDonald's entered Finland in 1984; Hesburger had been ahead of them, knew the towns better, opened drive-throughs first, sponsored the local hockey team, and undercut them on price. In 2017 McDonald's closed its remaining Turku locations entirely. The chain still operates in Helsinki and the bigger southern cities, but the further north and east you travel, the more reliably the only burger option is a Hesburger — and that's the point. Hesburger built the network McDonald's never quite cared to.",
+      "For a visitor, a Hesburger is the cheapest sit-down meal in town (a meal combo runs about €9–11), open late, and reliably itself in every outlet. The cucumber mayo is the thing to try; the Reissumies-bread rye burger if it's on; the Hesekebab if you want something less Americana; the soft-serve and the kahvi-with-pulla combo for after. Don't expect it to be exciting — it's just the burger Finland chose, and after forty years it has earned a quiet kind of national affection.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Hesburger_hamburger.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Hesburger_Naantali.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Heikki_Salmela.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Kebab_at_Hesburger.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Hesburger_Espoon_Tapiola.jpg",
+    ],
+  },
+  {
+    slug: "happiest-country",
+    title: "The Happiest Country in the World",
+    aliases: [
+      "happiest country",
+      "happiest country in the world",
+      "World Happiness Report",
+    ],
+    shortDescription:
+      "Finland has topped the UN-backed World Happiness Report every year since 2018 — nine in a row as of 2026 — and most Finns find this hilarious, because what the survey measures isn't cheerfulness, it's whether your life is working.",
+    longDescription: [
+      "Finland has been ranked the happiest country in the world for nine years running, since the World Happiness Report first put it at number one in 2018. The 2026 edition, published in March, gave Finland a score of 7.764 out of 10 — comfortably ahead of Iceland (7.540) and Denmark (7.539). The Nordics fill most of the top seven. The list is not a fluke and the gap is not closing.",
+      "The trick is what the report actually measures. Respondents are asked the Cantril ladder question: imagine a ladder where the worst possible life for you is rung zero and the best possible life is rung ten — where are you standing today? The score averages three years of those answers and is then explained, after the fact, by six variables: GDP per capita, social support, healthy life expectancy, freedom to make life choices, generosity, and freedom from corruption. It is a survey of life evaluation, not of cheerfulness. Finland wins because Finnish life works — public services function, the air and water are clean, you can trust the institutions, school is free, healthcare is universal, almost nobody is destitute, and corruption is rare. None of that requires smiling.",
+      "The Finnish reaction to the ranking is its own minor cultural artifact. Finns will tell you, with some pride, that they are not happy — they are content, satisfied, or, in the line a Finnish minister once delivered at an international conference after being introduced as a representative of the world's happiest country, \"if that's true, I'd hate to see the other nations.\" The popular gloss is that Finland is not the happiest country but the least miserable, and Finnish journalists have spent years writing think-pieces about whether the country's high rates of depression and substance abuse can really coexist with the title. Both things are true at once, because what the survey is measuring isn't joy.",
+      "As a visitor, the easiest way to see the underlying happiness is to look for what's absent rather than what's there: no visible homelessness, no aggressive panhandling, almost no street crime, no honking in traffic, no shouting on the metro, no one fighting in queues at midnight. The presence is quieter — a country where small things reliably work, strangers leave each other alone in a way that reads as respect, and the surrounding nature is twenty minutes away in any direction. Don't expect Finns to look happy. They'll look fine. That, by the survey's definition, is the happiest version of fine on Earth.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Midnight_landscape_from_Oratunturi_towards_west,_Sodankylä,_Lapland,_Finland,_2019_June.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Lake_Kenesjärvi_in_summer_night.JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Ice_swimming_at_summer_cottage_Finland.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Half_past_midnight_at_the_Finnish_Gulf.JPG",
+    ],
+  },
+  {
+    slug: "finnish-greetings",
+    title: "Moi, Hei, Terve",
+    aliases: [
+      "moi",
+      "moi moi",
+      "hei",
+      "hei hei",
+      "terve",
+      "moikka",
+      "moro",
+    ],
+    shortDescription:
+      "Finnish has a small wardrobe of ways to say hello and almost all of them double as goodbye. Moi to a friend, hei to a stranger, terve if you're over forty — and \"moi moi\" sing-songed twice as you walk out the door.",
+    longDescription: [
+      "Finns have a generous menu of greetings considering how famously sparing they are with small talk. The everyday three are moi (the casual, friendly default, especially among anyone under fifty), hei (the neutral all-purpose hello — works in a shop, a meeting, a text message, almost anywhere), and terve (slightly older, slightly warmer, literally meaning \"healthy\" — the cognate of the English \"cheers,\" used as a friendly mid-register greeting). All three are common, all three work, and the choice between them is mostly about your age and how you want to land.",
+      "The doubling trick is the part that delights visitors. Almost all of these greetings become goodbyes by being said twice in a row: moi moi, hei hei, terve terve, the sing-song repetition delivered with a tiny lift on the second syllable. A Finn on the phone closing a call will often say \"hei, hei, hei hei\" four times in a falling cadence, in a way that sounds, to the untrained ear, like the line went dead halfway through a sentence. Don't be alarmed. They're just being polite. Other variants stack on: moikka (a warmer, more enthusiastic moi), moro (a Tampere-origin regional greeting now widespread among younger speakers), and heippa and heissan (chirpier text-message versions).",
+      "The formal register is separate and short. Hyvää päivää (\"good day\") is what you use with a bank clerk or someone significantly older than you; hyvää huomenta is good morning; hyvää iltaa good evening; näkemiin is the formal goodbye, literally \"until we see each other again.\" Päivää on its own is curt and businesslike. You will hear these in customer service and in any moment with a whiff of formality, but among friends, colleagues, neighbours, and strangers in a casual setting, the moi/hei pair handles ninety percent of greetings.",
+      "For a visitor, moi is the safest single word to learn — it's friendly, low-stakes, almost impossible to use wrongly, and it works as both hello and goodbye. Add kiitos (thank you) and you have the two-word vocabulary that will get you politely through a week in Finland. And don't be surprised when a small Finnish shopkeeper bids you farewell with five hei-heis trailing off as the door closes. That's not awkwardness; that's affection.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Kauppatori_Market_(1).JPG",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Market_square,_Helsinki.JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/First_of_May_in_Helsinki,_student_culture_03.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Helsinki_Market_Square_at_Tall_Ships'_Races_2024.jpg",
+    ],
+  },
+  {
+    slug: "torilla-tavataan",
+    title: "Torilla tavataan!",
+    aliases: ["torilla tavataan", "Torille"],
+    shortDescription:
+      "\"See you at the market square!\" — the rallying cry Finns post online any time the country wins something, gets mentioned abroad, or so much as appears on a foreign weather map. Half national tradition, half running joke.",
+    longDescription: [
+      "Torilla tavataan — literally \"we meet at the [market] square\" — is the phrase Finns post, shout, and chant whenever the country wins something, beats Sweden at anything, gets shouted out by a foreign celebrity, or is otherwise visible to the rest of the world. The square in question is Helsinki's Kauppatori, the cobbled harbourside market between the Presidential Palace and the sea, and the tradition is literal: Finns really do go there when something national-scale-good happens. The phrase started as a logistical instruction and turned into a half-ironic national rallying cry.",
+      "The tradition that powers the phrase is genuine. After Finland's first-ever Ice Hockey World Championship gold in 1995, tens of thousands of fans poured spontaneously onto Helsinki's Market Square and the surrounding harbour to drink, sing, and climb on lamp posts; the same thing happened in 2011 when Finland won again (police estimated 90,000–100,000 in the square), in 2019 and 2022 with later titles, and most famously in May 2006 after Lordi's Eurovision victory, when the band held a free open-air concert in the square that drew around 80,000 people and broke the Guinness World Record for the largest-ever karaoke when the entire crowd sang \"Hard Rock Hallelujah\" back at them. Every city in Finland has a Kauppatori; Helsinki's is the one the country defaults to.",
+      "The meme version got going in the early 2010s on 9Gag and Reddit. Any time Finland was mentioned online — a foreign news clip, a Wikipedia thumbnail, a passing reference in a recipe, anything — Finnish users would flood the comments with \"Torilla tavataan!\" and lists of what they'd be bringing (kalja, makkara, sometimes a politician). The smaller and more absurd the Finland reference, the more enthusiastic the response. By the late 2010s the phrase was officially Finnish enough to get its own thisisFINLAND emoji as part of the country's centenary emoji collection. Younger Finns now use the shorter form torille (\"to the square!\") as a verbal high-five.",
+      "For a visitor, the phrase is worth learning because it tells you something about how Finland celebrates. There is no parade culture, no Independence Day fireworks, no chest-thumping nationalism. When the country wins, it goes to a public square, sings, drinks, and goes home. If you're in Helsinki during a Finnish ice hockey final, or during Eurovision night, or if something improbably Finnish has made the international news that morning, walk down to Kauppatori. The crowd may already be assembling.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Celebration_atmosphere_on_the_Senate_Square_in_Kruunuhaka,_Helsinki,_Finland,_2022_May.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/2011_IIHF_World_Championship_gold_medal_celebrations_in_Helsinki_16052011.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/2011_IIHF_World_Championship_gold_medal_celebrations_in_Helsinki.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Helsinki_IIHF_WCH_2011_Celebrations.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Ice_Hockey_celebration_Helsinki_2011.jpg",
+    ],
+  },
+  {
+    slug: "yle",
+    title: "YLE (Yleisradio)",
+    aliases: ["YLE", "Yle"],
+    shortDescription:
+      "Finland's BBC — a public broadcaster funded by a sliding-scale income tax rather than a TV licence, with four TV channels, six radio stations, and Areena, the country's de-facto Netflix.",
+    longDescription: [
+      "Yleisradio Oy — Yle for short, pronounced \"OO-leh\" — is Finland's national public broadcaster. It runs four television channels (Yle TV1, TV2, Teema & Fem, and the children's strand on TV2), six national radio stations including the Swedish-language Yle Vega and the youth-skewed YleX, regional newsrooms in every major town, and Yle Areena, the on-demand streaming platform almost every Finn has open on a phone or smart TV. Yle is to Finland roughly what the BBC is to the UK: an institution older than the country's modern political identity (founded 29 May 1926, eight years after independence), a source of news the great majority of Finns actually trust, and a producer of homegrown drama and children's TV that punches well above the size of the audience.",
+      "The funding model is the part that surprises visitors. Until 2012 Yle was paid for by an annual TV licence, the same way the BBC still is. On 1 January 2013 that was replaced by the Yle tax — a public-service broadcasting tax taken directly out of every working adult's income tax, on a sliding scale that runs from zero (low-income earners are exempt) up to roughly €160 a year (capped for high earners). Corporations pay a smaller share separately. The tax is legally ringfenced outside the regular state-budget negotiations, with built-in index adjustments — a design specifically meant to keep politicians from squeezing the broadcaster when they don't like its coverage. Annual revenue runs north of half a billion euros, all of it ad-free.",
+      "On screen, the cultural anchors are everywhere. The 8:30pm news on Yle TV1 is the country's most-watched daily broadcast. Pikku Kakkonen (\"Little Two\"), the children's strand modelled on BBC's Blue Peter, has been running every weekday since 11 January 1977 and has now educated three generations of Finns. The Independence Day Reception at the Presidential Palace pulls 2+ million Yle viewers every December 6. The Saturday-night Lotto draw is on Yle. Eurovision is on Yle. The original Finnish-language Nordic Noir crime series Sorjonen (Bordertown internationally), filmed on the Russian border, was an Yle drama before Netflix ever picked it up.",
+      "For a visitor, the practical entry point is Yle Areena (areena.yle.fi or the app). It's free, it's ad-free, most prestige Finnish drama and documentary lives there, and a lot of it has English subtitles. The catch: a chunk of the catalogue is geoblocked outside Finland for rights reasons — but while you're in the country, it's open. The headquarters and main studios sit in Länsi-Pasila in north-central Helsinki, on the appropriately-named streets Radiokatu and Televisionkatu.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Ylen_logo.svg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Yleisradion_Iso_Paja.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Yle_Areena_logo_2017.svg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/The_Radio_House,_Unioninkatu,_Helsinki,_ca._1953.jpg",
+    ],
+  },
+  {
+    slug: "hsl",
+    title: "HSL (Helsinki Region Transport)",
+    aliases: ["HSL"],
+    shortDescription:
+      "One ticket, every mode of public transport in greater Helsinki — metro, tram, bus, commuter train, the Suomenlinna ferry, and the citybikes. Buy it on the app, hold it up to the reader, done.",
+    longDescription: [
+      "HSL — Helsingin seudun liikenne, \"Helsinki Region Transport\" — is the joint authority that runs every form of public transport across the capital area: the M1 and M2 metro lines, every tram, every blue bus, the commuter rail network out to the suburbs, the Suomenlinna ferry, and the yellow seasonal Citybikes. It was founded on 17 June 2009 by six member municipalities (Helsinki, Espoo, Vantaa, Kauniainen, Kerava, Kirkkonummi) and went operational on 1 January 2010; Sipoo, Tuusula, and Siuntio joined later, bringing the membership to nine municipalities. The unified branding — the same logo, the same fare structure, the same app — replaced what used to be a scrum of separate operators.",
+      "The fare system is the part visitors should learn first. The region is divided into four concentric zones: A (the Helsinki peninsula and inner core), B (most of the rest of Helsinki plus inner Espoo and Vantaa), C (the outer suburbs including the airport), and D (towns like Kerava and Kirkkonummi). A new zone E launches 2 June 2026 covering Järvenpää and northern Tuusula. A single ticket is sold for a contiguous run of zones — AB, BC, ABC, ABCD, etc. — and is valid on every mode of transport for a fixed window (80 to 110 minutes depending on how many zones the ticket covers). A single AB ticket gets you almost anywhere most visitors actually go.",
+      "The easiest way to use it is the HSL app (iOS / Android). Register a card, pick your zones, buy a single, a day pass, or a longer pass; show the screen to a conductor or just tap it against the reader at metro gates. Day passes for ABCD run about €11 for one day and scale down per day for longer windows; the AB single is roughly €3. There's no turnstile-and-paper-ticket rigmarole on most modes — Helsinki runs an honour system with random inspectors, and getting caught without a ticket is an €80 fine. The HSL Citybike system (operated separately within the same brand) runs roughly May to October, with a €5 day pass, a €10 week pass, or a €35 season pass and thirty-minute rides on top.",
+      "Two practical notes. First, the Suomenlinna ferry is a standard HSL boat — your AB ticket covers it, so the fortress-island day-trip costs nothing extra beyond the basic fare. Second, the HSL Journey Planner (reittiopas.hsl.fi, integrated into the app) is by some margin the most accurate transport router in the country; locals use it for everything, and it works in English. Helsinki Cards and other tourist passes include HSL travel by default, but for trips of a few days the HSL day pass alone is usually cheaper than a tourist card unless you're really stacking museum entries.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Helsinki_tram_on_line_13_arriving_at_Pasilansilta_on_a_sunny_evening_in_August_2024.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Ferry_to_Suomenlinna.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Vuosaari_in_Helsinki,_Finland,_2021_August.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Tram_stop_on_Hämeentie_on_an_early_morning_in_August_2024.jpg",
+    ],
+  },
+  {
+    slug: "vr-trains",
+    title: "VR Trains",
+    aliases: ["VR train", "VR trains"],
+    shortDescription:
+      "Finland's state-owned railway runs a fast Pendolino spine down the country and an overnight sleeper to the Arctic — including a car-carrying carriage so you can wake up in Lapland with your own vehicle waiting on the platform.",
+    longDescription: [
+      "VR-Yhtymä Oy — usually just \"VR\" — is Finland's state-owned passenger railway. Trains have run in the country since the first Helsinki–Hämeenlinna line opened on 31 January 1862; the operator has been state-owned the entire time, rebranded from Suomen Valtion Rautatiet to Valtionrautatiet in 1922 and to VR Group in 1995. The current network covers roughly 7,225 km of track in a distinctive shape: a single dense spine running north from Helsinki Central, branching east toward the Russian border and west toward Turku, and stretching long thin fingers up into Lapland. Around 250 long-distance and 800 commuter rail services run every day.",
+      "The flagship is the Pendolino, a tilting high-speed Sm3 trainset (class 220 km/h on suitable track) that runs the busy long-distance routes — Helsinki to Turku, Tampere, Oulu, Joensuu, and Kuopio in two to six hours depending on how far you're going. The Allegro, a higher-speed service that ran Helsinki to St Petersburg in three and a half hours via the Karelian Trains joint venture with Russian Railways, was suspended on 27 March 2022 after the invasion of Ukraine and has not resumed; the four Sm6 trainsets that ran it sat in a Finnish shed for three years before being repainted, rebadged \"Pendolino Plus,\" and put back into domestic service in November 2025. There is currently no train connection between Finland and Russia, and no plans to restore one.",
+      "The other VR experience worth knowing about is the night train. The Santa Claus Express runs from Helsinki Central (and Turku Harbour) to Rovaniemi, Kemijärvi, and Kolari in Lapland — twelve hours each way, twice nightly for most of the year, in double-decker carriages with two- and three-person sleeper cabins (the upstairs cabins have private showers and book out months ahead in December). The thing nobody outside Finland believes until they see it: a VR night train can carry your car. You drive onto a motorail wagon at the Helsinki end, sleep through the night, drive off in Rovaniemi with the same car in the morning. Car spots start around €39 on top of the cabin fare.",
+      "Tickets are bought on vr.fi or the VR Matkalla app; advance bookings are released about ten months out and are usually cheaper than walk-up. Helsinki Central railway station — Eliel Saarinen's 1919 granite landmark with the four torch-bearing statues at the entrance — is where almost every long-distance journey starts; commuter services covered by HSL fares share the same platforms. The on-board restaurant car is competent rather than thrilling, but the long Pendolino runs through forest, lakeland, and (in winter) snow-walled cuttings are genuinely beautiful, and a window seat plus a thermos of coffee is one of the best ways to see the country.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Sm3_Pendolino_Pasilassa_tammikuussa_2024.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Helsinki_Central_railway_station_in_Finland,_2021_July.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Finnish_Pendolino_interior.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Helsingin_päärautatieasema_at_blue_hour_2022-09-17_04.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Platforms_11_and_12_at_Helsinki_Central_railway_station_on_a_sunny_afternoon_in_September_2023.jpg",
+    ],
+  },
+  {
+    slug: "migri",
+    title: "Migri (Finnish Immigration Service)",
+    aliases: ["Migri", "Maahanmuuttovirasto", "Finnish Immigration Service"],
+    shortDescription:
+      "The agency every non-Finn meets sooner or later — residence permits, citizenship, asylum, all of it routed through the EnterFinland portal, all of it slower than anyone hoped.",
+    longDescription: [
+      "Maahanmuuttovirasto — \"the Immigration Office,\" universally abbreviated Migri — is the Finnish government agency under the Ministry of the Interior that handles every flavour of immigration matter: first residence permits, permit extensions, permanent residence (the P-permit), EU citizen registration, work-based and family-based residence, study permits, asylum applications, and Finnish citizenship. The agency started operations in 1995 as Ulkomaalaisvirasto (the Aliens' Office), was rebranded Maahanmuuttovirasto in 2008, and now sits in a slab-sided Brutalist block in Pasila next door to the rail yards. Most visitors never deal with Migri at all — a passport from a visa-free country gets you 90 days in the Schengen zone — but the moment a stay tips past three months, anyone moving to Finland gets to know it very well.",
+      "The interface is the EnterFinland portal (enterfinland.fi). Almost every application — first residence permit, extension, family member's permit, citizenship — is filed online here. You upload documents, pay the fee (a first residence permit for an employee runs around €490 in 2026; a citizenship application is around €520), book an identity appointment at a Finnish embassy abroad or a Migri service point in-country, and wait. The portal is competently built by Finnish digital-government standards, which means it works but it's not pretty. Strong electronic identification — Finnish bank credentials or a mobile certificate — replaces the password once you have a Finnish ID.",
+      "The famous bit is the waiting. Migri's processing-time page is among the most-bookmarked URLs in any expat's browser, and the queues have been long enough for long enough that Finnish-speaking friends will roll their eyes when you mention them. As of 2026 a first work-based permit takes around two months, a family-tie permit around six, citizenship around 12–18; backlogs spike around legislative changes. The agency publicly tracks its 9th-decile times in the open and apologises a lot, which is small comfort when your spouse's permit is the gating item on a flight booking. Independent reform tightened the path to permanent residence to six years of A-permit residency from 8 January 2026, which has not made the queues shorter.",
+      "What residents actually use Migri for, day to day, is renewals. The first permit is the hardest; everything after is incremental. Asylum decisions, separately, are the most consequential thing Migri does — interviews are conducted in Helsinki, Raisio, Lappeenranta, and Oulu, and outcomes shape the lives of people who often have nowhere else to go. As a visitor on holiday you can safely forget Migri exists. As someone moving to Finland for work, study, family, or refuge, you are about to spend more time on its website than you'd like.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Pasilan_virastokeskus_in_Itä-Pasila,_Helsinki,_Finland,_2021_October.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Migri_logo.svg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Pasilan_virastokeskus.JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Pedestrian_passage_through_Pasila_Office_Centre_in_Itä-Pasila,_Helsinki,_Finland,_2022_May.jpg",
+    ],
+  },
+  {
+    slug: "kela",
+    title: "Kela (Social Insurance Institution)",
+    aliases: ["Kela", "Kansaneläkelaitos"],
+    shortDescription:
+      "The agency that sends every Finnish parent a baby box, every pensioner their pension, every patient a chunk of their dentist bill back, and every resident the green-and-white card you flash at any pharmacy. Eight decades of social-democratic plumbing under one roof.",
+    longDescription: [
+      "Kansaneläkelaitos — \"the National Pensions Institution,\" universally shortened to Kela — is the public agency that administers the bulk of Finland's social security. It pays out pensions, child benefits, parental and pregnancy allowances, unemployment basic benefits, sickness benefits, student financial aid, housing allowances, disability benefits, rehabilitation benefits, and the public reimbursement of private medical and dental costs. Founded on 16 December 1937 as a pure pensions provider, Kela has gradually absorbed almost every cash benefit the Finnish welfare state pays, and now sits in the middle of daily life in a way few state institutions in any country do. Almost every adult in Finland is a Kela customer, in one role or another, simultaneously.",
+      "The most visible artefact is the Kela card — the small green-and-white card every resident gets within weeks of registering, listing your personal identity number (henkilötunnus) on the back. It isn't a payment card; it's the proof of insurance you show at any pharmacy, public clinic, private GP, or hospital to trigger the Kela-funded share of the bill. A pharmacy types it in and the subsidised price comes out. A private dentist runs it and a chunk of the cost is reimbursed straight to your account. A doctor's note for sick leave automatically routes the sickness allowance through Kela for any working day past the first nine. None of this requires forms in 90% of cases; the Kela card and the personal ID number do the work.",
+      "The other famous artefact is the maternity package — the Finnish \"baby box.\" Every expectant or adoptive parent resident in Finland can choose between a €170 cash payment and a cardboard box of around 38 items: a coverall, a snowsuit, a wool cap, a bath towel, baby socks, a small mattress, sheets — and the box itself, designed to be the baby's first bed. The contents are redesigned by Kela every couple of years (and made with sustainability constraints written into the procurement spec). It has been offered to all Finnish mothers since 1949, and is now copied in some form by around sixty countries. The infant mortality rate — among the lowest in the world — gets a lot of unearned credit for it; the real reason it matters is that almost every Finn was issued the same starter kit on day one of life, regardless of family income.",
+      "For a visitor: you'll never deal with Kela. For an immigrant: Kela registration is one of the first three things you do after the Migri permit and a Maistraatti residency entry. The portal at kela.fi is bilingual (Finnish/Swedish) with substantial English coverage, the offices have walk-in service points, and the agency is widely viewed by Finns as competent if slow — the kind of grumbling-but-fundamentally-trusted institution that gets called \"hyvä Kela\" (\"good Kela\") on social media when the right benefit lands the right week. The headquarters, on Nordenskiöldinkatu in Töölö, is Alvar and Aino Aalto's red-brick 1957 masterpiece — worth a slow walk past even if you have no business inside.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Kela_hdqtrs_01.JPG",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Kela_hdqtrs_05.JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Kela_hdqtrs_09.JPG",
+    ],
+  },
+  {
+    slug: "hifk",
+    title: "HIFK Hockey",
+    aliases: ["HIFK"],
+    shortDescription:
+      "Helsinki's red-and-black hockey club, founded in 1897 as the city's first Swedish-speaking sports society — now the loudest, oldest, and most-attended hockey team in Finland's top league.",
+    longDescription: [
+      "HIFK — Idrottsföreningen Kamraterna, Helsingfors, \"the Sporting Society Comrades of Helsinki\" — is the city's flagship ice hockey club and the oldest IFK organisation in Finland. The parent athletics society was founded in 1897 by Georges Doubitsky and a group of students at the Swedish-language Reallyceum, making HIFK Finland's first organised sports club and giving it a Swedish-speaking identity it still carries today. The hockey section started in 1928, joined the SM-sarja in the 1930s, and has been a fixture of the top division ever since. The colours are red, white, and dark blue; the four-pointed star on the shield has been the crest since 1928.",
+      "Seven Finnish championships sit on the trophy shelf — three SM-sarja titles (1969, 1970, 1974) and four Liiga titles (1980, 1983, 1998, 2011). The 1998 squad is the one Finns talk about, a roster that included Olli Jokinen, Brian Rafalski, Tim Thomas, Kimmo Timonen, and Jarkko Ruutu all on the same team before they scattered to the NHL. Over 150 HIFK alumni have played in the NHL — more than any other Finnish club — and Carl Brewer, a Stanley Cup winner brought in as player-coach from Toronto in 1968, planted a North-American physical style that the club has been recognisable for ever since.",
+      "Home is Helsinki Ice Hall, opened in 1966 on Nordenskiöldinkatu in the Töölö sports complex and known to everyone as Nordis (after the address) or Petoluola, \"the Beast Cave,\" after the panther on the old crest. The arena is a low concrete bowl that seats 8,200, and HIFK is one of the few Liiga clubs whose fans regularly fill it — the team reliably leads the league in attendance, with a hardcore standing-end faithful who run their own chants without scoreboard prompts. The Stadin derby against Jokerit, Helsinki's other club, was the loudest fixture in Finnish hockey until Jokerit decamped to the KHL in 2014; their 2023 return to the Liiga brought it back, and it now sells out earlier than anything else on the calendar.",
+      "What sets HIFK apart culturally is that it's never quite been a Finnish-speaking club. The Swedish-speaking founding lives on in the official name (Helsingfors, not Helsinki), in the bilingual matchday programmes, and in a fan base that still skews slightly toward the city's Swedish-speaking minority. Combined with the dim old arena, the live organ, and a hundred-plus years of mid-Helsinki institutional weight, HIFK occupies a very particular slot in the city — the kind of club whose colours people inherit rather than choose.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/HIFK-Tappara.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/HIFK-Kärpät_pääty.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Nordis_Valotaulu_HIFK-HPK.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Helsinki_Ice_Hall_May_2022.jpg",
+    ],
+  },
+  {
+    slug: "liiga",
+    title: "Liiga (Finnish Ice Hockey League)",
+    aliases: ["Liiga", "SM-Liiga", "SM-liiga", "Kanada-malja", "Stadin derby"],
+    shortDescription:
+      "Finland's top professional ice hockey league — sixteen clubs, a six-month season, a Canada-shaped silver trophy donated by Canadian Finns in 1950, and a development pipeline that feeds an outsized share of the NHL.",
+    longDescription: [
+      "Liiga is the top division of Finnish ice hockey, founded in 1975 as SM-liiga when the country's championship went professional and broke off from the older amateur SM-sarja. It re-branded to simply \"Liiga\" in 2013, and today comprises sixteen clubs spread across Finland from Oulu in the north to Turku in the south-west. Sixty regular-season games run from mid-September through mid-March, the top four teams jump straight into the quarter-finals, the next eight battle through a wild-card round, and the playoffs run as best-of-seven series through April. The trophy is the Kanada-malja — \"Canada Bowl\" — donated by Canada's Finnish community in 1950 and first awarded in 1951.",
+      "The hierarchy is older than the league. Tappara (Tampere) is the most-titled club in Finnish hockey by a comfortable margin, with TPS (Turku) and Kärpät (Oulu) as the historical co-giants — each of those three has been the dominant force at some point in the past five decades. HIFK and Jokerit, the two Helsinki clubs, have the largest fan bases; HIFK draws the league's highest attendance year after year, and a returning Jokerit (back from a KHL detour in 2023) brought the Stadin derby back onto the calendar. Ilves, the other Tampere club, completes the set of clubs whose name a casual fan will recognise.",
+      "What sets Liiga apart from the SHL in Sweden or the KHL further east is its role as a development league. Salaries are tight — the league average sits around €130–150,000 per year, a fraction of NHL money — but the player pipeline is integrated top-to-bottom: a Liiga club isn't just a senior men's team but a vertical ladder of U8 through U20 academies all wearing the same crest. The federation runs a single national curriculum called Leijonapolku (\"the Lions' Path\") from age eight onward. The result is that Liiga punches well above its weight as a feeder system — most current Finnish NHL stars came up through it before age 20, and clubs routinely lose their best teenagers to North America while still producing the next batch.",
+      "For a visitor it's a forgiving league to watch — the games are fast, structured, less brawl-heavy than the NHL, and tickets in most arenas stay under €40. Schedules live at liiga.fi (in Finnish, but legible); Tuesday and Friday/Saturday face-offs are the norm. Outside HIFK at Nordis, Tappara and Ilves both play at Tampere Deck Arena, TPS at Gatorade Center in Turku, and Kärpät at the Oulun Energia Areena — each is reachable as a day or overnight trip from Helsinki by VR train.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Tampere_Kilpa-Veljet_(TK-V)_first_ice_hockey_team_1945.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Ishockey_(168145129017500).jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/HIFK-Tappara.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Nordis_Valotaulu_HIFK-HPK.jpg",
+    ],
+  },
+  {
+    slug: "finland-sweden-rivalry",
+    title: "The Rivalry with Sweden",
+    aliases: [
+      "Finland-Sweden rivalry",
+      "Finland–Sweden rivalry",
+      "Finnkampen",
+      "ruotsi-suomi",
+      "Suomi-Ruotsi",
+      "Tre Kronor",
+    ],
+    shortDescription:
+      "Seven hundred years inside the same kingdom, a hundred and twenty as next-door neighbours — Finland and Sweden have turned a sibling history into the most affectionate, sharp-elbowed sports rivalry in the Nordics.",
+    longDescription: [
+      "Finland was part of the Swedish realm for almost seven hundred years — from the medieval Swedish crusades of the 12th–13th centuries until 1809, when Sweden lost the eastern third of its kingdom to Russia in the Finnish War and Finland became an autonomous grand duchy under the tsar. That's longer than the United States has been a country, several times over, and the legacy is everywhere: Swedish is one of Finland's two official languages, about 5% of Finns (~290,000 people) speak it as their first language, every Helsinki street sign is bilingual, and the country's oldest institutions — the university, the parliamentary tradition, much of the legal code — were built on Swedish foundations. Sweden, for its part, has a Sweden-Finn minority of roughly 700,000 — the largest minority group in the country.",
+      "All of which is to say: when Sweden plays Finland at anything, it is a family argument with very long memory. The competition that gave the rivalry its name is Finnkampen — in Finnish, Suomi–Ruotsi-maaottelu or simply ruotsi-ottelu — an annual track-and-field international first held in 1925 and continually since 1945, the only two-country annual athletics meeting still held at world-class level. Paavo Nurmi raced in the inaugural edition. Armand Duplantis pole-vaults in the modern one. It alternates Helsinki and Stockholm year on year, sells out a stadium each time, and is the rare athletics event where the team score matters as much as any individual result.",
+      "Hockey is now the louder front. The Tre Kronor / Leijonat fixture is the marquee meeting at every World Championship and Olympics — for decades Sweden dominated, with the medal-race score from 1920 to 1988 reading 27–0 to the Swedes; since Finland's first World gold in 1995 the count is now level on 19 each. Finns refer to a Sweden game as a maaottelu (\"country match\") and treat it with the kind of edge usually reserved for World Cup finals. The 2022 Beijing Olympics, where Finland finally took its first hockey gold, did not require beating Sweden in the final — but every Finn would tell you it counted twice anyway. Football has a smaller but real version of the same fixture, ski jumping and cross-country skiing carry it on the winter side, and even the Eurovision telecasts get joke-tense when the two countries vote.",
+      "The cultural register is friendlier than the scoreline language suggests. Finnish humour about Sweden tends toward the loving-mockery end — Swedes are mocked as soft, conflict-averse, vaguely effete — and Swedish humour about Finland returns the favour with stoic-drunk stereotypes. Both are caricatures; both are deployed without real venom. The bond is closer than either country admits in public, the rivalry sharper than outsiders expect, and the matches — whichever sport — are nearly always worth watching.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Flag_of_Sweden_and_Finland.png",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Famous_spectators_of_athletics_game_Finland-Sweden-Germany,_September_1940_in_Helsinki.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Lasse-Viren-1980.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Pekka-Vasala-1972.jpg",
+    ],
+  },
+  {
+    slug: "helsinki-skateboarding",
+    title: "Helsinki Skateboarding",
+    aliases: [
+      "Helsinki skateboarding",
+      "Helsinki skate scene",
+      "skateboarding culture",
+      "Suvilahti DIY",
+    ],
+    shortDescription:
+      "A capital city of 650,000 people that has produced internationally watched pro skaters, a Tony-Hawk-approved DIY skatepark, and a public-architecture-as-skate-spot culture you'd expect from somewhere three times its size.",
+    longDescription: [
+      "Helsinki's skate scene punches several weight classes above what a sub-million Nordic city should produce. The reasons are largely accidental: the post-war Finnish building boom poured the city centre in slick granite, the modernist 1980s–90s public squares left immaculate marble ledges everywhere, and Helsinki winters are short enough that an outdoor scene actually has a half-year season to work with. The result is a small but very serious community of skaters who have been quietly doing it well since the 1980s, and a generation of pros — Eniz Fazliov on Nike SB the most internationally visible — who turn up regularly in skateboarding magazine video parts.",
+      "The defining institution is Suvilahti DIY, a community-built concrete park in the old gasworks district of Kalasatama. Started in 2011 by Mäxy, Jone, and Anssi Paukkunen of the Finnish Skateboarding Association, it grew organically through a decade of bowls, banks, and ledges poured by the people who skated them. Tony Hawk visited and called it special. The City of Helsinki rented the land for a token sum, then announced in the mid-2020s that it would reclaim the site for the Suvilahti Event Hub — meaning the DIY will be demolished by the end of 2026 after fifteen years as the country's spiritual skate home. The wake will be long.",
+      "Beyond Suvilahti the city is a string of architectural spots locals have absorbed into the scene. Kiasma — the curved Steven Holl contemporary art museum — has its black granite ledges and slappy curbs from the adjacent Musiikkitalo that nobody gets kicked out of, and is the most reliable meet-up spot in the city. Lasipalatsi Square's five concrete-tiled mounds (the rooftop of the Amos Rex art museum underneath) double as transitions. The Senate Square steps and Töölönlahti's lakeside paths get sessioned in dry weather. Janne Saario — a Helsinki-born skater turned landscape architect — has spent the last two decades designing serious public skate plazas across Finland, including the Micropolis plaza behind the Olympic Stadium; his rule is that a skatepark architect should skate for at least eight years before drawing one.",
+      "The indoor side covers the dark months. Kontula Skeittihalli on the city's eastern edge is the largest indoor park in the country (€1 for kids, €3.50 for adults). The Skeittikontti at Korkeasaari Zoo is the newest. Helride, the annual community weekender every July, ties the whole scene together in public — that's catalogued as an Idea — and the smaller scene around it (board shops like My Favorite Things, the Finnish distributor Santaco, locally made parts) keeps the ecosystem alive in a country with a six-month winter. If you skate at all, bring a board.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/DIY_skatepark_in_Suvilahti,_Helsinki,_Finland,_2022_October.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Trois_skates_(Kiasma_Helsinki)_(2752086079).jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Kontulan_skeittihallin_sisäänkäynti.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Skatepark_in_Suvilahti,_Helsinki,_Finland,_2018.jpg",
+    ],
+  },
+  {
+    slug: "hockey-culture",
+    title: "Hockey Culture in Finland",
+    aliases: [
+      "Finnish hockey",
+      "ice hockey",
+      "hockey culture",
+      "jääkiekko",
+      "Leijonat",
+    ],
+    shortDescription:
+      "Five and a half million people, 327 ice rinks, three World Championships, an Olympic gold, and a tradition of celebrating titles by climbing onto the bronze mermaid in Helsinki's market square — hockey is Finland's de facto national religion.",
+    longDescription: [
+      "Hockey is the only sport in Finland that competes for cultural primacy with sauna, and on the right Saturday night it wins. The country has 327 ice rinks and roughly 65,000 registered players for a population of 5.5 million — a rink-per-capita ratio that beats almost every country outside Canada. Every town of any size has a sheet of ice somewhere, every elementary school has a hockey kid in its class, and the men's national team — the Leijonat, \"the Lions\" — is one of only six countries in the IIHF \"Big Six\" of world hockey, alongside Canada, the USA, Sweden, Russia, and Czechia. The kicker is the size differential: Finland produces this output with a population smaller than Minnesota's.",
+      "The national-team breakthrough was 1995 in Stockholm, when a young Finnish side beat Sweden 4–1 in the World Championship final on Swedish ice — the country's first ever world title, and a result that still gets replayed on television every May. Two more World Championships followed (2011 in Bratislava, 2019 in Bratislava again, 2022 in Tampere on home ice), and then the long-elusive Olympic gold in Beijing 2022, where Finland went undefeated and beat the Russian team 2–1 in a final played without NHL players. After each of those wins the country has done the same thing: gathered, by the tens of thousands, at Helsinki's Kauppatori market square around the bronze Havis Amanda mermaid statue, fenced it off to protect it from the celebration, watched fans climb the fence anyway, and partied until morning. The phrase Torilla tavataan — \"see you at the square\" — has become the SMS shorthand for any Finnish sporting triumph.",
+      "The player roll-call traces the cultural depth. Jari Kurri won five Stanley Cups alongside Wayne Gretzky in 1980s Edmonton. Teemu Selänne — \"the Finnish Flash\" — set an NHL rookie scoring record (76 goals) in 1992–93 that has never been broken, and his number 8 hangs in three rafters across two countries. Saku Koivu captained both the Montreal Canadiens and the national team. The current generation runs through Aleksander Barkov (Florida), Sebastian Aho (Carolina), Mikko Rantanen, Patrik Laine, Roope Hintz, and Miro Heiskanen — Finns currently make up roughly 5% of NHL rosters from a country that's 0.07% of the world's population, an over-representation only Canada and Sweden come close to matching.",
+      "What makes Finnish hockey culture distinctive — and Finns will tell you this — is that it's a team game first. The tactical identity is patient, structured, defensively honest, the kind of hockey that looks dull until you notice nobody's getting through the neutral zone. Coaches at every level call it the Finnish way; Finns half-jokingly call it sisu hockey. The infrastructure built around it (single-organisation U8-through-senior clubs, the federation's Leijonapolku curriculum, mandatory coach certifications, the Pohjola Camp for elite teenagers) is widely studied by other federations precisely because it produces NHLers and Olympic golds with so little money. Watch a Liiga game, walk past a frozen pond on a January Saturday with twenty kids on it, drink at Kauppatori the night Finland wins anything — it's all the same thing.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/2011_IIHF_World_Championship_gold_medal_celebrations_in_Helsinki.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Helsinki_IIHF_WCH_2011_Celebrations.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Finland_fan_ice_hockey_jersey.JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Ice_Hockey_celebration_Helsinki_2011.jpg",
+    ],
+  },
+  {
+    slug: "kebab-pizzeriat",
+    title: "Kebab-Pizzeriat (Finnish Kebab Places)",
+    aliases: [
+      "kebab",
+      "kebabs",
+      "kebab-pizzeria",
+      "kebab pizzeria",
+      "kebab-pizzeriat",
+      "kebab pizzerias",
+      "kebab-pizzerias",
+      "kebabranskalaiset",
+      "kebabrulla",
+      "rullakebab",
+      "kebab pizza",
+      "kebab-pizza",
+      "döner",
+      "döner kebab",
+      "doner kebab",
+      "vöner",
+    ],
+    shortDescription:
+      "Finland's neighbourhood kebab-pizzeria — the combined kebab joint and pizza takeaway in every Helsinki block and on every small-town high street — is one of the more visible legacies of 1990s immigration and a genre that scarcely exists anywhere else in the world.",
+    longDescription: [
+      "Walk down almost any street in Finland and you will pass one: a bright-lit corner shop with a doner cone rotating in the window, a chalkboard of pizza specials taped to the door, two or three small tables inside, the same dozen dishes on every menu. The kebab-pizzeria — kebab and pizza sold from the same counter, by the same family, off the same oven — is the most visible everyday legacy of late-20th-century immigration to Finland, and it is enough of an institution that Finnish writer Sakari Nupponen has spent years collecting people's kebab memories for a book about it. Estimates put the total at well over a thousand such places nationwide; Lauttasaari alone has at least half a dozen.",
+      "The form arrived in two stages. Finland's first proper kebab restaurant opened in 1982 — Veikko and Tuula Huhtakangas, restaurateurs in Tampere, picked up the idea from a Stockholm chef and opened in Pori; Ani opened in Helsinki the same year and is still going. Through the 1980s these remained novelty restaurants run mostly by Turkish arrivals. The combined kebab-and-pizza takeaway model came together in the 1990s, when a wave of Kurdish, Iraqi, Iranian, Turkish, and Bosnian arrivals — many fleeing the Kurdish conflict, the Iraqi wars, or the Yugoslav wars — found themselves in a Finland gripped by recession, with the freshly-granted right (1990) to own businesses, and with pizzerias already established as a low-overhead first-generation immigrant business model. The cheapest, fastest way into the trade was to bolt a kebab cone onto an existing pizzeria, or to open a new one with both. The combination spread through provincial Finland in the 1990s and into urban Helsinki through the 2000s, and now defines the genre.",
+      "The menu is remarkably uniform across the whole country, which is part of what makes it function as a single phenomenon. The core list: kebab in bread (leipäkebab); kebab on a plate with fries, rice, or potatoes (kebabranskalaiset, kebabriisi); kebab as a wrap (rullakebab or kebabrulla); Iskender kebab (kebab over flatbread with yogurt-tomato sauce); kebab pizza (Swedish-origin: doner meat, garlic, sometimes pepperoncini and chips on top, garlic-yogurt sauce — the Finnish version always includes garlic, distinguishing it from the Swedish original); a long pizza menu off the same oven, including \"family pizzas\" sized for four; falafel and shawarma as side options; salad with the plates; sodas at €3–4; rarely alcohol. Prices are consistent: €10–15 for a plate, €8–12 for a pizza, lunch specials a euro or two cheaper. Most places open 10:00 or 11:00 and close late, with Fri–Sat the latest nights.",
+      "Crucially, this is not the British high-street kebab (drunk-food, post-pub, takeaway-only) and it is not the American food-truck shawarma (street-food, lunchtime, single concept). It is its own thing: the family-run dual-cuisine neighbourhood takeaway, open from lunch through late evening, dine-in if you want, that functions as community infrastructure. People order kebabranskalaiset for the family dinner on a tired Tuesday; they take a pizza home for a Saturday movie; they walk in for a quick lunch at the counter. The owners know the regulars by face. The kebab-pizzeria is to Finland roughly what the Indian curry house is to Britain or the Vietnamese phở shop is to Australia — the same pattern (immigrant cuisine adapted into a cheap-and-reliable everyday cornerstone), the same cultural significance, the same generation of family-run institutions slowly graduating into Finnishness. Try one. Order the kebabranskalaiset, ask for the garlic sauce, and you've eaten a Finnish staple that the country doesn't quite realise yet is one of its own.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Döner_kebab_in_Helsinki.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Virrat_-_Kebab-Pizzeria_Dilana_C_IMG_2721.JPG",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Eerikin_Pippuri_Kebab.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Kebab_Kauppuri_Kauppurienkatu_4_Oulu_20230512.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Döner_kebab_and_beer_in_Helsinki.jpg",
+    ],
+  },
+  {
+    slug: "finnish-baby-box",
+    title: "The Finnish Baby Box",
+    aliases: [
+      "baby box",
+      "baby boxes",
+      "Finnish baby box",
+      "maternity package",
+      "äitiyspakkaus",
+    ],
+    shortDescription:
+      "Every baby born in Finland starts life sleeping in a state-issued cardboard box — thirty-eight items of starter kit and the box itself as a first crib, the same package whether your parents are surgeons or unemployed.",
+    longDescription: [
+      "The äitiyspakkaus — the maternity package, known internationally as the Finnish baby box — is the cardboard box every expectant or adoptive parent resident in Finland receives from the state in the third trimester of pregnancy. Inside it are around 38 items the Kela maternity package team has decided every newborn needs: a coverall, a snowsuit and balaclava for the Finnish winter, bodysuits and socks, a sleeping bag, a hooded bath towel, nail scissors, a hairbrush, a toothbrush, muslin squares, a picture book, a teething toy, bedsheets, a thin mattress — and the box itself, which is designed to be the baby's first bed. Parents can choose between the box and a flat-rate cash grant (€170, recently raised to €210 for some cohorts), and 87% of Finnish parents pick the box because the contents are worth significantly more than the cash.",
+      "The programme is older than most Finnish welfare-state institutions and started outside the government. In 1922 Ilmi Hallstén, a volunteer with the Mannerheim League for Child Welfare, set up a system of \"rotating baskets\" of donated baby clothes and linens, supported by the paediatrician Arvo Ylppö, who brought textiles in from Germany. By the late 1920s over 180 local sewing circles were operating across Finland. Parliament codified the idea in the Maternity Grants Act of 1937, and the first government-issued maternity grants — given either as a box of goods or a cash benefit — reached low-income mothers in 1938; about two-thirds of new mothers qualified. In 1949 the benefit was made universal, on one condition: to receive it, the expectant mother had to visit a doctor or municipal pre-natal clinic before the end of her fourth month of pregnancy. That carrot — material support traded for early prenatal care — is the design choice the rest of the world keeps copying.",
+      "The cardboard-box-as-bed thing is the part that goes viral every few years. Finland's infant mortality rate is among the lowest on the planet (around 1.3 per 1,000 live births), and the box is regularly credited with the achievement — most famously in a 2013 BBC feature that made the package an international story. Researchers are careful to note there is no real evidence the box itself moved the needle on infant mortality; what moved it was universal prenatal care, hospital births becoming the norm, and free health visits. But the box remains the symbol, partly because it works as a safe sleep space (firm flat mattress, no soft bedding, baby alone on its back) and partly because it's the most photogenic welfare benefit ever invented. Scotland adopted its own Baby Box in 2017 and has handed out over 350,000; New Jersey, Nunavut, New South Wales, Wales, Argentina, and Ireland have launched versions of their own.",
+      "The contents change every year — Kela runs a public competition for Finnish designers, the colour palette has been deliberately gender-neutral since the early 2000s, and recent editions have rotated condoms, breastfeeding pads, lubricant, and reusable nappies in and out depending on the year's social-policy debates (the 2025 edition quietly dropped the condoms and lubricant, which made the news). The historical boxes are collectable. The 1957 contents look like a different country; the 1970s boxes are on display at Finnish museums; the contents from your own birth year, if you're Finnish, are a fixture of small talk. For an immigrant who's about to have a baby in Finland: you apply through Kela, you receive the box about a month before your due date, and you join several generations of Finns whose first sleep was on a small mattress at the bottom of a cardboard box stamped with the year of their birth.",
+    ],
+    thumbnailUrl:
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Finnish_maternity_package_of_2014.jpg",
+    galleryUrls: [
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Mother_receiving_finnish_maternity_package.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Finnish_maternity_package.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Äitiyspakkauksen_sisältöä_vuonna_1957.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Äitiyspakkauksen_laatikko_1970–1973.jpg",
+      "https://commons.wikimedia.org/wiki/Special:FilePath/Vauvan_ensimmäinen_sänky_vuodevaatteineen.jpg",
+    ],
+  },
 ];
