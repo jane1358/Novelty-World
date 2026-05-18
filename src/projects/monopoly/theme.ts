@@ -17,9 +17,16 @@ export const MONOPOLY_THEME = {
   "--mono-card": "#141414",
   "--mono-ink": "#f5f5f5",
   "--mono-frame": "#000000",
-  // Mid-gray for railroad/utility chips and icons that need to read against
-  // the dark card without taking on a property-color identity.
+  // Mid-gray fallback for neutral surfaces; specific chip kinds below have
+  // their own identity colors chosen to stand off the dark board without
+  // colliding with any of the property hues.
   "--mono-neutral": "#525252",
+  // Railroad and utility identity colors. Used by both the header ownership
+  // chips and the square-row icons so the same hue means the same thing
+  // wherever it appears. GOJF chips reuse `--mono-orange` to match the
+  // JAIL / JAIL→ labels on the board (the card's whole purpose is jail).
+  "--mono-rail": "#94a3b8",
+  "--mono-utility": "#9333ea",
   "--mono-player-crimson": "#b91c1c",
   "--mono-player-violet": "#7c3aed",
   "--mono-player-teal": "#0d9488",

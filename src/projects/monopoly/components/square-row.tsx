@@ -120,7 +120,7 @@ function SpaceIcon({ space }: { space: Space }) {
       return (
         <Train
           strokeWidth={1.75}
-          style={{ ...iconStyle, color: "var(--mono-pink)" }}
+          style={{ ...iconStyle, color: "var(--mono-rail)" }}
         />
       );
     case "utility": {
@@ -128,7 +128,7 @@ function SpaceIcon({ space }: { space: Space }) {
       return (
         <Icon
           strokeWidth={1.75}
-          style={{ ...iconStyle, color: "var(--mono-green)" }}
+          style={{ ...iconStyle, color: "var(--mono-utility)" }}
         />
       );
     }

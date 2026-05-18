@@ -82,4 +82,7 @@ export interface GameState {
   mortgaged: Readonly<Record<number, boolean>>;
   /** position -> developed structures. 1-4 are houses, 5 is a hotel. */
   houses: Readonly<Record<number, number>>;
+  /** Holder of each Get Out of Jail Free card, keyed by deck source. Absent
+   *  means the card sits at the bottom of its deck. */
+  jailFreeCards: Readonly<{ chance?: string; communityChest?: string }>;
 }

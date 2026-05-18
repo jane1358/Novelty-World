@@ -61,6 +61,10 @@ export const MOCK_STATE: GameState = {
     28: true, // Water Works (utility)
     39: true, // Boardwalk (dark blue)
   },
+  jailFreeCards: {
+    // Kyle holds the Chance GOJF; the CC card stays in the deck.
+    chance: "p1",
+  },
   houses: {
     // Pinks — hotels
     11: 5, // St. Charles Place

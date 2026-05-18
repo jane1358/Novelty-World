@@ -69,7 +69,17 @@ function sliceState(state: GameState, count: PlayerCount): GameState {
     const h = state.houses[pos];
     if (h) houses[pos] = h;
   }
-  return { players, ownership, mortgaged, houses };
+  const jailFreeCards: { chance?: string; communityChest?: string } = {};
+  if (state.jailFreeCards.chance && ids.has(state.jailFreeCards.chance)) {
+    jailFreeCards.chance = state.jailFreeCards.chance;
+  }
+  if (
+    state.jailFreeCards.communityChest &&
+    ids.has(state.jailFreeCards.communityChest)
+  ) {
+    jailFreeCards.communityChest = state.jailFreeCards.communityChest;
+  }
+  return { players, ownership, mortgaged, houses, jailFreeCards };
 }
 
 function withAllOwnedByFirst(state: GameState): GameState {
@@ -79,16 +89,25 @@ function withAllOwnedByFirst(state: GameState): GameState {
   for (const pos of OWNABLE_POSITIONS) {
     ownership[pos] = firstId;
   }
-  return { ...state, ownership };
+  return {
+    ...state,
+    ownership,
+    jailFreeCards: { chance: firstId, communityChest: firstId },
+  };
 }
 
 function withRandomOwnership(state: GameState): GameState {
   const players = state.players;
   if (players.length === 0) return state;
+  const pickId = () =>
+    players[Math.floor(Math.random() * players.length)].id;
   const ownership: Record<number, string> = {};
   for (const pos of OWNABLE_POSITIONS) {
-    ownership[pos] =
-      players[Math.floor(Math.random() * players.length)].id;
+    ownership[pos] = pickId();
   }
-  return { ...state, ownership };
+  return {
+    ...state,
+    ownership,
+    jailFreeCards: { chance: pickId(), communityChest: pickId() },
+  };
 }
