@@ -1,7 +1,14 @@
-export function Footer() {
+import type { GameState } from "../types";
+import { EventLog } from "./event-log";
+
+interface Props {
+  state: GameState;
+}
+
+export function Footer({ state }: Props) {
   return (
     <div
-      className="relative z-10 flex shrink-0"
+      className="relative z-10 flex shrink-0 flex-col"
       // Mirror of the header treatment: sharp 1px divider plus a soft
       // upward shadow so the footer reads as elevated above the board.
       style={{
@@ -9,10 +16,13 @@ export function Footer() {
           "0 -1px 0 var(--mono-frame), 0 -6px 12px rgba(0, 0, 0, 0.75)",
       }}
     >
-      <FooterButton label="Roll" />
-      <FooterButton label="Buy" />
-      <FooterButton label="Trade" />
-      <FooterButton label="End" />
+      <EventLog state={state} />
+      <div className="flex">
+        <FooterButton label="Roll" />
+        <FooterButton label="Buy" />
+        <FooterButton label="Trade" />
+        <FooterButton label="End" />
+      </div>
     </div>
   );
 }

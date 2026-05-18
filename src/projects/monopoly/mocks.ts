@@ -1,4 +1,4 @@
-import type { GameState, Player } from "./types";
+import type { GameState, Player, TurnGroup } from "./types";
 
 const PLAYERS: readonly Player[] = [
   { id: "p1", name: "Kyle",   color: "crimson", icon: "dog",    cash: 1240, position: 10, inJail: true,  jailTurns: 1 },
@@ -83,4 +83,146 @@ export const MOCK_STATE: GameState = {
     32: 4, // North Carolina Avenue
     34: 4, // Pennsylvania Avenue
   },
+  turns: MOCK_TURNS(),
 };
+
+/** Synthetic play history exercising every GameEvent kind so the EventLog
+ *  can be developed visually without a real game loop. Sequence isn't
+ *  state-consistent — its job is to surface each renderer, not simulate a
+ *  legal game. Mock IDs map: p1 Kyle, p2 Alex, p3 Sam, p4 Jordan. */
+function MOCK_TURNS(): readonly TurnGroup[] {
+  return [
+    {
+      turn: 11,
+      playerId: "p1",
+      events: [
+        { kind: "roll", dice: [3, 4], doublesStreak: 0, toPosition: 7, passedGo: false },
+        {
+          kind: "card-drawn",
+          source: "chance",
+          text: "Advance to Illinois Avenue. If you pass GO, collect $200.",
+        },
+        { kind: "rent", ownerId: "p4", position: 24, amount: 1100 },
+      ],
+    },
+    {
+      turn: 12,
+      playerId: "p2",
+      events: [
+        { kind: "roll", dice: [6, 6], doublesStreak: 1, toPosition: 22, passedGo: false },
+        { kind: "roll", dice: [3, 4], doublesStreak: 0, toPosition: 29, passedGo: false },
+        { kind: "buy", position: 29, price: 280 },
+      ],
+    },
+    {
+      turn: 13,
+      playerId: "p3",
+      events: [
+        { kind: "jail-roll", dice: [2, 4], escaped: false, jailTurn: 1 },
+      ],
+    },
+    {
+      turn: 14,
+      playerId: "p4",
+      events: [
+        { kind: "roll", dice: [4, 2], doublesStreak: 0, toPosition: 30, passedGo: false },
+        { kind: "go-to-jail", reason: "tile" },
+      ],
+    },
+    {
+      turn: 15,
+      playerId: "p1",
+      events: [
+        { kind: "jail-card", source: "chance" },
+        { kind: "roll", dice: [4, 3], doublesStreak: 0, toPosition: 14, passedGo: false },
+        { kind: "rent", ownerId: "p2", position: 14, amount: 900 },
+        { kind: "mortgage", position: 5, received: 100 },
+      ],
+    },
+    {
+      turn: 16,
+      playerId: "p2",
+      events: [
+        { kind: "roll", dice: [5, 3], doublesStreak: 0, toPosition: 37, passedGo: false },
+        {
+          kind: "card-drawn",
+          source: "chance",
+          text: "Advance to GO. Collect $200.",
+        },
+      ],
+    },
+    {
+      turn: 17,
+      playerId: "p3",
+      events: [
+        { kind: "jail-card", source: "communityChest" },
+        { kind: "roll", dice: [3, 4], doublesStreak: 0, toPosition: 17, passedGo: false },
+        { kind: "build", position: 16, toLevel: 4, cost: 100 },
+        { kind: "build", position: 18, toLevel: 3, cost: 100 },
+      ],
+    },
+    {
+      turn: 18,
+      playerId: "p4",
+      events: [
+        { kind: "jail-roll", dice: [4, 4], escaped: true, jailTurn: 2 },
+        { kind: "rent", ownerId: "p3", position: 18, amount: 550 },
+      ],
+    },
+    {
+      turn: 19,
+      playerId: "p1",
+      events: [
+        { kind: "roll", dice: [2, 2], doublesStreak: 1, toPosition: 4, passedGo: false },
+        { kind: "tax", taxName: "Income Tax", amount: 200 },
+        { kind: "roll", dice: [5, 3], doublesStreak: 0, toPosition: 12, passedGo: false },
+        { kind: "unmortgage", position: 1, cost: 33 },
+      ],
+    },
+    {
+      turn: 20,
+      playerId: "p2",
+      events: [
+        { kind: "roll", dice: [5, 2], doublesStreak: 0, toPosition: 27, passedGo: false },
+        { kind: "rent", ownerId: "p4", position: 27, amount: 22 },
+        {
+          kind: "trade",
+          withId: "p4",
+          gave: { positions: [14], cash: 200, gojf: [] },
+          received: { positions: [27], cash: 0, gojf: [] },
+        },
+        { kind: "sell-building", position: 11, toLevel: 4, refund: 50 },
+      ],
+    },
+    {
+      turn: 21,
+      playerId: "p3",
+      events: [
+        { kind: "roll", dice: [4, 2], doublesStreak: 0, toPosition: 6, passedGo: false },
+        { kind: "auction", position: 6, winnerId: "p3", price: 80 },
+      ],
+    },
+    {
+      turn: 22,
+      playerId: "p4",
+      events: [
+        { kind: "roll", dice: [3, 3], doublesStreak: 1, toPosition: 36, passedGo: false },
+        { kind: "roll", dice: [5, 5], doublesStreak: 2, toPosition: 6, passedGo: true },
+        { kind: "rent", ownerId: "p3", position: 6, amount: 6 },
+        { kind: "roll", dice: [6, 6], doublesStreak: 3, toPosition: 18, passedGo: false },
+        { kind: "go-to-jail", reason: "three-doubles" },
+      ],
+    },
+    {
+      turn: 23,
+      playerId: "p1",
+      events: [
+        { kind: "roll", dice: [3, 5], doublesStreak: 0, toPosition: 39, passedGo: false },
+        { kind: "rent", ownerId: "p4", position: 39, amount: 2000 },
+        { kind: "mortgage", position: 12, received: 75 },
+        { kind: "bankrupt", creditorId: "p4" },
+        { kind: "winner", winnerId: "p4" },
+      ],
+    },
+  ];
+}

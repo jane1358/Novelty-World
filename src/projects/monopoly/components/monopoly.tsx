@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { SPACES } from "../data";
 import { MOCK_STATE } from "../mocks";
 import { MONOPOLY_THEME } from "../theme";
-import type { GameState } from "../types";
+import type { GameEvent, GameState, TurnGroup } from "../types";
 import { Footer } from "./footer";
 import { Header } from "./header";
 import { Squares } from "./squares";
@@ -47,7 +47,7 @@ export function Monopoly() {
     >
       <Header state={state} />
       <Squares state={state} />
-      <Footer />
+      <Footer state={state} />
     </div>
   );
 }
@@ -79,7 +79,42 @@ function sliceState(state: GameState, count: PlayerCount): GameState {
   ) {
     jailFreeCards.communityChest = state.jailFreeCards.communityChest;
   }
-  return { players, ownership, mortgaged, houses, jailFreeCards };
+  const turns = filterTurns(state.turns, ids);
+  return { players, ownership, mortgaged, houses, jailFreeCards, turns };
+}
+
+// Keep only turns whose active player survived the slice, and within those,
+// drop events whose cross-player references (rent payee, trade partner,
+// bankruptcy creditor) point at sliced-away players. Lets the EventLog
+// assume every player id it sees is renderable.
+function filterTurns(
+  turns: readonly TurnGroup[],
+  ids: ReadonlySet<string>,
+): TurnGroup[] {
+  const result: TurnGroup[] = [];
+  for (const turn of turns) {
+    if (!ids.has(turn.playerId)) continue;
+    const events = turn.events.filter((e) => eventRefsValid(e, ids));
+    if (events.length === 0) continue;
+    result.push({ ...turn, events });
+  }
+  return result;
+}
+
+function eventRefsValid(
+  event: GameEvent,
+  ids: ReadonlySet<string>,
+): boolean {
+  switch (event.kind) {
+    case "rent":
+      return ids.has(event.ownerId);
+    case "trade":
+      return ids.has(event.withId);
+    case "bankrupt":
+      return event.creditorId === null || ids.has(event.creditorId);
+    default:
+      return true;
+  }
 }
 
 function withAllOwnedByFirst(state: GameState): GameState {
