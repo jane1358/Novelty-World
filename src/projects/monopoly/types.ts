@@ -70,6 +70,9 @@ export interface Player {
    *  position 10 with `inJail: false`; jailed players sit at the same position
    *  with `inJail: true`. */
   inJail: boolean;
+  /** Which turn of the jail sentence the player is on (1–3 in standard rules).
+   *  Ignored when `inJail` is false. */
+  jailTurns: number;
 }
 
 /** Authoritative game state. Once the multiplayer wiring lands this will be

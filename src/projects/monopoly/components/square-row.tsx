@@ -317,13 +317,41 @@ function JailedToken({ player }: { player: Player }) {
   return (
     <div className="relative aspect-square h-[70%]">
       <PlayerToken player={player} className="h-full w-full" />
-      <div
-        className="pointer-events-none absolute inset-0 rounded-full"
-        style={{
-          backgroundImage:
-            "repeating-linear-gradient(90deg, var(--mono-frame) 0 1.5px, transparent 1.5px 4px)",
-        }}
-      />
+      {/* Four prison bars clipped to the token's circular outline. */}
+      <div className="pointer-events-none absolute inset-0 flex justify-evenly overflow-hidden rounded-full">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div
+            key={i}
+            style={{ width: "2px", backgroundColor: "var(--mono-frame)" }}
+          />
+        ))}
+      </div>
+      <JailTurnChip turns={player.jailTurns} />
+    </div>
+  );
+}
+
+function JailTurnChip({ turns }: { turns: number }) {
+  return (
+    <div
+      className="pointer-events-none absolute inset-x-0 -top-1 flex h-3 items-center justify-evenly rounded-full border"
+      style={{
+        backgroundColor: "var(--mono-frame)",
+        borderColor: "var(--mono-ink)",
+      }}
+    >
+      {[1, 2, 3].map((n) => (
+        <div
+          key={n}
+          className="h-1.5 w-1.5 rounded-full"
+          style={{
+            backgroundColor:
+              turns >= n
+                ? "var(--mono-ink)"
+                : "color-mix(in srgb, var(--mono-ink) 30%, transparent)",
+          }}
+        />
+      ))}
     </div>
   );
 }
