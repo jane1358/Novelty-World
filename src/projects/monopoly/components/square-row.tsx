@@ -4,6 +4,7 @@ import { SPACES } from "../data";
 import { rentAt, type RentDisplay } from "../logic";
 import { PLAYER_COLOR_VAR, PROPERTY_COLOR_VAR } from "../theme";
 import type { GameState, Player, Space } from "../types";
+import { MortgageMarker } from "./mortgage-marker";
 import { PlayerToken } from "./player-token";
 
 interface Props {
@@ -57,7 +58,7 @@ export function SquareRow({ state, position }: Props) {
         ) : (
           <SpaceIcon space={space} />
         )}
-        {mortgaged && <MortgageMarker />}
+        {mortgaged && <MortgageMarker strokeWidth={2} />}
       </div>
       <div
         className="flex min-w-0 flex-1 items-center overflow-hidden px-2"
@@ -217,36 +218,6 @@ function NameCell({
         {displayName(space)}
       </span>
     </div>
-  );
-}
-
-function MortgageMarker() {
-  return (
-    <svg
-      className="pointer-events-none absolute inset-0 h-full w-full"
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-    >
-      <line
-        x1="0"
-        y1="0"
-        x2="100"
-        y2="100"
-        stroke="white"
-        strokeWidth="2"
-        vectorEffect="non-scaling-stroke"
-      />
-      <line
-        x1="100"
-        y1="0"
-        x2="0"
-        y2="100"
-        stroke="white"
-        strokeWidth="2"
-        vectorEffect="non-scaling-stroke"
-      />
-    </svg>
   );
 }
 

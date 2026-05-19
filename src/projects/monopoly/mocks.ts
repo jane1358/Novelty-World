@@ -1,9 +1,12 @@
 import type {
+  GameEvent,
   GameState,
   Player,
   PlayerPreferences,
   TurnGroup,
 } from "./types";
+
+export type PlayerCount = 2 | 4 | 8;
 
 const PLAYERS: readonly Player[] = [
   { id: "p1", name: "Kyle",   color: "crimson", icon: "dog",    cash: 1240, position: 10, inJail: true,  jailTurns: 1 },
@@ -245,4 +248,95 @@ function MOCK_TURNS(): readonly TurnGroup[] {
       ],
     },
   ];
+}
+
+/** Trim the mock so only the first `count` players remain, dropping
+ *  ownership/mortgage/houses entries and turn-log references that belonged
+ *  to the removed players so the rest of the board stays internally
+ *  consistent. Used by the store to default to a 4-player game and by the
+ *  debug shortcuts to swap visible player counts at runtime. */
+export function sliceState(state: GameState, count: PlayerCount): GameState {
+  const players = state.players.slice(0, count);
+  const ids = new Set(players.map((p) => p.id));
+  const ownership: Record<number, string> = {};
+  const mortgaged: Record<number, boolean> = {};
+  const houses: Record<number, number> = {};
+  for (const [posStr, pid] of Object.entries(state.ownership)) {
+    if (!ids.has(pid)) continue;
+    const pos = Number(posStr);
+    ownership[pos] = pid;
+    if (state.mortgaged[pos]) mortgaged[pos] = true;
+    const h = state.houses[pos];
+    if (h) houses[pos] = h;
+  }
+  const jailFreeCards: { chance?: string; communityChest?: string } = {};
+  if (state.jailFreeCards.chance && ids.has(state.jailFreeCards.chance)) {
+    jailFreeCards.chance = state.jailFreeCards.chance;
+  }
+  if (
+    state.jailFreeCards.communityChest &&
+    ids.has(state.jailFreeCards.communityChest)
+  ) {
+    jailFreeCards.communityChest = state.jailFreeCards.communityChest;
+  }
+  const turns = filterTurns(state.turns, ids);
+  const preferences = Object.fromEntries(
+    Object.entries(state.preferences).filter(([pid]) => ids.has(pid)),
+  );
+  // If the active turn references a player we just sliced away, fall back
+  // to the first surviving player so the UI has a coherent turn pointer.
+  // Auction/pendingTrade contents are dropped for the same reason.
+  const turn = ids.has(state.turn.playerId)
+    ? state.turn
+    : {
+        playerId: players[0]?.id ?? state.turn.playerId,
+        phase: "pre-roll" as const,
+        doublesStreak: 0,
+        paused: false,
+      };
+  return {
+    players,
+    ownership,
+    mortgaged,
+    houses,
+    jailFreeCards,
+    turns,
+    turn,
+    preferences,
+    rngSeed: state.rngSeed,
+  };
+}
+
+// Keep only turns whose active player survived the slice, and within those,
+// drop events whose cross-player references (rent payee, trade partner,
+// bankruptcy creditor) point at sliced-away players. Lets the EventLog
+// assume every player id it sees is renderable.
+function filterTurns(
+  turns: readonly TurnGroup[],
+  ids: ReadonlySet<string>,
+): TurnGroup[] {
+  const result: TurnGroup[] = [];
+  for (const turn of turns) {
+    if (!ids.has(turn.playerId)) continue;
+    const events = turn.events.filter((e) => eventRefsValid(e, ids));
+    if (events.length === 0) continue;
+    result.push({ ...turn, events });
+  }
+  return result;
+}
+
+function eventRefsValid(
+  event: GameEvent,
+  ids: ReadonlySet<string>,
+): boolean {
+  switch (event.kind) {
+    case "rent":
+      return ids.has(event.ownerId);
+    case "trade":
+      return ids.has(event.withId);
+    case "bankrupt":
+      return event.creditorId === null || ids.has(event.creditorId);
+    default:
+      return true;
+  }
 }

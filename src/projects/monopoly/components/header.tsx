@@ -2,6 +2,7 @@ import { Droplets, KeyRound, Train, Zap, type LucideIcon } from "lucide-react";
 import { SPACES } from "../data";
 import { PROPERTY_COLOR_VAR } from "../theme";
 import type { GameState, Player, PropertyColor } from "../types";
+import { MortgageMarker } from "./mortgage-marker";
 import { PlayerToken } from "./player-token";
 
 interface Props {
@@ -231,7 +232,7 @@ function Chip({
             : { boxShadow: `inset 0 0 0 1px ${color}` }
         }
       >
-        {owned && mortgaged && <MortgageMarker />}
+        {owned && mortgaged && <MortgageMarker strokeWidth={1.5} />}
       </div>
     );
   }
@@ -257,7 +258,7 @@ function Chip({
           color: owned ? iconColor : "rgba(255, 255, 255, 0.35)",
         }}
       />
-      {owned && mortgaged && <MortgageMarker />}
+      {owned && mortgaged && <MortgageMarker strokeWidth={1.5} />}
     </div>
   );
 }
@@ -294,32 +295,3 @@ function iconChipPalette(
   };
 }
 
-function MortgageMarker() {
-  return (
-    <svg
-      className="pointer-events-none absolute inset-0 h-full w-full"
-      viewBox="0 0 100 100"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-    >
-      <line
-        x1="0"
-        y1="0"
-        x2="100"
-        y2="100"
-        stroke="white"
-        strokeWidth="1.5"
-        vectorEffect="non-scaling-stroke"
-      />
-      <line
-        x1="100"
-        y1="0"
-        x2="0"
-        y2="100"
-        stroke="white"
-        strokeWidth="1.5"
-        vectorEffect="non-scaling-stroke"
-      />
-    </svg>
-  );
-}

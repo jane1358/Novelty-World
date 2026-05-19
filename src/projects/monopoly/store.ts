@@ -2,8 +2,11 @@
 
 import { create } from "zustand";
 import { apply, autoStep, createRng } from "./engine";
-import { MOCK_STATE } from "./mocks";
+import { MOCK_STATE, sliceState } from "./mocks";
 import type { ApplyResult, GameState, Intent } from "./types";
+
+// 4-player default — debug keys can swap to 2 or 8 at runtime via dev.ts.
+const INITIAL_STATE = sliceState(MOCK_STATE, 4);
 
 interface MonopolyActions {
   /** Set this client's player id (assigned during lobby join). */
@@ -30,7 +33,7 @@ export type MonopolyStore = {
 
 export const useMonopolyStore = create<MonopolyStore>((set, get) => ({
   myPlayerId: null,
-  state: MOCK_STATE,
+  state: INITIAL_STATE,
 
   setMyPlayer: (playerId) => set({ myPlayerId: playerId }),
 
