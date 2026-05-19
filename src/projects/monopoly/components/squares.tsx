@@ -2,18 +2,16 @@
 
 import { useEffect, useRef } from "react";
 import { SPACES } from "../data";
-import type { GameState } from "../types";
 import { SquareRow } from "./square-row";
 
 // Each row is 44px (h-11). The 1px divider is painted as an inset bottom
 // shadow on the row itself, so it doesn't add to the row's box.
 const CYCLE_PX = SPACES.length * 44;
 
-interface Props {
-  state: GameState;
-}
-
-export function Squares({ state }: Props) {
+// SquareRow subscribes to the store per-instance, so Squares doesn't take
+// or thread state — it just lays out three copies of the board and handles
+// the infinite-scroll snap-back.
+export function Squares() {
   const ref = useRef<HTMLDivElement>(null);
 
   // Land in the middle copy on mount so the user can scroll either direction
@@ -44,11 +42,7 @@ export function Squares({ state }: Props) {
     >
       {[0, 1, 2].flatMap((copy) =>
         SPACES.map((_, position) => (
-          <SquareRow
-            key={`${copy}-${position}`}
-            state={state}
-            position={position}
-          />
+          <SquareRow key={`${copy}-${position}`} position={position} />
         )),
       )}
     </div>

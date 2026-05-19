@@ -30,7 +30,7 @@ export function Monopoly() {
       style={{ ...MONOPOLY_THEME, backgroundColor: "var(--mono-frame)" }}
     >
       <Header state={state} />
-      <Squares state={state} />
+      <Squares />
       <Footer state={state} />
     </div>
   );

@@ -1,27 +1,39 @@
+"use client";
+
 import type { CSSProperties, ReactNode } from "react";
 import { Diamond, Dice5, Droplets, Package, Train, Zap } from "lucide-react";
+import { useShallow } from "zustand/react/shallow";
 import { SPACES } from "../data";
 import { rentAt, type RentDisplay } from "../logic";
+import { useMonopolyStore } from "../store";
 import { PLAYER_COLOR_VAR, PROPERTY_COLOR_VAR } from "../theme";
-import type { GameState, Player, Space } from "../types";
+import type { Player, Space } from "../types";
 import { MortgageMarker } from "./mortgage-marker";
 import { PlayerToken } from "./player-token";
 
 interface Props {
-  state: GameState;
   position: number;
 }
 
-export function SquareRow({ state, position }: Props) {
+// Subscribe per-row to the slices we actually read. Zustand bails on === for
+// primitives and (via useShallow) on element-wise equality for arrays/objects;
+// the engine's immutable updates preserve unchanged Player refs, so a roll
+// only re-renders the SquareRows whose contents really changed.
+export function SquareRow({ position }: Props) {
   const space = SPACES[position];
-  const ownerId = state.ownership[position];
-  const owner = ownerId
-    ? state.players.find((p) => p.id === ownerId)
-    : undefined;
-  const mortgaged = state.mortgaged[position] ?? false;
-  const houses = state.houses[position] ?? 0;
-  const tokens = state.players.filter((p) => p.position === position);
-  const rent = rentAt(state, position);
+  const ownerColor = useMonopolyStore((s) => {
+    const id = s.state.ownership[position];
+    const owner = id ? s.state.players.find((p) => p.id === id) : undefined;
+    return owner?.color ?? null;
+  });
+  const mortgaged = useMonopolyStore(
+    (s) => s.state.mortgaged[position] ?? false,
+  );
+  const houses = useMonopolyStore((s) => s.state.houses[position] ?? 0);
+  const tokens = useMonopolyStore(
+    useShallow((s) => s.state.players.filter((p) => p.position === position)),
+  );
+  const rent = useMonopolyStore(useShallow((s) => rentAt(s.state, position)));
 
   // Two zones: a left identity panel (property color full-bleed, or card bg
   // for non-properties) and a right context panel tinted with the owner's
@@ -40,8 +52,8 @@ export function SquareRow({ state, position }: Props) {
     backgroundColor: leftBackground,
     boxShadow: dividerShadow,
   };
-  const contextTint = owner
-    ? `color-mix(in srgb, ${PLAYER_COLOR_VAR[owner.color]} 28%, var(--mono-card))`
+  const contextTint = ownerColor
+    ? `color-mix(in srgb, ${PLAYER_COLOR_VAR[ownerColor]} 28%, var(--mono-card))`
     : "var(--mono-card)";
 
   return (
