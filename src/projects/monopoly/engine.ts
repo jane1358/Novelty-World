@@ -15,13 +15,30 @@ export interface Rng {
 
 /** Construct an RNG from the game's seed. The state's `rngSeed` field is
  *  the source of truth; advancing the RNG over the course of a game makes
- *  the run deterministically replayable from the event log. */
+ *  the run deterministically replayable from the event log.
+ *
+ *  Implementation: xmur3 string-hash → mulberry32 PRNG. Tiny, deterministic,
+ *  no dependencies. JavaScript intentionally does not let you seed
+ *  `Math.random`, so any engine that needs reproducibility brings its own.
+ *  See https://stackoverflow.com/a/47593316. */
 export function createRng(seed: string): Rng {
-  // TODO: swap in a seedable PRNG (e.g. mulberry32) once engine logic
-  // lands. For the skeleton we ignore `seed` so calling code compiles;
-  // determinism will arrive with the rules implementation.
-  void seed;
-  return { next: () => Math.random() };
+  let h = 1779033703 ^ seed.length;
+  for (let i = 0; i < seed.length; i++) {
+    h = Math.imul(h ^ seed.charCodeAt(i), 3432918353);
+    h = (h << 13) | (h >>> 19);
+  }
+  h = Math.imul(h ^ (h >>> 16), 2246822507);
+  h = Math.imul(h ^ (h >>> 13), 3266489909);
+  let state = (h ^ (h >>> 16)) >>> 0;
+  return {
+    next: () => {
+      state = (state + 0x6d2b79f5) | 0;
+      let t = state;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    },
+  };
 }
 
 /** Apply a single external intent. On success the caller should then run
