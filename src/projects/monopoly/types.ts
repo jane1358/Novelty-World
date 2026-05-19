@@ -305,8 +305,13 @@ export interface GameState {
   turn: TurnState;
   /** Per-player automation policy, keyed by player id. */
   preferences: Readonly<Record<string, PlayerPreferences>>;
-  /** Opaque seed for the RNG. Engine functions take an RNG argument and
-   *  advance it; this seed is what lets a game be deterministically
-   *  replayed from its event log. */
+  /** Immutable identifier for the game's RNG stream. Set once when the
+   *  game starts; used to derive the initial `rngState` and useful as a
+   *  human-readable handle when debugging. */
   rngSeed: string;
+  /** Current internal state of the mulberry32 PRNG. Advances on every
+   *  engine call that consumes randomness, and is what makes a game
+   *  resumable from a serialized GameState alone — the RNG lives in
+   *  state, not in host memory. */
+  rngState: number;
 }

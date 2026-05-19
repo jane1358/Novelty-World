@@ -1,3 +1,4 @@
+import { createRng } from "./engine";
 import type {
   GameEvent,
   GameState,
@@ -19,10 +20,45 @@ const PLAYERS: readonly Player[] = [
   { id: "p8", name: "Drew",   color: "slate",   icon: "bird",   cash: 3210, position: 12, inJail: false, jailTurns: 0 },
 ];
 
+const STARTING_CASH = 1500;
+
 const DEFAULT_PREFERENCES: PlayerPreferences = {
   jailStance: "leave",
   autoBuyCashFraction: 1,
 };
+
+/** Fresh 4-player game: all tokens on GO, no ownership, empty log with the
+ *  first TurnGroup opened for the starting player. Names/colors/icons come
+ *  from the same roster the mock state uses (p1 = Kyle, the human seat). */
+export function freshGame(rngSeed = "fresh-1"): GameState {
+  const players: Player[] = PLAYERS.slice(0, 4).map((p) => ({
+    ...p,
+    cash: STARTING_CASH,
+    position: 0,
+    inJail: false,
+    jailTurns: 0,
+  }));
+  const firstPlayer = players[0];
+  return {
+    players,
+    ownership: {},
+    mortgaged: {},
+    houses: {},
+    jailFreeCards: {},
+    turns: [{ turn: 1, playerId: firstPlayer.id, events: [] }],
+    turn: {
+      playerId: firstPlayer.id,
+      phase: "pre-roll",
+      doublesStreak: 0,
+      paused: false,
+    },
+    preferences: Object.fromEntries(
+      players.map((p) => [p.id, DEFAULT_PREFERENCES]),
+    ),
+    rngSeed,
+    rngState: createRng(rngSeed).getState(),
+  };
+}
 
 /** Hardcoded GameState for visual development. 4 players at JAIL (2 jailed,
  *  2 visiting), 3 on St. Charles Place, and 1 on the Electric Company —
@@ -107,6 +143,7 @@ export const MOCK_STATE: GameState = {
     PLAYERS.map((p) => [p.id, DEFAULT_PREFERENCES]),
   ),
   rngSeed: "mock-seed",
+  rngState: createRng("mock-seed").getState(),
 };
 
 /** Synthetic play history exercising every GameEvent kind so the EventLog
@@ -304,6 +341,7 @@ export function sliceState(state: GameState, count: PlayerCount): GameState {
     turn,
     preferences,
     rngSeed: state.rngSeed,
+    rngState: state.rngState,
   };
 }
 
