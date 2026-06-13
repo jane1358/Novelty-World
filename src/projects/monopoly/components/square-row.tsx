@@ -4,6 +4,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { Diamond, Dice5, Droplets, Package, Train, Zap } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 import { SPACES } from "../data";
+import { firstNegativePlayer } from "../engine";
 import { rentAt, type RentDisplay } from "../logic";
 import { useMonopolyStore } from "../store";
 import { useTokenAnim } from "../token-anim-store";
@@ -22,8 +23,16 @@ interface Props {
 // only re-renders the SquareRows whose contents really changed.
 export function SquareRow({ position }: Props) {
   const space = SPACES[position];
+  // Owner hue reflects the trade-in-progress: while a draft is open, a
+  // reassigned square paints with its STAGED recipient's color so everyone
+  // watching sees the proposal take shape, not just the proposer.
   const ownerColor = useMonopolyStore((s) => {
-    const id = s.state.ownership[position];
+    const draft = s.state.turn.tradeDraft;
+    const stagedTarget =
+      draft && s.state.turn.phase === "trade-building"
+        ? draft.propertyTo[position]
+        : undefined;
+    const id = stagedTarget ?? s.state.ownership[position];
     const owner = id ? s.state.players.find((p) => p.id === id) : undefined;
     return owner?.color ?? null;
   });
@@ -43,33 +52,53 @@ export function SquareRow({ position }: Props) {
     : tokens;
   const rent = useMonopolyStore(useShallow((s) => rentAt(s.state, position)));
 
-  // Mortgage-mode interactivity: when the local player has the mortgage
-  // panel open (voluntary or forced), squares they own become tap targets
-  // that stage a mortgage flip. The panel itself shows the same staging
-  // — clicking either surface is just a faster path to the same toggle.
+  // The board doubles as the interaction surface for two modes:
+  //  - Mortgage staging (voluntary while paused, or forced must-raise-cash):
+  //    squares the actor owns become tap targets that stage a mortgage flip.
+  //  - Trade building: the proposer taps any owned, building-free square to
+  //    cycle its recipient through the players and back to no-change.
+  // `stagedFlip` (mortgage) and `tradeStaged` both light the orange ring so
+  // the staged set reads at a glance on the board itself.
   const stagedFlip = useMonopolyStore(
     (s) => s.mortgageStaged?.[position] ?? null,
   );
+  const tradeStaged = useMonopolyStore((s) => {
+    const draft = s.state.turn.tradeDraft;
+    if (s.state.turn.phase !== "trade-building" || !draft) return false;
+    return position in draft.propertyTo;
+  });
   const clickable = useMonopolyStore((s) => {
     const me = s.myPlayerId;
     if (!me) return false;
-    if (s.state.turn.playerId !== me) return false;
-    const inMortgageMode =
-      s.mortgageStaged !== null || s.state.turn.phase === "must-raise-cash";
+    const { phase, playerId, tradeDraft } = s.state.turn;
+
+    // Trade building: only the proposer, only owned + building-free squares.
+    if (phase === "trade-building") {
+      if (tradeDraft?.proposerId !== me) return false;
+      return position in s.state.ownership && !s.state.houses[position];
+    }
+
+    const inMortgageMode = s.mortgageStaged !== null || phase === "must-raise-cash";
     if (!inMortgageMode) return false;
+    // Voluntary staging is the active player's own turn; the forced settler is
+    // whoever is in the red (may be off-turn after a trade).
+    if (phase === "must-raise-cash") {
+      if (firstNegativePlayer(s.state) !== me) return false;
+    } else if (playerId !== me) {
+      return false;
+    }
     if (s.state.ownership[position] !== me) return false;
     if (s.state.houses[position]) return false;
     // During forced raise-cash, mortgaged squares aren't toggleable — the
     // engine refuses un-mortgages in this phase.
-    if (
-      s.state.turn.phase === "must-raise-cash" &&
-      s.state.mortgaged[position]
-    ) {
-      return false;
-    }
+    if (phase === "must-raise-cash" && s.state.mortgaged[position]) return false;
     return true;
   });
   const toggleMortgageStage = useMonopolyStore((s) => s.toggleMortgageStage);
+  const cycleTradeProperty = useMonopolyStore((s) => s.cycleTradeProperty);
+  const isTradeBuilding = useMonopolyStore(
+    (s) => s.state.turn.phase === "trade-building",
+  );
 
   // Two zones: a left identity panel (property color full-bleed, or card bg
   // for non-properties) and a right context panel tinted with the owner's
@@ -92,12 +121,12 @@ export function SquareRow({ position }: Props) {
     ? `color-mix(in srgb, ${PLAYER_COLOR_VAR[ownerColor]} 28%, var(--mono-card))`
     : "var(--mono-card)";
 
-  // Inline stage indicator: an orange ring around the row when this square
-  // is staged for a mortgage flip, so the player can see the staged set at
-  // a glance on the board itself (the panel shows it too, but the board is
+  // Inline stage indicator: an orange ring around the row when this square is
+  // staged — a mortgage flip or a trade reassignment — so the staged set reads
+  // at a glance on the board itself (the panel shows it too, but the board is
   // the spatial map). 2px inset ring overlay rather than a border to avoid
   // shifting the row's content edges.
-  const stageOverlay: ReactNode = stagedFlip !== null && (
+  const stageOverlay: ReactNode = (stagedFlip !== null || tradeStaged) && (
     <div
       className="pointer-events-none absolute inset-0"
       style={{
@@ -136,7 +165,10 @@ export function SquareRow({ position }: Props) {
     return (
       <button
         type="button"
-        onClick={() => { toggleMortgageStage(position); }}
+        onClick={() => {
+          if (isTradeBuilding) cycleTradeProperty(position);
+          else toggleMortgageStage(position);
+        }}
         className="relative flex h-11 w-full shrink-0 overflow-hidden text-left"
         style={{ color: "var(--mono-ink)", cursor: "pointer" }}
       >

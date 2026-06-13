@@ -22,7 +22,6 @@ import type {
   GameEvent,
   GameState,
   Player,
-  TradePayload,
   TurnGroup,
 } from "../types";
 
@@ -330,15 +329,16 @@ function EventBody({
     case "unmortgage":
       return <SpaceLabel position={event.position} />;
     case "trade": {
-      const other = playersById.get(event.withId);
-      if (!other) return null;
+      const proposer = playersById.get(event.proposerId);
       return (
         <>
-          <span style={{ opacity: 0.6 }}>with</span>
-          <PlayerChip player={other} />
-          <TradeSide payload={event.gave} />
-          <span style={{ opacity: 0.7, fontWeight: 600 }}>⇄</span>
-          <TradeSide payload={event.received} />
+          {proposer && (
+            <>
+              <span style={{ opacity: 0.6 }}>by</span>
+              <PlayerChip player={proposer} />
+            </>
+          )}
+          <TradeMoves event={event} playersById={playersById} />
         </>
       );
     }
@@ -482,44 +482,52 @@ function RollTotal({ value }: { value: number }) {
   );
 }
 
-function TradeSide({ payload }: { payload: TradePayload }) {
+// Multi-party trade summary: one "asset → new holder" segment per property
+// and card that changed hands, plus one "player ±$" segment per cash move.
+// Reads as "who ends up with what", which scans better across N parties than
+// trying to render each player's give/get columns on one log line.
+function TradeMoves({
+  event,
+  playersById,
+}: {
+  event: Extract<GameEvent, { kind: "trade" }>;
+  playersById: ReadonlyMap<string, Player>;
+}) {
   const parts: ReactNode[] = [];
-  for (const pos of payload.positions) {
-    parts.push(<SpaceLabel key={`p-${pos}`} position={pos} />);
-  }
-  if (payload.cash > 0) {
-    parts.push(<Money key="cash" amount={payload.cash} />);
-  }
-  for (const source of payload.gojf) {
-    parts.push(<GojfTag key={`g-${source}`} source={source} />);
-  }
-  if (parts.length === 0) {
+  for (const [posStr, ownerId] of Object.entries(event.propertyTo)) {
+    const owner = playersById.get(ownerId);
+    if (!owner) continue;
     parts.push(
-      <span key="nothing" style={{ opacity: 0.5 }}>
-        nothing
+      <span key={`p-${posStr}`} className="inline-flex items-center gap-0.5">
+        <SpaceLabel position={Number(posStr)} />
+        <Arrow />
+        <PlayerChip player={owner} />
       </span>,
     );
   }
-  return (
-    <span className="inline-flex items-center gap-x-1">
-      {joinWithPlus(parts)}
-    </span>
-  );
-}
-
-function joinWithPlus(parts: readonly ReactNode[]): ReactNode[] {
-  const out: ReactNode[] = [];
-  parts.forEach((p, i) => {
-    if (i > 0) {
-      out.push(
-        <span key={`plus-${i}`} style={{ opacity: 0.4 }}>
-          +
-        </span>,
-      );
-    }
-    out.push(p);
-  });
-  return out;
+  for (const [src, holderId] of Object.entries(event.gojfTo)) {
+    const holder = holderId ? (playersById.get(holderId) ?? null) : null;
+    if (!holder) continue;
+    parts.push(
+      <span key={`g-${src}`} className="inline-flex items-center gap-0.5">
+        <GojfTag source={src as CardSource} />
+        <Arrow />
+        <PlayerChip player={holder} />
+      </span>,
+    );
+  }
+  for (const [pid, delta] of Object.entries(event.cashDelta)) {
+    if (!delta) continue;
+    const p = playersById.get(pid);
+    if (!p) continue;
+    parts.push(
+      <span key={`c-${pid}`} className="inline-flex items-center gap-0.5">
+        <PlayerChip player={p} />
+        <Money amount={Math.abs(delta)} sign={delta > 0 ? "+" : "-"} />
+      </span>,
+    );
+  }
+  return <span className="inline-flex items-center gap-x-2">{parts}</span>;
 }
 
 function GojfTag({ source }: { source: CardSource }) {

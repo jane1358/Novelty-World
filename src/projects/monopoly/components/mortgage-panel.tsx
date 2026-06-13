@@ -33,14 +33,11 @@ export function MortgagePanel({ state, playerId }: Props) {
   const player = state.players.find((p) => p.id === playerId);
   if (!player) return null;
 
+  // Forced mode: the player's cash has already gone negative (the charge —
+  // rent or a trade's cash/mortgage-interest — was applied immediately). The
+  // shortfall they must mortgage back is simply how far below zero they are.
   const isForced = state.turn.phase === "must-raise-cash";
-  const debt = isForced ? (state.turn.pendingDebt?.amount ?? 0) : 0;
-  const creditorId = isForced
-    ? (state.turn.pendingDebt?.creditorId ?? null)
-    : null;
-  const creditor = creditorId
-    ? (state.players.find((p) => p.id === creditorId) ?? null)
-    : null;
+  const shortfall = isForced ? Math.max(0, -player.cash) : 0;
 
   let netDelta = 0;
   for (const [posStr, target] of Object.entries(staged)) {
@@ -54,9 +51,9 @@ export function MortgagePanel({ state, playerId }: Props) {
     }
   }
   const cashAfter = player.cash + netDelta;
-  const coversDebt = !isForced || cashAfter >= debt;
+  const backInBlack = cashAfter >= 0;
   const hasStaged = Object.keys(staged).length > 0;
-  const canCommit = cashAfter >= 0 && coversDebt && (isForced || hasStaged);
+  const canCommit = backInBlack && (isForced || hasStaged);
 
   return (
     <div className="relative z-10 flex shrink-0" style={SECTION_STYLE}>
@@ -67,11 +64,7 @@ export function MortgagePanel({ state, playerId }: Props) {
           minHeight: "56px",
         }}
       >
-        <Header
-          isForced={isForced}
-          debt={debt}
-          creditor={creditor?.name ?? null}
-        />
+        <Header isForced={isForced} shortfall={shortfall} />
         <CashLine
           cashBefore={player.cash}
           cashAfter={cashAfter}
@@ -81,12 +74,12 @@ export function MortgagePanel({ state, playerId }: Props) {
           <span
             className="truncate tabular-nums"
             style={{
-              color: coversDebt ? "var(--mono-green)" : "var(--mono-red)",
+              color: backInBlack ? "var(--mono-green)" : "var(--mono-red)",
             }}
           >
-            {coversDebt
-              ? `Covers $${debt.toLocaleString("en-US")} debt`
-              : `Need $${(debt - cashAfter).toLocaleString("en-US")} more`}
+            {backInBlack
+              ? "Back in the black"
+              : `Need $${(-cashAfter).toLocaleString("en-US")} more`}
           </span>
         )}
       </div>
@@ -120,12 +113,10 @@ const SECTION_STYLE: CSSProperties = {
 
 function Header({
   isForced,
-  debt,
-  creditor,
+  shortfall,
 }: {
   isForced: boolean;
-  debt: number;
-  creditor: string | null;
+  shortfall: number;
 }) {
   if (isForced) {
     return (
@@ -133,8 +124,7 @@ function Header({
         className="truncate font-semibold uppercase tracking-wide"
         style={{ color: "var(--mono-red)" }}
       >
-        Raise ${debt.toLocaleString("en-US")}
-        {creditor !== null && ` for ${creditor}`}
+        Raise ${shortfall.toLocaleString("en-US")}
       </span>
     );
   }

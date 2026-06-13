@@ -1,5 +1,6 @@
 import { SPACES } from "./data";
 import {
+  mortgageInterestAt,
   mortgageValueAt,
   ownablePrice,
   rentDue,
@@ -8,10 +9,14 @@ import {
 import type {
   ArmedPauses,
   ApplyResult,
+  CardSource,
   GameEvent,
   GameState,
   Intent,
+  PendingTrade,
   Player,
+  RaiseCashResume,
+  TradeTerms,
   TurnGroup,
   TurnState,
 } from "./types";
@@ -88,6 +93,14 @@ export function apply(state: GameState, intent: Intent): ApplyResult {
   }
   if (intent.kind === "mortgage") return applyMortgage(state, intent);
   if (intent.kind === "unmortgage") return applyUnmortgage(state, intent);
+  if (intent.kind === "request-trade") return applyRequestTrade(state, intent);
+  if (intent.kind === "update-trade-draft") {
+    return applyUpdateTradeDraft(state, intent);
+  }
+  if (intent.kind === "cancel-trade") return applyCancelTrade(state, intent);
+  if (intent.kind === "propose-trade") return applyProposeTrade(state, intent);
+  if (intent.kind === "accept-trade") return applyAcceptTrade(state, intent);
+  if (intent.kind === "decline-trade") return applyDeclineTrade(state, intent);
   if (intent.kind === "resume") return applyResume(state, intent);
   if (intent.kind === "end-turn") return applyEndTurn(state, intent);
   return { ok: false, reason: `intent ${intent.kind} not yet implemented` };
@@ -139,7 +152,7 @@ function enterPostRoll(
     phase: "post-roll",
     paused,
     pendingBuy: undefined,
-    pendingDebt: undefined,
+    raiseCash: undefined,
   };
   const armedPauses = paused
     ? clearArmedFlag(state.armedPauses, state.turn.playerId, "beforeEnd")
@@ -237,21 +250,77 @@ function maxRaisableCash(state: GameState, ownerId: string): number {
   return total;
 }
 
-/** Charge the active player rent for landing on `position`. Three branches:
+/** The first player (in seat order) whose cash is below zero, or null if
+ *  everyone is in the black. This IS the current debtor during
+ *  `must-raise-cash`: a charge is applied immediately — cash can go negative —
+ *  and whoever is most-negative-in-seat-order must climb back to ≥ 0 before
+ *  the next debtor (or play) continues. Seat order makes multi-debtor trade
+ *  settlements deterministic. */
+export function firstNegativePlayer(state: GameState): string | null {
+  for (const p of state.players) {
+    if (p.cash < 0) return p.id;
+  }
+  return null;
+}
+
+/** After a charge has moved cash (and possibly pushed someone below zero),
+ *  decide what happens next:
  *
- *  1. Cash >= debt: pay in full immediately. Emit a `rent` event reflecting
- *     the payment.
- *  2. Cash < debt but cash + raisable >= debt: enter the `must-raise-cash`
- *     phase with `pendingDebt` set. No cash moves and no event is emitted
- *     yet — the rent event fires at settle time (in `applyMortgage` when
- *     the player has scraped enough cash together to clear the debt). The
- *     log reads "mortgage A, mortgage B, rent paid" in chronological order
- *     rather than "rent owed" then a silent settlement.
- *  3. Cash + raisable < debt: emit the rent event with the FULL debt
- *     (records the obligation), transfer all of the payer's cash to the
- *     creditor, and bust them. The log reads "owed $1100 → bust → estate
- *     to Jordan" — papering over the partial settlement is more confusing
- *     than calling it out. */
+ *  - Someone is in the red → park in `must-raise-cash`, remembering where to
+ *    `resume` once everyone is back to ≥ 0. The debtor(s) settle by
+ *    mortgaging (later: selling buildings) through `applyMortgage`.
+ *  - Nobody is in the red → resume immediately: `after-landing` continues the
+ *    active player's landing (doubles re-roll / post-roll); `pre-roll` returns
+ *    to the boundary, where the next `autoStep` re-checks the trade queue.
+ *
+ *  The same helper serves rent (`after-landing`) and trade settlement
+ *  (`pre-roll`), which is the whole point of unifying the debt model. */
+function settleOrRaise(state: GameState, resume: RaiseCashResume): GameState {
+  if (firstNegativePlayer(state) !== null) {
+    return {
+      ...state,
+      turn: {
+        ...state.turn,
+        phase: "must-raise-cash",
+        paused: false,
+        raiseCash: resume,
+        pendingBuy: undefined,
+        tradeDraft: undefined,
+        pendingTrade: undefined,
+      },
+    };
+  }
+  const cleared: GameState = {
+    ...state,
+    turn: { ...state.turn, raiseCash: undefined },
+  };
+  if (resume === "after-landing") return afterLanding(cleared);
+  return {
+    ...cleared,
+    turn: {
+      ...cleared.turn,
+      phase: "pre-roll",
+      paused: false,
+      pendingBuy: undefined,
+      tradeDraft: undefined,
+      pendingTrade: undefined,
+    },
+  };
+}
+
+/** Charge the active player rent for landing on `position`. Two branches:
+ *
+ *  1. Cash + raisable < rent: they can't cover it even after mortgaging
+ *     everything. Transfer whatever cash they have, log the FULL debt (so the
+ *     log reads "owed $1100 → bust → estate to Jordan"), bust to the creditor,
+ *     and hand control onward (or end at game-over).
+ *  2. Otherwise: deduct the rent immediately — cash may go negative — log it,
+ *     then `settleOrRaise`. If they had the cash, play continues at once; if
+ *     not, they drop into `must-raise-cash` and mortgage back to ≥ 0. The log
+ *     reads "rent −$500 (now in the red), mortgage A, mortgage B".
+ *
+ *  This is the unified debt path: a debtor who CAN recover always does so by
+ *  going negative then raising, never by deferring the payment. */
 function chargeRent(
   state: GameState,
   payerId: string,
@@ -262,107 +331,40 @@ function chargeRent(
   const payerIdx = state.players.findIndex((p) => p.id === payerId);
   const recipientIdx = state.players.findIndex((p) => p.id === recipientId);
   const payer = state.players[payerIdx];
-
-  if (payer.cash >= rentAmount) {
-    const players = state.players.map((p, i) => {
-      if (i === payerIdx) return { ...p, cash: p.cash - rentAmount };
-      if (i === recipientIdx) return { ...p, cash: p.cash + rentAmount };
-      return p;
-    });
-    const rentEvent: GameEvent = {
-      kind: "rent",
-      ownerId: recipientId,
-      position,
-      amount: rentAmount,
-    };
-    const turns = appendEventToActiveTurn(state.turns, rentEvent);
-    return {
-      state: { ...state, players, turns },
-      newEvents: [rentEvent],
-    };
-  }
-
-  const raisable = maxRaisableCash(state, payerId);
-  if (payer.cash + raisable >= rentAmount) {
-    // Enter must-raise-cash. Cash transfer and rent event are deferred to
-    // settle time so the log reads in chronological order.
-    const turn: TurnState = {
-      ...state.turn,
-      phase: "must-raise-cash",
-      paused: false,
-      pendingDebt: { amount: rentAmount, creditorId: recipientId },
-    };
-    return { state: { ...state, turn }, newEvents: [] };
-  }
-
-  // Even mortgaging everything won't cover. Transfer whatever cash there
-  // is, log the full debt, bust.
-  const players = state.players.map((p, i) => {
-    if (i === payerIdx) return { ...p, cash: 0 };
-    if (i === recipientIdx) return { ...p, cash: p.cash + payer.cash };
-    return p;
-  });
   const rentEvent: GameEvent = {
     kind: "rent",
     ownerId: recipientId,
     position,
     amount: rentAmount,
   };
-  const turns = appendEventToActiveTurn(state.turns, rentEvent);
-  const afterPartial: GameState = { ...state, players, turns };
-  const bust = goBankrupt(afterPartial, payerId, recipientId);
-  return {
-    state: bust.state,
-    newEvents: [rentEvent, ...bust.newEvents],
-  };
-}
 
-/** Pay an active-turn `pendingDebt` and exit the must-raise-cash phase
- *  through the same `afterLanding` path the original rent step would have
- *  taken if cash had been available — which means doubles still grant
- *  another roll, and armed `beforeEnd` pauses still fire when the streak
- *  ends. Emits the deferred `rent` event recording the full debt amount.
- *  Used by `applyMortgage` once the payer's cash crosses the threshold.
- *
- *  Assumes the caller has already verified `pendingDebt` is set and
- *  `payer.cash >= debt.amount` — both conditions hold by construction at
- *  every call site. */
-function settleDebt(
-  state: GameState,
-  payerId: string,
-  position: number,
-): { state: GameState; newEvents: readonly GameEvent[] } {
-  if (!state.turn.pendingDebt) {
-    throw new Error("settleDebt called without pendingDebt");
+  // Can't cover even after mortgaging everything: partial transfer + bust.
+  if (payer.cash + maxRaisableCash(state, payerId) < rentAmount) {
+    const players = state.players.map((p, i) => {
+      if (i === payerIdx) return { ...p, cash: 0 };
+      if (i === recipientIdx) return { ...p, cash: p.cash + payer.cash };
+      return p;
+    });
+    const turns = appendEventToActiveTurn(state.turns, rentEvent);
+    const bust = goBankrupt({ ...state, players, turns }, payerId, recipientId);
+    // Hand control onward unless the bust already ended the game.
+    const resolved =
+      bust.state.turn.phase === "game-over"
+        ? bust.state
+        : advanceToNextPlayer(bust.state, payerId);
+    return { state: resolved, newEvents: [rentEvent, ...bust.newEvents] };
   }
-  const debt = state.turn.pendingDebt;
-  const payerIdx = state.players.findIndex((p) => p.id === payerId);
-  const creditorIdx = state.players.findIndex((p) => p.id === debt.creditorId);
 
+  // Pay now (cash may dip below zero), log it, then settle or raise.
   const players = state.players.map((p, i) => {
-    if (i === payerIdx) return { ...p, cash: p.cash - debt.amount };
-    if (i === creditorIdx) return { ...p, cash: p.cash + debt.amount };
+    if (i === payerIdx) return { ...p, cash: p.cash - rentAmount };
+    if (i === recipientIdx) return { ...p, cash: p.cash + rentAmount };
     return p;
   });
-
-  const rentEvent: GameEvent = {
-    kind: "rent",
-    ownerId: debt.creditorId,
-    position,
-    amount: debt.amount,
-  };
   const turns = appendEventToActiveTurn(state.turns, rentEvent);
-  // Drop the must-raise-cash phase (any value works as a placeholder —
-  // afterLanding will pick the correct next phase from doublesStreak) and
-  // clear pendingDebt before handing off.
-  const paid: GameState = {
-    ...state,
-    players,
-    turns,
-    turn: { ...state.turn, pendingDebt: undefined },
-  };
+  const charged: GameState = { ...state, players, turns };
   return {
-    state: afterLanding(paid),
+    state: settleOrRaise(charged, "after-landing"),
     newEvents: [rentEvent],
   };
 }
@@ -507,15 +509,23 @@ function applyMortgage(
   state: GameState,
   intent: Extract<Intent, { kind: "mortgage" }>,
 ): ApplyResult {
-  if (intent.playerId !== state.turn.playerId) {
-    return { ok: false, reason: "not your turn" };
-  }
   const inRaiseCash = state.turn.phase === "must-raise-cash";
-  if (!inRaiseCash && !canActOnAssets(state)) {
-    return {
-      ok: false,
-      reason: `cannot mortgage in phase ${state.turn.phase}`,
-    };
+  if (inRaiseCash) {
+    // The forced settler is whoever is currently in the red, which need not be
+    // the active player (a trade can put an off-turn player there).
+    if (intent.playerId !== firstNegativePlayer(state)) {
+      return { ok: false, reason: "not the current debtor" };
+    }
+  } else {
+    if (intent.playerId !== state.turn.playerId) {
+      return { ok: false, reason: "not your turn" };
+    }
+    if (!canActOnAssets(state)) {
+      return {
+        ok: false,
+        reason: `cannot mortgage in phase ${state.turn.phase}`,
+      };
+    }
   }
   if (state.ownership[intent.position] !== intent.playerId) {
     return { ok: false, reason: "you don't own that square" };
@@ -544,21 +554,16 @@ function applyMortgage(
   const turns = appendEventToActiveTurn(state.turns, mortgageEvent);
   const afterMortgage: GameState = { ...state, players, mortgaged, turns };
 
-  // Auto-settle the must-raise-cash debt the moment cash crosses the
-  // threshold. The player's mortgage flow is "raise just enough" — no
-  // explicit confirmation step. settleDebt routes through enterPostRoll so
-  // armed `beforeEnd` pauses still fire correctly after the bust.
-  if (inRaiseCash && state.turn.pendingDebt) {
-    const updatedPayer = afterMortgage.players[payerIdx];
-    if (updatedPayer.cash >= state.turn.pendingDebt.amount) {
-      const position = state.players[payerIdx].position;
-      const settled = settleDebt(afterMortgage, intent.playerId, position);
-      return {
-        ok: true,
-        state: settled.state,
-        newEvents: [mortgageEvent, ...settled.newEvents],
-      };
-    }
+  // In the forced phase, re-evaluate after every mortgage: once this debtor
+  // (and everyone else) is back to ≥ 0, `settleOrRaise` resumes play; if
+  // someone is still negative it stays in must-raise-cash for the next debtor.
+  if (inRaiseCash) {
+    const resume = state.turn.raiseCash ?? "after-landing";
+    return {
+      ok: true,
+      state: settleOrRaise(afterMortgage, resume),
+      newEvents: [mortgageEvent],
+    };
   }
 
   return { ok: true, state: afterMortgage, newEvents: [mortgageEvent] };
@@ -670,6 +675,359 @@ function applyEndTurn(
   };
 }
 
+// ---------------------------------------------------------------------------
+// Trades. The whole sub-game is permissive by design: a proposer (who needn't
+// be a party) reassigns any owned properties / GOJF cards between any players
+// and sets per-player cash deltas that must net to zero. The draft lives in
+// `turn.tradeDraft` (visible to everyone in real time) and is finalized into
+// `turn.pendingTrade`, which every named participant must approve. Mortgaged
+// properties transfer still-mortgaged; the receiver owes the bank 10% interest
+// on each, settled through the unified must-raise-cash path. See
+// `monopoly/CLAUDE.md` "Trades".
+// ---------------------------------------------------------------------------
+
+/** A player who exists and isn't bankrupt — eligible to own assets / hold cash. */
+function isActivePlayer(state: GameState, id: string): boolean {
+  const p = state.players.find((pl) => pl.id === id);
+  return p !== undefined && !p.bankrupt;
+}
+
+/** Everyone NAMED by a set of trade terms: the giver and receiver of each
+ *  property and card, plus anyone with a non-zero cash delta. These are the
+ *  players whose approval a proposal needs. Exported so the trade UI shows the
+ *  same party set the engine validates against. */
+export function tradeParticipants(
+  state: GameState,
+  terms: TradeTerms,
+): Set<string> {
+  const ids = new Set<string>();
+  for (const [posStr, newOwner] of Object.entries(terms.propertyTo)) {
+    const current = state.ownership[Number(posStr)];
+    if (current) ids.add(current);
+    ids.add(newOwner);
+  }
+  for (const [src, newHolder] of Object.entries(terms.gojfTo)) {
+    const current = state.jailFreeCards[src as CardSource];
+    if (current) ids.add(current);
+    ids.add(newHolder);
+  }
+  for (const [pid, delta] of Object.entries(terms.cashDelta)) {
+    if (delta !== 0) ids.add(pid);
+  }
+  return ids;
+}
+
+/** 10% bank interest each player owes for receiving a still-mortgaged property
+ *  in the trade, keyed by receiver. Empty when no mortgaged property changes
+ *  hands. */
+function mortgageInterestFees(
+  state: GameState,
+  terms: TradeTerms,
+): Record<string, number> {
+  const fees: Record<string, number> = {};
+  for (const [posStr, newOwner] of Object.entries(terms.propertyTo)) {
+    const pos = Number(posStr);
+    if (!state.mortgaged[pos]) continue;
+    const interest = mortgageInterestAt(pos) ?? 0;
+    fees[newOwner] = (fees[newOwner] ?? 0) + interest;
+  }
+  return fees;
+}
+
+/** Apply a set of trade terms to the board: move property ownership and GOJF
+ *  cards (mortgage flags ride along untouched), apply per-player cash deltas,
+ *  and charge each receiver the 10% interest on mortgaged properties. Pure and
+ *  phase-agnostic — used both to simulate a proposal for the affordability
+ *  gate and to execute the real thing. Players' cash may go negative; the
+ *  caller routes that through `settleOrRaise`. */
+function applyTradeTerms(state: GameState, terms: TradeTerms): GameState {
+  const ownership = { ...state.ownership };
+  for (const [posStr, newOwner] of Object.entries(terms.propertyTo)) {
+    ownership[Number(posStr)] = newOwner;
+  }
+  const jailFreeCards = { ...state.jailFreeCards };
+  for (const [src, newHolder] of Object.entries(terms.gojfTo)) {
+    jailFreeCards[src as CardSource] = newHolder;
+  }
+  const fees = mortgageInterestFees(state, terms);
+  const players = state.players.map((p) => {
+    const change = (terms.cashDelta[p.id] ?? 0) - (fees[p.id] ?? 0);
+    return change === 0 ? p : { ...p, cash: p.cash + change };
+  });
+  return { ...state, ownership, jailFreeCards, players };
+}
+
+/** Structural validity of trade terms, independent of balance: every property
+ *  is owned (and building-free) and reassigned to a real player who isn't its
+ *  current owner; every card is held and moved to a different real player;
+ *  every cash party is real. Shared by the draft path (this only) and the
+ *  propose path (this plus balance / participants / affordability). Returns an
+ *  error reason or null. */
+function validateTradeAssets(state: GameState, terms: TradeTerms): string | null {
+  for (const [posStr, newOwner] of Object.entries(terms.propertyTo)) {
+    const pos = Number(posStr);
+    const current = state.ownership[pos];
+    if (!current) return "can't trade an unowned property";
+    if (current === newOwner) return "property assigned to its current owner";
+    if (state.houses[pos]) return "can't trade a property with buildings";
+    if (!isActivePlayer(state, newOwner)) return "unknown recipient";
+  }
+  for (const [src, newHolder] of Object.entries(terms.gojfTo)) {
+    const current = state.jailFreeCards[src as CardSource];
+    if (!current) return "card not held by anyone";
+    if (current === newHolder) return "card assigned to its current holder";
+    if (!isActivePlayer(state, newHolder)) return "unknown card recipient";
+  }
+  for (const [pid, delta] of Object.entries(terms.cashDelta)) {
+    if (delta !== 0 && !isActivePlayer(state, pid)) return "unknown cash party";
+  }
+  return null;
+}
+
+/** Full validity of a proposal: structurally sound, moves something, names at
+ *  least two parties, cash nets to zero, and — after simulated execution —
+ *  every player left in the red can climb back to ≥ 0 by mortgaging (the same
+ *  raisable test the rent path uses). Returns an error reason or null. */
+function validateTradeProposal(
+  state: GameState,
+  terms: TradeTerms,
+): string | null {
+  const assetError = validateTradeAssets(state, terms);
+  if (assetError) return assetError;
+
+  const movesProperty = Object.keys(terms.propertyTo).length > 0;
+  const movesCard = Object.keys(terms.gojfTo).length > 0;
+  const movesCash = Object.values(terms.cashDelta).some((v) => v !== 0);
+  if (!movesProperty && !movesCard && !movesCash) return "trade is empty";
+
+  const cashSum = Object.values(terms.cashDelta).reduce((a, b) => a + b, 0);
+  if (cashSum !== 0) return "cash doesn't balance";
+
+  if (tradeParticipants(state, terms).size < 2) {
+    return "a trade needs at least two parties";
+  }
+
+  // Affordability: simulate, then make sure every resulting debtor could
+  // recover. Pre-trade cash alone isn't required — they may mortgage to cover.
+  const post = applyTradeTerms(state, terms);
+  for (const p of post.players) {
+    if (p.cash < 0 && p.cash + maxRaisableCash(post, p.id) < 0) {
+      return `${p.id} can't cover their obligation`;
+    }
+  }
+  return null;
+}
+
+/** Discard any in-flight trade and return the active player to a clean
+ *  pre-roll. Used by cancel / decline and as the resume target after a trade
+ *  settles — the next autoStep re-checks the trade queue from here. */
+function returnToPreRoll(state: GameState): GameState {
+  return {
+    ...state,
+    turn: {
+      playerId: state.turn.playerId,
+      phase: "pre-roll",
+      doublesStreak: state.turn.doublesStreak,
+      paused: false,
+    },
+  };
+}
+
+/** If a trade is armed, dequeue the first still-eligible requester and open
+ *  their (empty) trade-building draft. Returns null when nobody valid is
+ *  queued, so the caller proceeds to roll. */
+function tryEnterTradeBuilding(state: GameState): GameState | null {
+  if (state.tradeQueue.length === 0) return null;
+  const idx = state.tradeQueue.findIndex((id) => isActivePlayer(state, id));
+  if (idx === -1) return null;
+  const proposerId = state.tradeQueue[idx];
+  const tradeQueue = [
+    ...state.tradeQueue.slice(0, idx),
+    ...state.tradeQueue.slice(idx + 1),
+  ];
+  return {
+    ...state,
+    tradeQueue,
+    turn: {
+      ...state.turn,
+      phase: "trade-building",
+      paused: false,
+      tradeDraft: { proposerId, propertyTo: {}, gojfTo: {}, cashDelta: {} },
+    },
+  };
+}
+
+function applyRequestTrade(
+  state: GameState,
+  intent: Extract<Intent, { kind: "request-trade" }>,
+): ApplyResult {
+  if (!isActivePlayer(state, intent.playerId)) {
+    return { ok: false, reason: "unknown player" };
+  }
+  const inQueue = state.tradeQueue.includes(intent.playerId);
+  const tradeQueue = inQueue
+    ? state.tradeQueue.filter((id) => id !== intent.playerId)
+    : [...state.tradeQueue, intent.playerId];
+  return { ok: true, state: { ...state, tradeQueue }, newEvents: [] };
+}
+
+function applyUpdateTradeDraft(
+  state: GameState,
+  intent: Extract<Intent, { kind: "update-trade-draft" }>,
+): ApplyResult {
+  if (state.turn.phase !== "trade-building" || !state.turn.tradeDraft) {
+    return { ok: false, reason: "no trade being built" };
+  }
+  if (intent.playerId !== state.turn.tradeDraft.proposerId) {
+    return { ok: false, reason: "not the proposer" };
+  }
+  // Drafts may be unbalanced mid-edit, but must stay structurally sane so the
+  // authoritative state never holds a corrupt assignment.
+  const error = validateTradeAssets(state, intent.terms);
+  if (error) return { ok: false, reason: error };
+  const tradeDraft = {
+    proposerId: state.turn.tradeDraft.proposerId,
+    propertyTo: intent.terms.propertyTo,
+    gojfTo: intent.terms.gojfTo,
+    cashDelta: intent.terms.cashDelta,
+  };
+  return {
+    ok: true,
+    state: { ...state, turn: { ...state.turn, tradeDraft } },
+    newEvents: [],
+  };
+}
+
+function applyCancelTrade(
+  state: GameState,
+  intent: Extract<Intent, { kind: "cancel-trade" }>,
+): ApplyResult {
+  const { phase, tradeDraft, pendingTrade } = state.turn;
+  if (phase === "trade-building" && tradeDraft) {
+    if (intent.playerId !== tradeDraft.proposerId) {
+      return { ok: false, reason: "not the proposer" };
+    }
+    return { ok: true, state: returnToPreRoll(state), newEvents: [] };
+  }
+  if (phase === "trade-pending" && pendingTrade) {
+    if (intent.playerId !== pendingTrade.proposerId) {
+      return { ok: false, reason: "not the proposer" };
+    }
+    return { ok: true, state: returnToPreRoll(state), newEvents: [] };
+  }
+  return { ok: false, reason: "no trade to cancel" };
+}
+
+function applyProposeTrade(
+  state: GameState,
+  intent: Extract<Intent, { kind: "propose-trade" }>,
+): ApplyResult {
+  if (state.turn.phase !== "trade-building" || !state.turn.tradeDraft) {
+    return { ok: false, reason: "no trade being built" };
+  }
+  const draft = state.turn.tradeDraft;
+  if (intent.playerId !== draft.proposerId) {
+    return { ok: false, reason: "not the proposer" };
+  }
+  const terms: TradeTerms = {
+    propertyTo: draft.propertyTo,
+    gojfTo: draft.gojfTo,
+    cashDelta: draft.cashDelta,
+  };
+  const error = validateTradeProposal(state, terms);
+  if (error) return { ok: false, reason: error };
+
+  // The proposer is seeded approved iff they're a party; everyone else named
+  // starts unapproved. Id is stable for the single live proposal (rngState is
+  // unchanged by trades) and only needs to outlive this pending trade.
+  const approvals: Record<string, boolean> = {};
+  for (const id of tradeParticipants(state, terms)) {
+    approvals[id] = id === draft.proposerId;
+  }
+  const pendingTrade: PendingTrade = {
+    id: `trade-${state.turns.length.toString()}-${state.rngState.toString()}`,
+    proposerId: draft.proposerId,
+    propertyTo: terms.propertyTo,
+    gojfTo: terms.gojfTo,
+    cashDelta: terms.cashDelta,
+    approvals,
+  };
+  return {
+    ok: true,
+    state: {
+      ...state,
+      turn: {
+        ...state.turn,
+        phase: "trade-pending",
+        tradeDraft: undefined,
+        pendingTrade,
+      },
+    },
+    newEvents: [],
+  };
+}
+
+function applyAcceptTrade(
+  state: GameState,
+  intent: Extract<Intent, { kind: "accept-trade" }>,
+): ApplyResult {
+  const pending = state.turn.pendingTrade;
+  if (state.turn.phase !== "trade-pending" || !pending) {
+    return { ok: false, reason: "no trade to accept" };
+  }
+  if (intent.tradeId !== pending.id) return { ok: false, reason: "stale trade" };
+  if (!(intent.playerId in pending.approvals)) {
+    return { ok: false, reason: "not a party to this trade" };
+  }
+  if (pending.approvals[intent.playerId]) {
+    return { ok: true, state, newEvents: [] }; // idempotent re-approve
+  }
+  const approvals = { ...pending.approvals, [intent.playerId]: true };
+  if (!Object.values(approvals).every(Boolean)) {
+    return {
+      ok: true,
+      state: {
+        ...state,
+        turn: { ...state.turn, pendingTrade: { ...pending, approvals } },
+      },
+      newEvents: [],
+    };
+  }
+
+  // Unanimous — execute. Move assets + cash + fees, log it, then settle (any
+  // receiver pushed into the red raises cash before play resumes at pre-roll).
+  const executed = applyTradeTerms(state, pending);
+  const tradeEvent: GameEvent = {
+    kind: "trade",
+    proposerId: pending.proposerId,
+    propertyTo: pending.propertyTo,
+    gojfTo: pending.gojfTo,
+    cashDelta: pending.cashDelta,
+  };
+  const turns = appendEventToActiveTurn(executed.turns, tradeEvent);
+  return {
+    ok: true,
+    state: settleOrRaise({ ...executed, turns }, "pre-roll"),
+    newEvents: [tradeEvent],
+  };
+}
+
+function applyDeclineTrade(
+  state: GameState,
+  intent: Extract<Intent, { kind: "decline-trade" }>,
+): ApplyResult {
+  const pending = state.turn.pendingTrade;
+  if (state.turn.phase !== "trade-pending" || !pending) {
+    return { ok: false, reason: "no trade to decline" };
+  }
+  if (intent.tradeId !== pending.id) return { ok: false, reason: "stale trade" };
+  if (!(intent.playerId in pending.approvals)) {
+    return { ok: false, reason: "not a party to this trade" };
+  }
+  // A single decline kills the whole proposal.
+  return { ok: true, state: returnToPreRoll(state), newEvents: [] };
+}
+
 /** Run mechanical transitions (dice, movement, rent, card draws, …) until
  *  the state hits a phase that requires a decision or has `turn.paused`
  *  set. No-op when the state is already at a decision point.
@@ -689,6 +1047,14 @@ export function autoStep(
   if (state.turn.phase !== "pre-roll" || state.turn.paused) {
     return { state, newEvents: [] };
   }
+  // "Just before the next roll": if anyone has armed a trade, open the head
+  // requester's trade-building phase instead of rolling. This is the single
+  // boundary the Trade checkbox pauses at — equally "right after a turn ends"
+  // and "right before the next begins". The build resolves back to pre-roll,
+  // where the next autoStep re-checks the queue for further requesters.
+  const building = tryEnterTradeBuilding(state);
+  if (building) return { state: building, newEvents: [] };
+
   const rng = createRng(state.rngState);
   const playerIdx = state.players.findIndex(
     (p) => p.id === state.turn.playerId,
@@ -744,50 +1110,18 @@ export function autoStep(
     return { state: { ...afterMove, turn }, newEvents: [rollEvent] };
   }
 
-  let workingState = afterMove;
-  const newEvents: GameEvent[] = [rollEvent];
-
   // Charge rent if owed. `rentDue` already returns null for unowned,
-  // self-owned, and mortgaged squares — no extra branching needed here.
-  const amount = rentDue(workingState, toPos, total, state.turn.playerId);
+  // self-owned, and mortgaged squares. `chargeRent` fully resolves the
+  // landing — it busts + hands off, parks in must-raise-cash, or routes
+  // through afterLanding itself — so its result is returned directly.
+  const amount = rentDue(afterMove, toPos, total, state.turn.playerId);
   if (amount !== null && amount > 0) {
-    const ownerId = workingState.ownership[toPos];
-    const charged = chargeRent(
-      workingState,
-      state.turn.playerId,
-      ownerId,
-      toPos,
-      amount,
-    );
-    workingState = charged.state;
-    newEvents.push(...charged.newEvents);
+    const ownerId = afterMove.ownership[toPos];
+    const charged = chargeRent(afterMove, state.turn.playerId, ownerId, toPos, amount);
+    return { state: charged.state, newEvents: [rollEvent, ...charged.newEvents] };
   }
 
-  // If rent busted the active player out, hand control to the next
-  // non-bankrupt player (or stay at game-over if `goBankrupt` already set
-  // the phase that way). Skips both `post-roll` and any armed `beforeEnd`
-  // pause for the bankrupt player — they're not making more decisions.
-  const activeAfter = workingState.players[playerIdx];
-  if (activeAfter.bankrupt) {
-    if (workingState.turn.phase === "game-over") {
-      return { state: workingState, newEvents };
-    }
-    return {
-      state: advanceToNextPlayer(workingState, state.turn.playerId),
-      newEvents,
-    };
-  }
-
-  // Rent couldn't be paid from cash but the player can raise it by
-  // mortgaging — chargeRent parked the state at must-raise-cash. Don't
-  // route through afterLanding; the player owes the engine a settle before
-  // the post-roll transition (which happens inside applyMortgage when cash
-  // crosses the debt threshold).
-  if (workingState.turn.phase === "must-raise-cash") {
-    return { state: workingState, newEvents };
-  }
-
-  return { state: afterLanding(workingState), newEvents };
+  return { state: afterLanding(afterMove), newEvents: [rollEvent] };
 }
 
 function rollDie(rng: Rng): number {

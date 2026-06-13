@@ -9,11 +9,11 @@ import type { DevCommand, MonopolyAction, MonopolyResult } from "./protocol";
 import { loadGame, submitAction, subscribeGame, type LoadedGame } from "./sync";
 import type {
   ApplyResult,
+  CardSource,
   GameState,
   Intent,
   PlayerColor,
   PlayerIcon,
-  TurnPhase,
 } from "./types";
 
 /** Staged mortgage toggles the user has clicked but not yet committed.
@@ -27,18 +27,6 @@ export type MortgageStaged = Readonly<Record<number, boolean>>;
 // in the log and watch the camera glide + token slide settle before the next
 // one. Slow enough to follow; fast enough that a no-op loop isn't sluggish.
 const STEP_DELAY_MS = 2000;
-
-// Phases the auto-pacer is allowed to drive. Anything else (auction,
-// trade, game-over) is a fixed point; the pacer leaves it alone and waits
-// for an intent to break out. `buy-decision` and `must-raise-cash` are
-// paced only when the active player is not the local user — bots auto-buy
-// or auto-mortgage; the human gets the Buy/Pass UI or mortgage panel.
-const PACED_PHASES: ReadonlySet<TurnPhase> = new Set([
-  "pre-roll",
-  "post-roll",
-  "buy-decision",
-  "must-raise-cash",
-]);
 
 interface MonopolyActions {
   /** Set this client's player id (assigned during lobby join). */
@@ -94,6 +82,36 @@ interface MonopolyActions {
    *  regardless of per-intent outcomes — UI re-derives from authoritative
    *  state on the next render. */
   commitMortgageStaging: () => void;
+
+  /** Toggle "I want to trade" for the local player — arms/disarms a spot in
+   *  the FIFO trade queue. Fires at the next unpaused pre-roll. */
+  requestTrade: () => void;
+
+  /** Trade-building (proposer only): cycle a property's staged owner through
+   *  the players and back to no-change, submitting the updated draft. The
+   *  board row IS the control, mirroring mortgage staging. */
+  cycleTradeProperty: (position: number) => void;
+
+  /** Trade-building (proposer only): cycle a held Get-Out-of-Jail card's
+   *  staged holder, submitting the updated draft. */
+  cycleTradeGojf: (source: CardSource) => void;
+
+  /** Trade-building (proposer only): add `step` (may be negative) to a
+   *  player's staged net cash delta, submitting the updated draft. */
+  bumpTradeCash: (playerId: string, step: number) => void;
+
+  /** Trade-building (proposer only): finalize the current draft into a
+   *  proposal awaiting approval. */
+  proposeTrade: () => void;
+
+  /** Abandon the trade being built or proposed (proposer only), returning to
+   *  the pre-roll boundary. */
+  cancelTrade: () => void;
+
+  /** Approve / reject the pending proposal as the local player (must be a
+   *  named party). All approvals execute it; any decline cancels it. */
+  acceptTrade: () => void;
+  declineTrade: () => void;
 
   /** Submit an intent to the authoritative route; the real state arrives via
    *  the route response / subscription, so the synchronous return is an
@@ -318,6 +336,97 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
       set({ mortgageStaged: null });
     },
 
+    requestTrade: () => {
+      const { myPlayerId } = get();
+      if (!myPlayerId) return;
+      runIntents([{ kind: "request-trade", playerId: myPlayerId }]);
+    },
+
+    cycleTradeProperty: (position) => {
+      const { state, myPlayerId } = get();
+      const draft = state.turn.tradeDraft;
+      if (!myPlayerId || !draft || draft.proposerId !== myPlayerId) return;
+      const base = state.ownership[position];
+      if (!base) return; // only owned properties can move
+      const owners = state.players.filter((p) => !p.bankrupt).map((p) => p.id);
+      const current = draft.propertyTo[position] ?? base;
+      const next = owners[(owners.indexOf(current) + 1) % owners.length];
+      const propertyTo = { ...draft.propertyTo };
+      if (next === base) delete propertyTo[position];
+      else propertyTo[position] = next;
+      runIntents([
+        {
+          kind: "update-trade-draft",
+          playerId: myPlayerId,
+          terms: { propertyTo, gojfTo: draft.gojfTo, cashDelta: draft.cashDelta },
+        },
+      ]);
+    },
+
+    cycleTradeGojf: (source) => {
+      const { state, myPlayerId } = get();
+      const draft = state.turn.tradeDraft;
+      if (!myPlayerId || !draft || draft.proposerId !== myPlayerId) return;
+      const base = state.jailFreeCards[source];
+      if (!base) return; // only held cards can move
+      const owners = state.players.filter((p) => !p.bankrupt).map((p) => p.id);
+      const current = draft.gojfTo[source] ?? base;
+      const next = owners[(owners.indexOf(current) + 1) % owners.length];
+      const gojfTo = { ...draft.gojfTo };
+      if (next === base) delete gojfTo[source];
+      else gojfTo[source] = next;
+      runIntents([
+        {
+          kind: "update-trade-draft",
+          playerId: myPlayerId,
+          terms: { propertyTo: draft.propertyTo, gojfTo, cashDelta: draft.cashDelta },
+        },
+      ]);
+    },
+
+    bumpTradeCash: (playerId, step) => {
+      const { state, myPlayerId } = get();
+      const draft = state.turn.tradeDraft;
+      if (!myPlayerId || !draft || draft.proposerId !== myPlayerId) return;
+      const nextAmount = (draft.cashDelta[playerId] ?? 0) + step;
+      const cashDelta = { ...draft.cashDelta };
+      if (nextAmount === 0) delete cashDelta[playerId];
+      else cashDelta[playerId] = nextAmount;
+      runIntents([
+        {
+          kind: "update-trade-draft",
+          playerId: myPlayerId,
+          terms: { propertyTo: draft.propertyTo, gojfTo: draft.gojfTo, cashDelta },
+        },
+      ]);
+    },
+
+    proposeTrade: () => {
+      const { myPlayerId } = get();
+      if (!myPlayerId) return;
+      runIntents([{ kind: "propose-trade", playerId: myPlayerId }]);
+    },
+
+    cancelTrade: () => {
+      const { myPlayerId } = get();
+      if (!myPlayerId) return;
+      runIntents([{ kind: "cancel-trade", playerId: myPlayerId }]);
+    },
+
+    acceptTrade: () => {
+      const { state, myPlayerId } = get();
+      const pending = state.turn.pendingTrade;
+      if (!myPlayerId || !pending) return;
+      runIntents([{ kind: "accept-trade", playerId: myPlayerId, tradeId: pending.id }]);
+    },
+
+    declineTrade: () => {
+      const { state, myPlayerId } = get();
+      const pending = state.turn.pendingTrade;
+      if (!myPlayerId || !pending) return;
+      runIntents([{ kind: "decline-trade", playerId: myPlayerId, tradeId: pending.id }]);
+    },
+
     submit: (intent) => runIntents([intent]),
 
     step: () => {
@@ -417,52 +526,59 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
 // intent, connect/disconnect, or role change wakes it back up. Guarded on
 // `window` so importing this module under SSR or test runners (no DOM, no
 // timers wanted) is a no-op.
+/** One unit of automated progress this client should make, or null to wait.
+ *  Mechanical beats (`pre-roll` step, `post-roll` end-turn) run for whoever
+ *  drives the active seat — "self" or "proxy". Real decisions are only ever
+ *  proxied for BOT seats here (a human's own buy / raise-cash / trade-approval
+ *  is left to their UI), so the loop iterates bot seats and submits the first
+ *  intent their policy returns. Trade-building is human-only (no bot proposer)
+ *  so it has no op. */
+type PacerOp = { kind: "step" } | { kind: "intent"; intent: Intent };
+
+function pacerOp(state: GameState, myPlayerId: string | null): PacerOp | null {
+  if (state.status !== "active") return null;
+  if (state.turn.paused) return null;
+  const { phase, playerId } = state.turn;
+
+  if (phase === "pre-roll") {
+    return driverRole(state, myPlayerId) === "none" ? null : { kind: "step" };
+  }
+  if (phase === "post-roll") {
+    return driverRole(state, myPlayerId) === "none"
+      ? null
+      : { kind: "intent", intent: { kind: "end-turn", playerId } };
+  }
+  if (
+    phase === "buy-decision" ||
+    phase === "must-raise-cash" ||
+    phase === "trade-pending"
+  ) {
+    for (const p of state.players) {
+      if (!p.isBot) continue;
+      const intent = botIntent(state, p.id);
+      if (intent) return { kind: "intent", intent };
+    }
+  }
+  return null;
+}
+
 if (typeof window !== "undefined") {
   let pacingTimer: ReturnType<typeof setTimeout> | null = null;
-
-  const pacerEnabled = (store: MonopolyStore): boolean => {
-    // Nothing runs while parked (no game selected — the lobby browser).
-    if (!store.gameId) return false;
-    // Only an in-play game auto-advances; a lobby (or a finished game) is at
-    // rest until `startGame` flips it to `active`.
-    if (store.state.status !== "active") return false;
-    if (store.state.turn.paused) return false;
-    const role = driverRole(store.state, store.myPlayerId);
-    if (role === "none") return false;
-    const { phase } = store.state.turn;
-    if (!PACED_PHASES.has(phase)) return false;
-    // Buy and must-raise-cash are real decisions. A "proxy" driver resolves
-    // them for a bot / absent seat via bot policy below; a "self" driver
-    // leaves them to the local human's Buy/Pass UI and mortgage panel.
-    if (role === "self" && (phase === "buy-decision" || phase === "must-raise-cash")) {
-      return false;
-    }
-    return true;
-  };
 
   const tick = (): void => {
     pacingTimer = null;
     const store = useMonopolyStore.getState();
-    if (!pacerEnabled(store)) return;
-    const { phase, playerId } = store.state.turn;
-    if (phase === "pre-roll") {
-      // Mechanical beat — applies to "self" and "proxy" drivers alike.
-      store.step();
-    } else if (phase === "post-roll") {
-      // No "end turn" button by design: auto-end once the turn settles.
-      store.submit({ kind: "end-turn", playerId });
-    } else {
-      // buy-decision / must-raise-cash — reached here only as a "proxy" driver
-      // (pacerEnabled gates the human out). Resolve via bot policy.
-      const intent = botIntent(store.state, playerId);
-      if (intent) store.submit(intent);
-    }
+    if (!store.gameId) return;
+    const op = pacerOp(store.state, store.myPlayerId);
+    if (!op) return;
+    if (op.kind === "step") store.step();
+    else store.submit(op.intent);
   };
 
   const schedule = (): void => {
     if (pacingTimer !== null) return;
     const store = useMonopolyStore.getState();
-    if (!pacerEnabled(store)) return;
+    if (!store.gameId || !pacerOp(store.state, store.myPlayerId)) return;
     pacingTimer = setTimeout(tick, STEP_DELAY_MS);
   };
 

@@ -8,6 +8,11 @@ interface Props {
 }
 
 export function Footer({ state }: Props) {
+  // A trade panel needs the vertical room the log occupies (cash steppers for
+  // every player, card rows, the movement summary), so the log is hidden while
+  // a trade is being built or voted on.
+  const tradeOpen =
+    state.turn.phase === "trade-building" || state.turn.phase === "trade-pending";
   return (
     <div
       className="relative z-10 flex shrink-0 flex-col"
@@ -19,7 +24,7 @@ export function Footer({ state }: Props) {
       }}
     >
       <PromptSection state={state} />
-      <EventLog state={state} />
+      {!tradeOpen && <EventLog state={state} />}
       <ActionBar state={state} />
     </div>
   );

@@ -19,9 +19,9 @@ This is Monopoly for players who know the game cold. They don't need explanation
 
 **Auto-play is a spectrum, set by the player:**
 - Default: pause only at real decision points.
-- Opt-in pauses: a player can request a pause **before their roll** (to mortgage or trade) or **after their roll** (to buy, trade, or send to auction).
+- Opt-in pauses: a player can request a pause **before their roll** (to mortgage) or **after their roll** (to buy or send to auction).
 - Threshold policies (later): "auto-buy until cash < $X", "stay in jail while late-game", etc. The engine should not preclude these; per-player preferences live in state.
-- Other players can interrupt the active turn by proposing a trade. The active turn blocks until the trade resolves (accept / decline / counter).
+- **Trades happen at a turn boundary, not mid-turn.** Any player can arm "I want to trade" (the action-bar Trade checkbox) at any time; the game pauses at the next unpaused **pre-roll** — the single point that is both "right after a turn ends" and "right before the next begins" — and opens that player's trade builder. Several armed players form a FIFO queue, each resolved in turn before the roll. See "Trades" below. (This supersedes an earlier "interrupt the active turn mid-move" idea — the boundary model is simpler and deterministic.)
 
 **UI consequence:** no "press to roll" button by default. No "you landed on Boardwalk, pay $50 rent — click to continue." The screen updates, the event log scrolls, the turn advances. Buttons exist only for actual decisions (and for explicitly requesting a pause).
 
@@ -48,9 +48,9 @@ The authoritative route applies **one unit per call**: an `apply` for an externa
 - `bid`, `pass-bid` (during auction)
 - `build`, `sell-building`
 - `mortgage`, `unmortgage`
-- `propose-trade`, `accept-trade`, `decline-trade`, `counter-trade`
+- `request-trade` (toggle the trade queue), `update-trade-draft` (proposer edits the live draft), `cancel-trade`, `propose-trade`, `accept-trade`, `decline-trade` (`counter-trade` is a documented TODO, not wired)
 - `pay-to-leave-jail`, `use-jail-card`
-- `request-pause` (active player flags pre-roll or post-roll pause)
+- `set-armed-pause` (anyone flags their own pre-roll / post-roll pause), `resume`
 - `end-turn`
 
 **Mechanics (internal to `autoStep`, never an intent):**
@@ -72,29 +72,53 @@ interface TurnState {
   playerId: string;
   phase:
     | "pre-roll"             // can roll or take pre-roll actions
-    | "post-roll"            // moved + tile resolved; can build/trade/end
+    | "post-roll"            // moved + tile resolved; can build/end
     | "buy-decision"         // landed on unowned ownable; buy or auction
+    | "must-raise-cash"      // someone is in the red; settle before continuing
     | "auction"              // auction in progress (see `auction` field)
     | "jail-decision"        // active player in jail, deciding pay/card/roll
-    | "trade-pending"        // a propose-trade is awaiting accept/decline
+    | "trade-building"       // a queued player is assembling a proposal
+    | "trade-pending"        // a proposal is awaiting approval votes
     | "game-over";
   doublesStreak: number;     // 0-3
   paused: boolean;           // active player has requested a pause point
   pendingBuy?: number;       // position of property awaiting buy decision
+  raiseCash?: "after-landing" | "pre-roll";  // where to resume after must-raise-cash
   auction?: AuctionState;
-  pendingTrade?: PendingTrade;
+  tradeDraft?: TradeDraft;   // present during trade-building
+  pendingTrade?: PendingTrade;  // present during trade-pending
 }
 
 interface GameState {
   ...existing fields,
   status: "lobby" | "active" | "finished";  // lifecycle (see "Lobby")
   turn: TurnState;
+  tradeQueue: readonly string[];  // FIFO of players who armed "I want to trade"
   preferences: Readonly<Record<string, PlayerPreferences>>;
   rngSeed: string;           // for deterministic replay + RL training
 }
 ```
 
-`autoStep` only progresses when `turn.phase` allows it and `turn.paused === false`. It exits the moment it lands on a real decision phase.
+`autoStep` only progresses when `turn.phase` allows it and `turn.paused === false`. It exits the moment it lands on a real decision phase. At an unpaused `pre-roll` it first checks `tradeQueue` and opens a `trade-building` phase instead of rolling if anyone is queued.
+
+### Debt — one path, may go negative (`must-raise-cash`)
+
+Every charge a player can't cover from cash on hand resolves the same way, whether it's rent, a tax/fine (later), or the 10% mortgage interest from a trade:
+
+- The charge is applied **immediately** — the debtor's cash can go **negative**.
+- If `cash + raisable < 0` (raisable = mortgaging building-free properties; later also selling buildings at half), they can't recover → **bankruptcy** at charge time.
+- Otherwise the engine parks in `must-raise-cash` and the **current debtor — whoever is below zero, in seat order (`firstNegativePlayer`), not necessarily the active player** — must mortgage back to ≥ 0. Multiple debtors (from a trade) settle one at a time. `turn.raiseCash` records where play resumes: `after-landing` (rent/tax — continue the active player's landing) or `pre-roll` (a trade — return to the boundary and re-check the queue).
+
+This is why a trade can put an off-turn player into `must-raise-cash`: the UI (board-tap mortgage, mortgage panel) and the bot policy key the forced settler off `firstNegativePlayer`, not `turn.playerId`.
+
+### Trades
+
+Permissive by design: a **proposer (who need not be a party)** reassigns any **owned** (building-free) properties and held Get-Out-of-Jail-Free cards between any players, plus per-player **cash deltas that must net to zero** (money only moves between players; the bank is never a party). Shape is `TradeTerms` (`propertyTo` / `gojfTo` / `cashDelta`, storing only entries that change).
+
+- **The draft lives in synced `GameState`** (`turn.tradeDraft`), edited via `update-trade-draft` snapshots, so **every player watches it take shape in real time** — a deliberate departure from mortgage staging, which is local-only client state. The board rows are the property surface (tap to cycle the recipient); cash steppers + card rows live in the trade panel; the log is hidden while a trade is up to make room.
+- `propose-trade` validates (moves something, ≥2 named parties, cash balances, and every resulting debtor could recover) and flips to `trade-pending` with an `approvals` map over the **named** parties (the proposer auto-approves iff named). **All approve → execute; any decline cancels.**
+- **Mortgaged properties transfer still-mortgaged**, and the receiver owes the bank **10% interest** on each (official rule), charged through the `must-raise-cash` path above.
+- **Counters are not built** — decline and re-propose. The `TradeTerms` model + `update-trade-draft` are shaped so a counter can be added later (see the `counter-trade` TODO on `Intent`).
 
 ### RNG: always injected, never `Math.random()`
 
@@ -108,7 +132,7 @@ type Bot = (state: GameState, playerId: string) => Intent;
 
 The bot is given the full state (Monopoly is open-information) and returns one intent. The engine handles everything else. The same shape works for the dumb early bot, the rule-based bot, and an eventual learned policy.
 
-The baseline lives in `bots/policy.ts` as `botIntent(state, playerId): Intent | null` — pure, returning an intent for the two proxy-only decision phases (`buy-decision`: buy when affordable; `must-raise-cash`: mortgage the cheapest free property) and `null` when there's nothing to decide. The store's auto-pacer calls it **only as a "proxy" driver** (a bot seat or an absent human — see `driver.ts`); the universal mechanical beats (`pre-roll` → step, `post-roll` → end-turn) stay in the pacer because they apply to "self" drivers too. Swap in a smarter policy here without touching the pacer.
+The baseline lives in `bots/policy.ts` as `botIntent(state, playerId): Intent | null` — pure, returning the intent bot `playerId` should submit **right now**, or `null` if it isn't this bot's move. It covers the proxy-driven decision phases: `buy-decision` (buy when affordable), `must-raise-cash` (if this bot is the current debtor — `firstNegativePlayer`, possibly off-turn — mortgage the cheapest free property), and `trade-pending` (if this bot is an un-voted named party, **accept** — a permissive v1 placeholder; `TODO` real valuation). The store's auto-pacer **iterates the bot seats** for decision phases and submits the first non-null intent (a human's own decisions are left to their UI); the universal mechanical beats (`pre-roll` → step, `post-roll` → end-turn) run for whoever drives the active seat (`driver.ts`). **Bots never *initiate* trades** — nothing queues a bot, so the proposer is always human. Swap in a smarter policy here without touching the pacer.
 
 ## Lobby
 
@@ -219,6 +243,7 @@ src/projects/monopoly/
 
 ## Things to keep right
 
+- **No legacy / back-fill handling (pre-launch).** The game is still in dev, so treat all stored data as disposable: a `GameState` may be assumed to match the *current* type exactly. Do **not** write migration shims, default-filling of newly added fields, or any code that tolerates an old row shape — when a field is added, wipe the rows instead (delete from `public.monopoly_games` via the psql one-liner in the root CLAUDE.md, then refresh). **Remove this allowance once the game goes live** — at that point real rows must be migrated, not deleted.
 - **No hidden state in components.** All gameplay state lives in `store` or props derived from it. Local `useState` is fine for transient UI (open menus, hover) only.
 - **Don't add buttons for non-decisions.** A button for "pay rent" or "continue" is a philosophy violation. If you're tempted to add one, the engine probably needs to take that step on its own.
 - **The intent surface is small on purpose.** Resist growing it. New mechanics belong inside `autoStep`.

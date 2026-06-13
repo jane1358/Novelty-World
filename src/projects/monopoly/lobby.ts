@@ -140,6 +140,7 @@ export function createLobby(host: PlayerProfile, rngSeed: string): GameState {
     turn: { playerId: player.id, phase: "pre-roll", doublesStreak: 0, paused: false },
     preferences: densePreferences(players),
     armedPauses: denseArmedPauses(players),
+    tradeQueue: [],
     rngSeed,
     rngState: createRng(rngSeed).getState(),
   };

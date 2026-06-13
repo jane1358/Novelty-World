@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { apply, autoStep, createRng } from "./engine";
+import { apply, autoStep, createRng, firstNegativePlayer } from "./engine";
 import { freshGame } from "./mocks";
 import type { GameState, Player } from "./types";
 
@@ -1016,7 +1016,7 @@ describe("apply unmortgage", () => {
 });
 
 describe("must-raise-cash phase", () => {
-  it("enters must-raise-cash when rent exceeds cash but is coverable by mortgaging", () => {
+  it("charges rent immediately (cash goes negative) and enters must-raise-cash", () => {
     // p1 lands on p2's Boardwalk ($50 base rent) with $0 cash and one
     // un-mortgaged ownable (Reading Railroad, mortgage value $100).
     const start = freshGame("test-raise-enter");
@@ -1027,26 +1027,27 @@ describe("must-raise-cash phase", () => {
     const { state: next, newEvents } = autoStep(state);
 
     expect(next.turn.phase).toBe("must-raise-cash");
-    expect(next.turn.pendingDebt?.amount).toBe(50);
-    expect(next.turn.pendingDebt?.creditorId).toBe("p2");
-    // Rent isn't logged yet — it fires at settle time. The only event from
-    // this autoStep is the roll itself.
-    expect(newEvents.find((e) => e.kind === "rent")).toBeUndefined();
-    // Cash hasn't moved.
-    expect(next.players.find((p) => p.id === "p1")?.cash).toBe(0);
-    expect(next.players.find((p) => p.id === "p2")?.cash).toBe(1500);
+    expect(next.turn.raiseCash).toBe("after-landing");
+    // The charge is applied at once: rent is logged now and cash goes negative.
+    const rentEvent = newEvents.find((e) => e.kind === "rent");
+    if (!rentEvent) throw new Error("expected a rent event");
+    expect(rentEvent.amount).toBe(50);
+    expect(next.players.find((p) => p.id === "p1")?.cash).toBe(-50);
+    expect(next.players.find((p) => p.id === "p2")?.cash).toBe(1550);
+    expect(firstNegativePlayer(next)).toBe("p1");
   });
 
-  it("settles the debt and emits the deferred rent event once mortgaging covers it", () => {
+  it("resumes the landing once mortgaging brings the debtor back to the black", () => {
     const start = freshGame("test-raise-settle");
     const { state: placed } = setupLandingOn(start, 39);
     let state = withOwnership(placed, { 39: "p2", 5: "p1" });
     state = setCash(state, "p1", 0);
     const raising = autoStep(state).state;
     expect(raising.turn.phase).toBe("must-raise-cash");
+    // Rent already fired at landing; the debtor sits at -$50.
+    expect(raising.players.find((p) => p.id === "p1")?.cash).toBe(-50);
 
-    // Mortgage Reading Railroad (value $100), which puts cash at $100,
-    // crossing the $50 debt threshold and auto-settling.
+    // Mortgage Reading Railroad (value $100): -$50 + $100 = $50 ≥ 0 → resume.
     const result = apply(raising, {
       kind: "mortgage",
       playerId: "p1",
@@ -1055,21 +1056,18 @@ describe("must-raise-cash phase", () => {
     if (!result.ok) throw new Error(`expected ok, got ${result.reason}`);
 
     expect(result.state.turn.phase).toBe("post-roll");
-    expect(result.state.turn.pendingDebt).toBeUndefined();
-    // Mortgage event then the deferred rent event, in that order.
-    const kinds = result.newEvents.map((e) => e.kind);
-    expect(kinds).toEqual(["mortgage", "rent"]);
-    // p1 cash: started at $0, +$100 mortgage, -$50 rent -> $50.
+    expect(result.state.turn.raiseCash).toBeUndefined();
+    // Rent was logged at landing, so settling emits only the mortgage.
+    expect(result.newEvents.map((e) => e.kind)).toEqual(["mortgage"]);
     expect(result.state.players.find((p) => p.id === "p1")?.cash).toBe(50);
-    // p2 cash: started at $1500, +$50 rent -> $1550.
     expect(result.state.players.find((p) => p.id === "p2")?.cash).toBe(1550);
   });
 
-  it("stays in must-raise-cash when a mortgage still leaves the debt short", () => {
+  it("stays in must-raise-cash while a mortgage still leaves the debtor in the red", () => {
     // Land p1 on Boardwalk owned by p2 (no monopoly, no houses -> rent $50).
     // p1 has $0 cash; owns Mediterranean ($30 mortgage value) and Reading
-    // Railroad ($100). $0 + $130 raisable >= $50 -> must-raise-cash entered.
-    // First mortgage Mediterranean -> cash $30 < $50 -> phase persists.
+    // Railroad ($100). Rent puts them at -$50; mortgaging only Mediterranean
+    // (+$30) leaves -$20, so the phase persists for the next mortgage.
     const start = freshGame("test-raise-partial");
     const { state: placed } = setupLandingOn(start, 39);
     let state = withOwnership(placed, { 39: "p2", 1: "p1", 5: "p1" });
@@ -1077,12 +1075,12 @@ describe("must-raise-cash phase", () => {
 
     const raising = autoStep(state).state;
     expect(raising.turn.phase).toBe("must-raise-cash");
-    expect(raising.turn.pendingDebt?.amount).toBe(50);
+    expect(raising.players.find((p) => p.id === "p1")?.cash).toBe(-50);
 
     const r1 = apply(raising, { kind: "mortgage", playerId: "p1", position: 1 });
     if (!r1.ok) throw new Error(`expected ok, got ${r1.reason}`);
     expect(r1.state.turn.phase).toBe("must-raise-cash");
-    expect(r1.state.players.find((p) => p.id === "p1")?.cash).toBe(30);
+    expect(r1.state.players.find((p) => p.id === "p1")?.cash).toBe(-20);
   });
 
   it("auto-bankrupts when even max mortgaging can't cover the debt", () => {
@@ -1137,5 +1135,263 @@ describe("must-raise-cash phase", () => {
 
     const { state: next } = autoStep(state);
     expect(next.players.find((p) => p.id === "p1")?.bankrupt).toBe(true);
+  });
+});
+
+// Put the active player at an unpaused pre-roll with `proposerId` building a
+// trade — the state the engine reaches after the trade queue is consumed.
+function inTradeBuilding(state: GameState, proposerId: string): GameState {
+  return {
+    ...state,
+    turn: {
+      ...state.turn,
+      phase: "trade-building",
+      tradeDraft: { proposerId, propertyTo: {}, gojfTo: {}, cashDelta: {} },
+    },
+  };
+}
+
+describe("trade requests", () => {
+  it("toggles the trade queue per player, preserving request order", () => {
+    const start = freshGame("trade-queue");
+    const a = apply(start, { kind: "request-trade", playerId: "p3" });
+    if (!a.ok) throw new Error(a.reason);
+    expect(a.state.tradeQueue).toEqual(["p3"]);
+
+    const b = apply(a.state, { kind: "request-trade", playerId: "p2" });
+    if (!b.ok) throw new Error(b.reason);
+    expect(b.state.tradeQueue).toEqual(["p3", "p2"]);
+
+    // Toggling p3 off leaves p2 queued.
+    const c = apply(b.state, { kind: "request-trade", playerId: "p3" });
+    if (!c.ok) throw new Error(c.reason);
+    expect(c.state.tradeQueue).toEqual(["p2"]);
+  });
+
+  it("opens the head requester's build at the next pre-roll instead of rolling", () => {
+    const start = freshGame("trade-open");
+    const queued: GameState = { ...start, tradeQueue: ["p3"] };
+    const { state: next, newEvents } = autoStep(queued);
+    expect(next.turn.phase).toBe("trade-building");
+    expect(next.turn.tradeDraft?.proposerId).toBe("p3");
+    // Active turn owner is unchanged — the trade just interrupts before p1 rolls.
+    expect(next.turn.playerId).toBe("p1");
+    expect(next.tradeQueue).toEqual([]);
+    expect(newEvents).toHaveLength(0);
+  });
+});
+
+describe("trade building", () => {
+  it("lets the proposer stage a draft and rejects edits from anyone else", () => {
+    const start = withOwnership(freshGame("trade-draft"), { 1: "p1" });
+    const building = inTradeBuilding(start, "p1");
+    const terms = { propertyTo: { 1: "p2" }, gojfTo: {}, cashDelta: {} };
+
+    const ok = apply(building, { kind: "update-trade-draft", playerId: "p1", terms });
+    if (!ok.ok) throw new Error(ok.reason);
+    expect(ok.state.turn.tradeDraft?.propertyTo).toEqual({ 1: "p2" });
+
+    const wrong = apply(building, { kind: "update-trade-draft", playerId: "p2", terms });
+    expect(wrong.ok).toBe(false);
+  });
+
+  it("rejects a proposal that doesn't balance, is empty, or names one party", () => {
+    const start = withOwnership(freshGame("trade-bad"), { 1: "p1" });
+    const empty = inTradeBuilding(start, "p1");
+    expect(apply(empty, { kind: "propose-trade", playerId: "p1" }).ok).toBe(false);
+
+    const unbalanced: GameState = {
+      ...start,
+      turn: {
+        ...start.turn,
+        phase: "trade-building",
+        tradeDraft: {
+          proposerId: "p1",
+          propertyTo: { 1: "p2" },
+          gojfTo: {},
+          cashDelta: { p2: -60 }, // doesn't sum to zero
+        },
+      },
+    };
+    expect(apply(unbalanced, { kind: "propose-trade", playerId: "p1" }).ok).toBe(false);
+  });
+
+  it("returns to pre-roll on cancel", () => {
+    const start = inTradeBuilding(freshGame("trade-cancel"), "p1");
+    const res = apply(start, { kind: "cancel-trade", playerId: "p1" });
+    if (!res.ok) throw new Error(res.reason);
+    expect(res.state.turn.phase).toBe("pre-roll");
+    expect(res.state.turn.tradeDraft).toBeUndefined();
+  });
+});
+
+describe("trade approval + execution", () => {
+  it("executes a property-for-cash trade once every named party approves", () => {
+    const start = withOwnership(freshGame("trade-exec"), { 1: "p1" });
+    const building = inTradeBuilding(start, "p1");
+    const staged = apply(building, {
+      kind: "update-trade-draft",
+      playerId: "p1",
+      terms: { propertyTo: { 1: "p2" }, gojfTo: {}, cashDelta: { p1: 60, p2: -60 } },
+    });
+    if (!staged.ok) throw new Error(staged.reason);
+
+    const proposed = apply(staged.state, { kind: "propose-trade", playerId: "p1" });
+    if (!proposed.ok) throw new Error(proposed.reason);
+    expect(proposed.state.turn.phase).toBe("trade-pending");
+    const pending = proposed.state.turn.pendingTrade;
+    if (!pending) throw new Error("expected a pending trade");
+    // Proposer (a party) is pre-approved; the other party isn't.
+    expect(pending.approvals).toEqual({ p1: true, p2: false });
+
+    const accepted = apply(proposed.state, {
+      kind: "accept-trade",
+      playerId: "p2",
+      tradeId: pending.id,
+    });
+    if (!accepted.ok) throw new Error(accepted.reason);
+    expect(accepted.state.ownership[1]).toBe("p2");
+    expect(accepted.state.players.find((p) => p.id === "p1")?.cash).toBe(1560);
+    expect(accepted.state.players.find((p) => p.id === "p2")?.cash).toBe(1440);
+    expect(accepted.state.turn.phase).toBe("pre-roll");
+    expect(accepted.newEvents.some((e) => e.kind === "trade")).toBe(true);
+  });
+
+  it("cancels the whole proposal on a single decline", () => {
+    const start = withOwnership(freshGame("trade-decline"), { 1: "p1" });
+    const building = inTradeBuilding(start, "p1");
+    const staged = apply(building, {
+      kind: "update-trade-draft",
+      playerId: "p1",
+      terms: { propertyTo: { 1: "p2" }, gojfTo: {}, cashDelta: { p1: 60, p2: -60 } },
+    });
+    if (!staged.ok) throw new Error(staged.reason);
+    const proposed = apply(staged.state, { kind: "propose-trade", playerId: "p1" });
+    if (!proposed.ok) throw new Error(proposed.reason);
+    const pending = proposed.state.turn.pendingTrade;
+    if (!pending) throw new Error("expected a pending trade");
+
+    const declined = apply(proposed.state, {
+      kind: "decline-trade",
+      playerId: "p2",
+      tradeId: pending.id,
+    });
+    if (!declined.ok) throw new Error(declined.reason);
+    expect(declined.state.turn.phase).toBe("pre-roll");
+    expect(declined.state.ownership[1]).toBe("p1"); // unchanged
+  });
+
+  it("executes an out-of-turn trade and returns to the active player's pre-roll", () => {
+    // p1 is the active turn owner; p2 (building) trades Mediterranean to p3.
+    let start = withOwnership(freshGame("trade-offturn"), { 1: "p2" });
+    start = inTradeBuilding(start, "p2");
+    const staged = apply(start, {
+      kind: "update-trade-draft",
+      playerId: "p2",
+      terms: { propertyTo: { 1: "p3" }, gojfTo: {}, cashDelta: { p2: 50, p3: -50 } },
+    });
+    if (!staged.ok) throw new Error(staged.reason);
+    const proposed = apply(staged.state, { kind: "propose-trade", playerId: "p2" });
+    if (!proposed.ok) throw new Error(proposed.reason);
+    const pending = proposed.state.turn.pendingTrade;
+    if (!pending) throw new Error("expected a pending trade");
+
+    const accepted = apply(proposed.state, {
+      kind: "accept-trade",
+      playerId: "p3",
+      tradeId: pending.id,
+    });
+    if (!accepted.ok) throw new Error(accepted.reason);
+    expect(accepted.state.ownership[1]).toBe("p3");
+    expect(accepted.state.turn.phase).toBe("pre-roll");
+    expect(accepted.state.turn.playerId).toBe("p1"); // p1's turn resumes
+  });
+});
+
+describe("trade mortgaged-property interest", () => {
+  it("charges the receiver 10% interest on a mortgaged property received", () => {
+    // p1 gifts mortgaged Mediterranean (mortgage $30 → 10% = $3) to p2.
+    let start = withOwnership(freshGame("trade-mort"), { 1: "p1" });
+    start = { ...start, mortgaged: { 1: true } };
+    start = inTradeBuilding(start, "p1");
+    const staged = apply(start, {
+      kind: "update-trade-draft",
+      playerId: "p1",
+      terms: { propertyTo: { 1: "p2" }, gojfTo: {}, cashDelta: {} },
+    });
+    if (!staged.ok) throw new Error(staged.reason);
+    const proposed = apply(staged.state, { kind: "propose-trade", playerId: "p1" });
+    if (!proposed.ok) throw new Error(proposed.reason);
+    const pending = proposed.state.turn.pendingTrade;
+    if (!pending) throw new Error("expected a pending trade");
+
+    const accepted = apply(proposed.state, {
+      kind: "accept-trade",
+      playerId: "p2",
+      tradeId: pending.id,
+    });
+    if (!accepted.ok) throw new Error(accepted.reason);
+    expect(accepted.state.ownership[1]).toBe("p2");
+    expect(accepted.state.mortgaged[1]).toBe(true); // transfers still mortgaged
+    expect(accepted.state.players.find((p) => p.id === "p2")?.cash).toBe(1497);
+    expect(accepted.state.turn.phase).toBe("pre-roll");
+  });
+
+  it("drops a short receiver into must-raise-cash (resuming at pre-roll), then settles", () => {
+    // p2 has just $1 and receives mortgaged Boardwalk ($200 mortgage → $20
+    // interest). They own Baltic ($30 mortgage value) to raise cash with.
+    let start = withOwnership(freshGame("trade-mort-raise"), { 39: "p1", 3: "p2" });
+    start = { ...start, mortgaged: { 39: true } };
+    start = setCash(start, "p2", 1);
+    start = inTradeBuilding(start, "p1");
+    const staged = apply(start, {
+      kind: "update-trade-draft",
+      playerId: "p1",
+      terms: { propertyTo: { 39: "p2" }, gojfTo: {}, cashDelta: {} },
+    });
+    if (!staged.ok) throw new Error(staged.reason);
+    const proposed = apply(staged.state, { kind: "propose-trade", playerId: "p1" });
+    if (!proposed.ok) throw new Error(proposed.reason);
+    const pending = proposed.state.turn.pendingTrade;
+    if (!pending) throw new Error("expected a pending trade");
+
+    const accepted = apply(proposed.state, {
+      kind: "accept-trade",
+      playerId: "p2",
+      tradeId: pending.id,
+    });
+    if (!accepted.ok) throw new Error(accepted.reason);
+    // $1 − $20 interest = −$19 → must-raise-cash, debtor p2, resuming pre-roll.
+    expect(accepted.state.turn.phase).toBe("must-raise-cash");
+    expect(accepted.state.turn.raiseCash).toBe("pre-roll");
+    expect(firstNegativePlayer(accepted.state)).toBe("p2");
+    expect(accepted.state.players.find((p) => p.id === "p2")?.cash).toBe(-19);
+
+    // p2 mortgages Baltic (+$30): −19 + 30 = 11 ≥ 0 → resume at pre-roll.
+    const settled = apply(accepted.state, {
+      kind: "mortgage",
+      playerId: "p2",
+      position: 3,
+    });
+    if (!settled.ok) throw new Error(settled.reason);
+    expect(settled.state.turn.phase).toBe("pre-roll");
+    expect(settled.state.players.find((p) => p.id === "p2")?.cash).toBe(11);
+  });
+
+  it("rejects a proposal a receiver couldn't cover even by mortgaging", () => {
+    // p2 has $1, receives mortgaged Boardwalk ($20 interest), owns nothing
+    // else to raise cash → can't recover → proposal rejected.
+    let start = withOwnership(freshGame("trade-unaffordable"), { 39: "p1" });
+    start = { ...start, mortgaged: { 39: true } };
+    start = setCash(start, "p2", 1);
+    start = inTradeBuilding(start, "p1");
+    const staged = apply(start, {
+      kind: "update-trade-draft",
+      playerId: "p1",
+      terms: { propertyTo: { 39: "p2" }, gojfTo: {}, cashDelta: {} },
+    });
+    if (!staged.ok) throw new Error(staged.reason);
+    const proposed = apply(staged.state, { kind: "propose-trade", playerId: "p1" });
+    expect(proposed.ok).toBe(false);
   });
 });

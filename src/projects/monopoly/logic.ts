@@ -51,6 +51,16 @@ export function unmortgageCostAt(position: number): number | null {
   return Math.ceil((value * 11) / 10);
 }
 
+/** The 10% mortgage interest alone (un-mortgage cost minus the principal) —
+ *  what a player must pay the bank when they take on a mortgaged property in a
+ *  trade and keep it mortgaged. Official rule. Null for non-ownable spaces. */
+export function mortgageInterestAt(position: number): number | null {
+  const value = mortgageValueAt(position);
+  const cost = unmortgageCostAt(position);
+  if (value === null || cost === null) return null;
+  return cost - value;
+}
+
 /** True when ownerId holds every property of `color`. */
 export function hasMonopoly(
   state: GameState,

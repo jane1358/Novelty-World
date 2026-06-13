@@ -16,10 +16,10 @@ const NO_ARMED_PAUSES: ArmedPauses = { beforeRoll: false, beforeEnd: false };
  *  width and represents its intent with an icon so the bar stays legible
  *  on a 375px viewport.
  *
- *  1. Trade — pause the game at the next inter-turn boundary so this
- *     player can propose a trade. Placeholder for now: the proposal flow
- *     and resolution sub-game aren't built yet, so the button is shown
- *     disabled to reserve its spot in the layout.
+ *  1. Trade — a one-shot "I want to trade" toggle. Arming it queues the
+ *     player; the game pauses at the next pre-roll ("just before the next
+ *     roll") and opens their trade builder. Reads as a checkbox like the
+ *     two pauses beside it because it's the same arm-and-fire shape.
  *
  *  2. Pause before roll — armed one-shot pause that fires at the local
  *     player's next pre-roll. Lets them act before the dice fly.
@@ -33,6 +33,7 @@ const NO_ARMED_PAUSES: ArmedPauses = { beforeRoll: false, beforeEnd: false };
 export function ActionBar({ state }: Props) {
   const myPlayerId = useMonopolyStore((s) => s.myPlayerId);
   const submit = useMonopolyStore((s) => s.submit);
+  const requestTrade = useMonopolyStore((s) => s.requestTrade);
 
   const armed = myPlayerId
     ? (state.armedPauses[myPlayerId] ?? NO_ARMED_PAUSES)
@@ -44,14 +45,20 @@ export function ActionBar({ state }: Props) {
   };
 
   const interactive = myPlayerId !== null;
+  const tradeArmed = myPlayerId !== null && state.tradeQueue.includes(myPlayerId);
 
   return (
     <div className="flex">
       <ActionCell
-        variant="button"
+        variant="checkbox"
         icon={<ArrowRightLeft className="h-5 w-5" aria-hidden="true" />}
         label="Trade"
-        disabled
+        ariaLabel="Trade at the next turn boundary"
+        checked={tradeArmed}
+        disabled={!interactive}
+        onToggle={() => {
+          requestTrade();
+        }}
       />
       <ActionCell
         variant="checkbox"

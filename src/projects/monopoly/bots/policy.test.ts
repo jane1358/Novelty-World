@@ -28,15 +28,23 @@ describe("botIntent — buy-decision", () => {
   });
 });
 
+function inTheRed(state: GameState, playerId: string, cash: number): GameState {
+  return {
+    ...state,
+    players: state.players.map((p) => (p.id === playerId ? { ...p, cash } : p)),
+  };
+}
+
 describe("botIntent — must-raise-cash", () => {
-  it("mortgages the cheapest building-free, un-mortgaged property", () => {
-    // p1 owns Mediterranean (1, mortgaged), Baltic (3, has a house) and
-    // Reading Railroad (5, free). Only the railroad is mortgageable.
+  it("mortgages the cheapest building-free, un-mortgaged property of the debtor", () => {
+    // p1 is in the red and owns Mediterranean (1, mortgaged), Baltic (3, has a
+    // house) and Reading Railroad (5, free). Only the railroad is mortgageable.
     const state: GameState = {
-      ...withTurn({
-        phase: "must-raise-cash",
-        pendingDebt: { amount: 200, creditorId: "p2" },
-      }),
+      ...inTheRed(
+        withTurn({ phase: "must-raise-cash", raiseCash: "after-landing" }),
+        "p1",
+        -200,
+      ),
       ownership: { 1: "p1", 3: "p1", 5: "p1" },
       mortgaged: { 1: true },
       houses: { 3: 1 },
@@ -48,12 +56,56 @@ describe("botIntent — must-raise-cash", () => {
     });
   });
 
-  it("returns null when nothing can be mortgaged", () => {
-    const state = withTurn({
-      phase: "must-raise-cash",
-      pendingDebt: { amount: 200, creditorId: "p2" },
-    });
+  it("returns null for a bot who isn't the current debtor", () => {
+    // p1 is the one in the red; p2 has nothing to settle.
+    const state = inTheRed(
+      withTurn({ phase: "must-raise-cash", raiseCash: "after-landing" }),
+      "p1",
+      -200,
+    );
+    expect(botIntent(state, "p2")).toBeNull();
+  });
+
+  it("returns null when the debtor has nothing to mortgage", () => {
+    const state = inTheRed(
+      withTurn({ phase: "must-raise-cash", raiseCash: "after-landing" }),
+      "p1",
+      -200,
+    );
     expect(botIntent(state, "p1")).toBeNull();
+  });
+});
+
+describe("botIntent — trade-pending", () => {
+  const pending = {
+    id: "t1",
+    proposerId: "p1",
+    propertyTo: { 1: "p2" },
+    gojfTo: {},
+    cashDelta: {},
+    approvals: { p1: true, p2: false },
+  };
+
+  it("accepts when the bot is a named party that hasn't voted", () => {
+    const state = withTurn({ phase: "trade-pending", pendingTrade: pending });
+    expect(botIntent(state, "p2")).toEqual({
+      kind: "accept-trade",
+      playerId: "p2",
+      tradeId: "t1",
+    });
+  });
+
+  it("returns null once the bot has approved", () => {
+    const state = withTurn({
+      phase: "trade-pending",
+      pendingTrade: { ...pending, approvals: { p1: true, p2: true } },
+    });
+    expect(botIntent(state, "p2")).toBeNull();
+  });
+
+  it("returns null for a player who isn't a party", () => {
+    const state = withTurn({ phase: "trade-pending", pendingTrade: pending });
+    expect(botIntent(state, "p3")).toBeNull();
   });
 });
 

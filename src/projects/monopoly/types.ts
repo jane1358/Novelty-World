@@ -87,12 +87,30 @@ export interface Player {
 
 export type CardSource = "chance" | "communityChest";
 
-/** Set of assets one side of a trade is giving up. `gojf` lists the deck
- *  sources of any Get Out of Jail Free cards included. */
-export interface TradePayload {
-  positions: readonly number[];
-  cash: number;
-  gojf: readonly CardSource[];
+/** The asset reassignments + cash movements that define a trade. Properties
+ *  and GOJF cards list ONLY the entries that change hands (a property mapped
+ *  to its current owner would be a no-op and is never stored); `cashDelta` is
+ *  each player's net cash change and must sum to zero — money only moves
+ *  between players, never to or from the bank. The 10% interest a receiver
+ *  owes on a mortgaged property is NOT part of `cashDelta`; it's a separate
+ *  bank charge derived at execution. Permissive by design: any properties may
+ *  move between any players, and the proposer need not be a party. Used as the
+ *  live draft, and — with `id` + `approvals` — as the finalized proposal. */
+export interface TradeTerms {
+  /** position -> new owner id, per property changing hands. */
+  propertyTo: Readonly<Record<number, string>>;
+  /** GOJF card source -> new holder id, per card changing hands. */
+  gojfTo: Readonly<Partial<Record<CardSource, string>>>;
+  /** player id -> net cash change (positive = receives). Sparse; absent = 0.
+   *  Sums to zero across all entries. */
+  cashDelta: Readonly<Record<string, number>>;
+}
+
+/** A trade being assembled by its proposer. Lives in the authoritative
+ *  GameState (not local UI state, unlike mortgage staging) so every player
+ *  watches it take shape in real time. */
+export interface TradeDraft extends TradeTerms {
+  proposerId: string;
 }
 
 /** Single recorded action in the play log. Every kind that mutates the
@@ -136,11 +154,12 @@ export type GameEvent =
   | { kind: "unmortgage"; position: number; cost: number }
   | {
       kind: "trade";
-      /** The other party in the trade. The active player (turn owner) is the
-       *  initiator; this is whoever they traded with. */
-      withId: string;
-      gave: TradePayload;
-      received: TradePayload;
+      /** Who assembled and proposed the trade (may not be a participant). */
+      proposerId: string;
+      /** Asset + cash movements as executed (same shape as the proposal). */
+      propertyTo: Readonly<Record<number, string>>;
+      gojfTo: Readonly<Partial<Record<CardSource, string>>>;
+      cashDelta: Readonly<Record<string, number>>;
     }
   | { kind: "go-to-jail"; reason: "tile" | "card" | "three-doubles" }
   | {
@@ -197,24 +216,27 @@ export type TurnPhase =
   | "must-raise-cash"
   | "auction"
   | "jail-decision"
+  | "trade-building"
   | "trade-pending"
   | "game-over";
 
-/** A debt the active player must settle before the turn can continue.
- *  Created by `chargeRent` (later: tax, fines, card effects) when the player
- *  can't cover the bill from cash but COULD cover it after mortgaging
- *  un-built properties. Lives on `TurnState.pendingDebt` while the phase is
- *  `must-raise-cash`; cleared (and the cash transferred) once the player
- *  has mortgaged enough to settle.
+/** Where play resumes once every player is back to non-negative cash and the
+ *  `must-raise-cash` phase clears. A debt is charged immediately — the
+ *  debtor's cash goes negative — and they must mortgage (later: sell
+ *  buildings) back to ≥ 0 before play continues; whoever is below zero is the
+ *  current debtor (see `firstNegativePlayer`), so the debtors and amounts live
+ *  in player cash, not here. Only the resume target needs remembering:
+ *  - `after-landing`: continue the active player's landing — another roll on
+ *    doubles, else post-roll. Used when a rent / tax / card charge put them in
+ *    the red (the debtor is always the active player here).
+ *  - `pre-roll`: return to the pre-roll boundary (which re-checks the trade
+ *    queue, then rolls). Used when a trade's settlement — cash deltas or
+ *    mortgage interest — put one or more players (possibly out of turn) in the
+ *    red.
  *
- *  Players who couldn't cover the debt even after maxing out mortgages
- *  never reach this state — they go straight to bankrupt in `chargeRent`. */
-export interface PendingDebt {
-  amount: number;
-  /** Recipient of the cash on settle. Always set today (rent has a payee);
-   *  will become null when tax / fine debts wire through this same phase. */
-  creditorId: string;
-}
+ *  A debtor who couldn't reach ≥ 0 even after maxing out raisable cash never
+ *  enters this phase — they go straight to bankrupt at charge time. */
+export type RaiseCashResume = "after-landing" | "pre-roll";
 
 /** Auction in progress after a player declined to buy a property they
  *  landed on. */
@@ -230,15 +252,17 @@ export interface AuctionState {
   leaderId: string | null;
 }
 
-/** Trade proposal awaiting accept / decline / counter. */
-export interface PendingTrade {
+/** A finalized trade proposal awaiting approval. Every NAMED participant
+ *  (anyone who gives or receives a property, card, or cash) must approve
+ *  before it executes; a single decline cancels it. Counters aren't built yet
+ *  — a player who dislikes a proposal declines and someone proposes afresh;
+ *  see the `counter-trade` TODO on `Intent`. */
+export interface PendingTrade extends TradeTerms {
   id: string;
   proposerId: string;
-  recipientId: string;
-  /** What the proposer would give up. */
-  gives: TradePayload;
-  /** What the proposer would receive in return. */
-  receives: TradePayload;
+  /** player id -> approved, keyed by every named participant. The proposer is
+   *  seeded `true` iff they're named. All true -> the trade executes. */
+  approvals: Readonly<Record<string, boolean>>;
 }
 
 /** Active-turn block. The single source of truth for whose turn it is,
@@ -256,13 +280,16 @@ export interface TurnState {
   /** Position of an unowned ownable square the active player just landed
    *  on, awaiting a buy / decline-buy decision. */
   pendingBuy?: number;
-  /** Debt the active player must raise cash for before the turn continues.
-   *  Set when `chargeRent` (or future tax / fine paths) finds the player
-   *  can't pay from cash alone but could after mortgaging. The engine
-   *  auto-settles and transitions out of `must-raise-cash` as soon as a
-   *  mortgage intent brings cash up to the debt amount. */
-  pendingDebt?: PendingDebt;
+  /** Present iff `phase === "must-raise-cash"`. Says where play resumes once
+   *  every player who went negative has climbed back to ≥ 0. The debtor(s) and
+   *  the amounts are read from player cash (whoever is below zero), not stored
+   *  here — see `firstNegativePlayer`. */
+  raiseCash?: RaiseCashResume;
   auction?: AuctionState;
+  /** Present iff `phase === "trade-building"`: the proposal being assembled,
+   *  visible to all players as the proposer edits it. */
+  tradeDraft?: TradeDraft;
+  /** Present iff `phase === "trade-pending"`: the proposal awaiting approval. */
   pendingTrade?: PendingTrade;
 }
 
@@ -302,22 +329,24 @@ export type Intent =
   | { kind: "sell-building"; playerId: string; position: number }
   | { kind: "mortgage"; playerId: string; position: number }
   | { kind: "unmortgage"; playerId: string; position: number }
-  | {
-      kind: "propose-trade";
-      playerId: string;
-      recipientId: string;
-      gives: TradePayload;
-      receives: TradePayload;
-    }
+  /** Toggle membership in the FIFO trade queue — "I want to trade". Anyone
+   *  may arm it for themselves at any time; the next unpaused pre-roll opens
+   *  the head player's trade-building phase. */
+  | { kind: "request-trade"; playerId: string }
+  /** Proposer replaces the live draft wholesale (the client computes the next
+   *  terms and sends a full snapshot — keeps the intent surface small and the
+   *  draft trivially broadcastable). Only legal in `trade-building` for the
+   *  draft's proposer. */
+  | { kind: "update-trade-draft"; playerId: string; terms: TradeTerms }
+  /** Proposer abandons the build (or pending proposal), returning to pre-roll. */
+  | { kind: "cancel-trade"; playerId: string }
+  /** Proposer finalizes the current draft into a proposal awaiting approval. */
+  | { kind: "propose-trade"; playerId: string }
   | { kind: "accept-trade"; playerId: string; tradeId: string }
   | { kind: "decline-trade"; playerId: string; tradeId: string }
-  | {
-      kind: "counter-trade";
-      playerId: string;
-      tradeId: string;
-      gives: TradePayload;
-      receives: TradePayload;
-    }
+  // TODO(counter-trade): let a named party edit a pending proposal and
+  // re-submit it, re-opening approval for everyone. Deferred for now; the
+  // TradeTerms model + update-trade-draft are shaped to support it later.
   | { kind: "pay-to-leave-jail"; playerId: string }
   | { kind: "use-jail-card"; playerId: string }
   | { kind: "pause"; playerId: string; when: "pre-roll" | "post-roll" }
@@ -381,6 +410,11 @@ export interface GameState {
   /** Per-player armed one-shot pause flags, keyed by player id. Dense:
    *  every player has an entry, even if both flags are false. */
   armedPauses: Readonly<Record<string, ArmedPauses>>;
+  /** Players who have armed "I want to trade", in request order (FIFO). The
+   *  next unpaused pre-roll consumes the head and opens their trade-building
+   *  phase ("just before the next roll"). Further armed players wait their turn
+   *  after each trade resolves. */
+  tradeQueue: readonly string[];
   /** Immutable identifier for the game's RNG stream. Set once when the
    *  game starts; used to derive the initial `rngState` and useful as a
    *  human-readable handle when debugging. */

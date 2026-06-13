@@ -74,6 +74,7 @@ export function freshGame(
     armedPauses: Object.fromEntries(
       players.map((p) => [p.id, NO_ARMED_PAUSES]),
     ),
+    tradeQueue: [],
     rngSeed,
     rngState: createRng(rngSeed).getState(),
   };
@@ -165,6 +166,7 @@ export const MOCK_STATE: GameState = {
   armedPauses: Object.fromEntries(
     PLAYERS.map((p) => [p.id, NO_ARMED_PAUSES]),
   ),
+  tradeQueue: [],
   rngSeed: "mock-seed",
   rngState: createRng("mock-seed").getState(),
 };
@@ -269,10 +271,13 @@ function MOCK_TURNS(): readonly TurnGroup[] {
         { kind: "roll", dice: [5, 2], doublesStreak: 0, toPosition: 27, passedGo: false },
         { kind: "rent", ownerId: "p4", position: 27, amount: 22 },
         {
+          // p2 proposed: p2 gives Virginia Ave (14) + $200 to p4, gets New
+          // York Ave (27) back. Multi-party shape; here just two parties.
           kind: "trade",
-          withId: "p4",
-          gave: { positions: [14], cash: 200, gojf: [] },
-          received: { positions: [27], cash: 0, gojf: [] },
+          proposerId: "p2",
+          propertyTo: { 14: "p4", 27: "p2" },
+          gojfTo: {},
+          cashDelta: { p2: -200, p4: 200 },
         },
         { kind: "sell-building", position: 11, toLevel: 4, refund: 50 },
       ],

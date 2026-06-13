@@ -2,11 +2,13 @@
 
 import type { CSSProperties, ReactNode } from "react";
 import { SPACES } from "../data";
+import { firstNegativePlayer } from "../engine";
 import { ownablePrice } from "../logic";
 import { useMonopolyStore } from "../store";
 import { PROPERTY_COLOR_VAR } from "../theme";
 import type { GameState } from "../types";
 import { MortgagePanel } from "./mortgage-panel";
+import { TradePanel } from "./trade-panel";
 
 interface Props {
   state: GameState;
@@ -33,16 +35,28 @@ export function PromptSection({ state }: Props) {
   const mortgageStaged = useMonopolyStore((s) => s.mortgageStaged);
   const openMortgagePanel = useMonopolyStore((s) => s.openMortgagePanel);
 
-  if (!myPlayerId) return null;
-  if (state.turn.playerId !== myPlayerId) return null;
-
   const { phase, paused, pendingBuy } = state.turn;
 
-  // Must-raise-cash forces the panel open regardless of staging state —
-  // the player can't dismiss it, only settle the debt.
+  // Trade building / pending is shown to EVERYONE — including a seatless
+  // spectator — because the proposal lives in synced state and the footer
+  // hides the log to make room for it. Interactivity inside the panel is gated
+  // by role (proposer edits, named parties vote, everyone else watches).
+  if (phase === "trade-building" || phase === "trade-pending") {
+    return <TradePanel state={state} />;
+  }
+
+  if (!myPlayerId) return null;
+
+  // Must-raise-cash forces the panel open for the current debtor (whoever is
+  // in the red — possibly off-turn after a trade), who can't dismiss it, only
+  // mortgage back to ≥ 0.
   if (phase === "must-raise-cash") {
+    if (firstNegativePlayer(state) !== myPlayerId) return null;
     return <MortgagePanel state={state} playerId={myPlayerId} />;
   }
+
+  // Everything below is the active player's own decision.
+  if (state.turn.playerId !== myPlayerId) return null;
 
   // Voluntary mortgage mode: the panel stays open until the player commits
   // or cancels, even between roll/end-of-turn moments.
