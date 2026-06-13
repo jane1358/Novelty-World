@@ -9,6 +9,9 @@ import type {
   TurnState,
 } from "./types";
 
+/** Salary paid to a player whose move passes (or lands on) GO. */
+const PASS_GO_SALARY = 200;
+
 /** Random number source for the engine. Every roll, deck shuffle, and
  *  card draw goes through this; `Math.random` may not be called directly
  *  from engine code. See `monopoly/CLAUDE.md` "RNG: always injected."
@@ -135,7 +138,11 @@ export function autoStep(
   const toPos = sum % SPACES.length;
   const passedGo = sum >= SPACES.length;
 
-  const movedPlayer: Player = { ...player, position: toPos };
+  const movedPlayer: Player = {
+    ...player,
+    position: toPos,
+    cash: passedGo ? player.cash + PASS_GO_SALARY : player.cash,
+  };
   const players = state.players.map((p, i) =>
     i === playerIdx ? movedPlayer : p,
   );
