@@ -5,9 +5,7 @@ import {
   NO_ARMED_PAUSES,
   STARTING_CASH,
 } from "./lobby";
-import type { GameEvent, GameState, Player, TurnGroup } from "./types";
-
-export type PlayerCount = 2 | 4 | 8;
+import type { GameState, Player, PlayerCount, TurnGroup } from "./types";
 
 // Slot 0 (Kyle) is the human seat; the rest are bots. Mirrors freshGame, where
 // the seeding client takes slot 0 and the fillers are bot-driven.
@@ -22,19 +20,21 @@ const PLAYERS: readonly Player[] = [
   { id: "p8", name: "Drew",   color: "slate",   icon: "bird",   cash: 3210, position: 12, inJail: false, jailTurns: 0, bankrupt: false, isBot: true },
 ];
 
-/** Fresh 4-player game: all tokens on GO, no ownership, empty log with the
- *  first TurnGroup opened for the starting player. Names/colors/icons come
- *  from the same roster the mock state uses (p1 = Kyle, the human seat).
+/** Fresh immediate-play game: all tokens on GO, no ownership, empty log with
+ *  the first TurnGroup opened for the starting player. Names/colors/icons come
+ *  from the same roster the mock state uses (p1 = Kyle, the human seat). This
+ *  is the seed for the `dev` sandbox (skips the lobby and starts `active`).
  *
  *  Pass `seat` to replace slot 0's id and name with a real PlayerProfile —
- *  used by online games so the seeding client is recognized as a member
- *  (and therefore the authoritative writer) on reload. Slots 1-3 stay as
- *  the bot roster until the lobby lands. */
+ *  so the seeding client is recognized as the human seat on reload. The rest
+ *  are bots. `count` (2 / 4 / 8) sizes the roster; the dev restart command
+ *  uses it to swap player counts. */
 export function freshGame(
   rngSeed = "fresh-1",
   seat?: PlayerProfile,
+  count: PlayerCount = 4,
 ): GameState {
-  const players: Player[] = PLAYERS.slice(0, 4).map((p, i) => {
+  const players: Player[] = PLAYERS.slice(0, count).map((p, i) => {
     const base: Player = {
       ...p,
       cash: STARTING_CASH,
@@ -310,99 +310,3 @@ function MOCK_TURNS(): readonly TurnGroup[] {
   ];
 }
 
-/** Trim the mock so only the first `count` players remain, dropping
- *  ownership/mortgage/houses entries and turn-log references that belonged
- *  to the removed players so the rest of the board stays internally
- *  consistent. Used by the store to default to a 4-player game and by the
- *  debug shortcuts to swap visible player counts at runtime. */
-export function sliceState(state: GameState, count: PlayerCount): GameState {
-  const players = state.players.slice(0, count);
-  const ids = new Set(players.map((p) => p.id));
-  const ownership: Record<number, string> = {};
-  const mortgaged: Record<number, boolean> = {};
-  const houses: Record<number, number> = {};
-  for (const [posStr, pid] of Object.entries(state.ownership)) {
-    if (!ids.has(pid)) continue;
-    const pos = Number(posStr);
-    ownership[pos] = pid;
-    if (state.mortgaged[pos]) mortgaged[pos] = true;
-    const h = state.houses[pos];
-    if (h) houses[pos] = h;
-  }
-  const jailFreeCards: { chance?: string; communityChest?: string } = {};
-  if (state.jailFreeCards.chance && ids.has(state.jailFreeCards.chance)) {
-    jailFreeCards.chance = state.jailFreeCards.chance;
-  }
-  if (
-    state.jailFreeCards.communityChest &&
-    ids.has(state.jailFreeCards.communityChest)
-  ) {
-    jailFreeCards.communityChest = state.jailFreeCards.communityChest;
-  }
-  const turns = filterTurns(state.turns, ids);
-  const preferences = Object.fromEntries(
-    Object.entries(state.preferences).filter(([pid]) => ids.has(pid)),
-  );
-  const armedPauses = Object.fromEntries(
-    Object.entries(state.armedPauses).filter(([pid]) => ids.has(pid)),
-  );
-  // If the active turn references a player we just sliced away, fall back
-  // to the first surviving player so the UI has a coherent turn pointer.
-  // Auction/pendingTrade contents are dropped for the same reason.
-  const turn = ids.has(state.turn.playerId)
-    ? state.turn
-    : {
-        playerId: players[0]?.id ?? state.turn.playerId,
-        phase: "pre-roll" as const,
-        doublesStreak: 0,
-        paused: false,
-      };
-  return {
-    status: state.status,
-    players,
-    ownership,
-    mortgaged,
-    houses,
-    jailFreeCards,
-    turns,
-    turn,
-    preferences,
-    armedPauses,
-    rngSeed: state.rngSeed,
-    rngState: state.rngState,
-  };
-}
-
-// Keep only turns whose active player survived the slice, and within those,
-// drop events whose cross-player references (rent payee, trade partner,
-// bankruptcy creditor) point at sliced-away players. Lets the EventLog
-// assume every player id it sees is renderable.
-function filterTurns(
-  turns: readonly TurnGroup[],
-  ids: ReadonlySet<string>,
-): TurnGroup[] {
-  const result: TurnGroup[] = [];
-  for (const turn of turns) {
-    if (!ids.has(turn.playerId)) continue;
-    const events = turn.events.filter((e) => eventRefsValid(e, ids));
-    if (events.length === 0) continue;
-    result.push({ ...turn, events });
-  }
-  return result;
-}
-
-function eventRefsValid(
-  event: GameEvent,
-  ids: ReadonlySet<string>,
-): boolean {
-  switch (event.kind) {
-    case "rent":
-      return ids.has(event.ownerId);
-    case "trade":
-      return ids.has(event.withId);
-    case "bankrupt":
-      return event.creditorId === null || ids.has(event.creditorId);
-    default:
-      return true;
-  }
-}

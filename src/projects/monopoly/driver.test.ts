@@ -10,20 +10,9 @@ function activePlayer(id: string): GameState {
   return { ...base, turn: { ...base.turn, playerId: id } };
 }
 
-describe("driverRole — local (single client drives everything)", () => {
-  it("drives its own seat as self", () => {
-    expect(driverRole("local", activePlayer("p1"), "p1")).toBe("self");
-  });
-
-  it("proxies every other seat", () => {
-    expect(driverRole("local", activePlayer("p2"), "p1")).toBe("proxy");
-    expect(driverRole("local", activePlayer("p3"), "p1")).toBe("proxy");
-  });
-});
-
-describe("driverRole — online", () => {
+describe("driverRole", () => {
   it("drives the local human's own turn as self", () => {
-    expect(driverRole("online", activePlayer("p1"), "p1")).toBe("self");
+    expect(driverRole(activePlayer("p1"), "p1")).toBe("self");
   });
 
   it("leaves another connected human's turn to them (none)", () => {
@@ -34,20 +23,26 @@ describe("driverRole — online", () => {
         p.id === "p2" ? { ...p, isBot: false } : p,
       ),
     };
-    expect(driverRole("online", withHuman, "p1")).toBe("none");
+    expect(driverRole(withHuman, "p1")).toBe("none");
   });
 
   it("proxies a bot seat regardless of who this client is", () => {
-    expect(driverRole("online", activePlayer("p2"), "p1")).toBe("proxy");
-    expect(driverRole("online", activePlayer("p2"), null)).toBe("proxy");
+    expect(driverRole(activePlayer("p2"), "p1")).toBe("proxy");
+    expect(driverRole(activePlayer("p2"), null)).toBe("proxy");
   });
 
   it("lets a spectator proxy bots but not seated humans", () => {
-    expect(driverRole("online", activePlayer("p2"), null)).toBe("proxy");
-    expect(driverRole("online", activePlayer("p1"), null)).toBe("none");
+    expect(driverRole(activePlayer("p2"), null)).toBe("proxy");
+    expect(driverRole(activePlayer("p1"), null)).toBe("none");
   });
 
   it("is none when the active id matches no seat", () => {
-    expect(driverRole("online", activePlayer("ghost"), "p1")).toBe("none");
+    expect(driverRole(activePlayer("ghost"), "p1")).toBe("none");
+  });
+
+  it("resolves the dev sandbox (1 human + bots) to self / proxy", () => {
+    // freshGame is exactly this shape: p1 human, p2-p4 bots.
+    expect(driverRole(activePlayer("p1"), "p1")).toBe("self");
+    expect(driverRole(activePlayer("p3"), "p1")).toBe("proxy");
   });
 });

@@ -3,7 +3,7 @@
 import { createClient } from "@/shared/lib/supabase/client";
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 import type { MonopolyAction, MonopolyResult } from "./protocol";
-import type { GameState } from "./types";
+import type { GameState, Player } from "./types";
 
 // One row per game in public.monopoly_games (see supabase/monopoly.sql).
 // The /api/monopoly route is the only writer; every client reads here and
@@ -24,6 +24,40 @@ type GameRow = {
 export interface LoadedGame {
   state: GameState;
   version: number;
+}
+
+/** Lightweight view of a game for the lobby browser, derived from the row's
+ *  state JSON. Only what the list needs — full state is loaded on open. */
+export interface GameSummary {
+  id: string;
+  status: GameState["status"];
+  /** Seated players, in play order, for the roster preview. */
+  players: readonly Player[];
+}
+
+/** List joinable / watchable games for the lobby: every row that is still a
+ *  `lobby` or in play (`active`), newest first. Finished games are kept in
+ *  the table for history but excluded here. The reserved `dev` sandbox is
+ *  hidden too — it's reachable only via the direct `?game=dev` link. */
+export async function listGames(): Promise<GameSummary[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from(TABLE)
+    .select("id, state")
+    .order("updated_at", { ascending: false });
+  if (error) throw error;
+  const rows = data as { id: string; state: GameState }[];
+  return rows
+    .filter(
+      (r) =>
+        r.id !== "dev" &&
+        (r.state.status === "lobby" || r.state.status === "active"),
+    )
+    .map((r) => ({
+      id: r.id,
+      status: r.state.status,
+      players: r.state.players,
+    }));
 }
 
 /** Read the current game, or null if the row doesn't exist yet. Throws on a

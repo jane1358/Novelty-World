@@ -1,10 +1,36 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/shared/lib/supabase/server-admin";
+import { PLAYER_COLORS, PLAYER_ICONS } from "@/projects/monopoly/data";
+import { applyDevCommand } from "@/projects/monopoly/dev-ops";
 import { apply, autoStep } from "@/projects/monopoly/engine";
+import {
+  addBot,
+  createLobby,
+  joinLobby,
+  removePlayer,
+  setPlayerColor,
+  setPlayerIcon,
+  setPlayerName,
+  startGame,
+  type LobbyResult,
+} from "@/projects/monopoly/lobby";
 import { freshGame } from "@/projects/monopoly/mocks";
-import type { GameState, Intent } from "@/projects/monopoly/types";
-import type { MonopolyAction, MonopolyResult } from "@/projects/monopoly/protocol";
+import type {
+  GameState,
+  Intent,
+  PlayerColor,
+  PlayerIcon,
+} from "@/projects/monopoly/types";
+import type {
+  DevCommand,
+  MonopolyAction,
+  MonopolyResult,
+} from "@/projects/monopoly/protocol";
 import type { PlayerProfile } from "@/shared/lib/profile";
+
+// The reserved game id that runs on the backend like any other game but also
+// accepts the debug `dev` actions. See monopoly/CLAUDE.md "Multiplayer".
+const DEV_GAME_ID = "dev";
 
 // One row per game in public.monopoly_games. This route is the ONLY writer:
 // RLS denies client writes, the route writes with the service role and runs
@@ -40,24 +66,75 @@ function parseProfile(v: unknown): PlayerProfile | null {
   return null;
 }
 
+function isPlayerColor(v: unknown): v is PlayerColor {
+  return typeof v === "string" && (PLAYER_COLORS as readonly string[]).includes(v);
+}
+
+function isPlayerIcon(v: unknown): v is PlayerIcon {
+  return typeof v === "string" && (PLAYER_ICONS as readonly string[]).includes(v);
+}
+
+function parseDevCommand(v: unknown): DevCommand | null {
+  if (!isRecord(v)) return null;
+  if (v.kind === "restart") {
+    return v.players === 2 || v.players === 4 || v.players === 8
+      ? { kind: "restart", players: v.players }
+      : null;
+  }
+  if (v.kind === "own-all" || v.kind === "random-own") return { kind: v.kind };
+  return null;
+}
+
 function parseAction(v: unknown): MonopolyAction | null {
   if (!isRecord(v)) return null;
   const type = v.type;
-  if (type === "create" || type === "reset") {
+  if (type === "create") {
     const profile = parseProfile(v.profile);
     return profile ? { type, profile } : null;
   }
+  // Every op below is version-guarded.
+  const fromVersion = v.fromVersion;
+  if (typeof fromVersion !== "number") return null;
+  if (type === "dev") {
+    const command = parseDevCommand(v.command);
+    return command ? { type, command, fromVersion } : null;
+  }
+  if (type === "join") {
+    const profile = parseProfile(v.profile);
+    return profile ? { type, profile, fromVersion } : null;
+  }
+  if (type === "addBot" || type === "start") {
+    return { type, fromVersion };
+  }
+  if (type === "removePlayer") {
+    return typeof v.playerId === "string"
+      ? { type, playerId: v.playerId, fromVersion }
+      : null;
+  }
+  if (type === "setColor") {
+    return typeof v.playerId === "string" && isPlayerColor(v.color)
+      ? { type, playerId: v.playerId, color: v.color, fromVersion }
+      : null;
+  }
+  if (type === "setIcon") {
+    return typeof v.playerId === "string" && isPlayerIcon(v.icon)
+      ? { type, playerId: v.playerId, icon: v.icon, fromVersion }
+      : null;
+  }
+  if (type === "setName") {
+    return typeof v.playerId === "string" && typeof v.name === "string"
+      ? { type, playerId: v.playerId, name: v.name, fromVersion }
+      : null;
+  }
   if (type === "submit") {
-    const { intents, fromVersion } = v;
-    if (!Array.isArray(intents) || typeof fromVersion !== "number") return null;
+    const { intents } = v;
+    if (!Array.isArray(intents)) return null;
     // The engine validates each intent semantically (turn ownership, phase,
     // affordability); the transport only asserts the array shape. The cast is
     // contained to this boundary.
     return { type, intents: intents as Intent[], fromVersion };
   }
   if (type === "step") {
-    const { fromVersion } = v;
-    if (typeof fromVersion !== "number") return null;
     return { type, fromVersion };
   }
   return null;
@@ -75,9 +152,9 @@ export async function POST(request: Request): Promise<NextResponse> {
   const gameId = typeof raw.gameId === "string" ? raw.gameId : null;
   const action = parseAction(raw.action);
   if (!gameId || !action) return json({ ok: false, reason: "invalid request" }, 400);
-  // "dev" is the local sandbox — it must never touch the database.
-  if (gameId === "dev") {
-    return json({ ok: false, reason: "dev game is local-only" }, 400);
+  // Dev actions are accepted only for the reserved dev game id.
+  if (action.type === "dev" && gameId !== DEV_GAME_ID) {
+    return json({ ok: false, reason: "not a dev game" });
   }
 
   let supabase: Db;
@@ -87,33 +164,27 @@ export async function POST(request: Request): Promise<NextResponse> {
     return json({ ok: false, reason: errMessage(err) }, 500);
   }
 
-  if (action.type === "create" || action.type === "reset") {
+  if (action.type === "create") {
     return seed(supabase, gameId, action);
   }
-  return advance(supabase, gameId, action);
+  return mutate(supabase, gameId, action);
 }
 
 async function seed(
   supabase: Db,
   gameId: string,
-  action: Extract<MonopolyAction, { type: "create" | "reset" }>,
+  action: Extract<MonopolyAction, { type: "create" }>,
 ): Promise<NextResponse> {
-  const seeded = freshGame(`${gameId}-${Date.now().toString()}`, action.profile);
-
-  if (action.type === "reset") {
-    const { error } = await supabase.from(TABLE).upsert({
-      id: gameId,
-      state: seeded,
-      version: 0,
-      updated_at: new Date().toISOString(),
-    });
-    if (error) return json({ ok: false, reason: error.message }, 500);
-    return json({ ok: true, state: seeded, version: 0 });
-  }
-
-  // create: insert only, so a concurrent creator can't clobber an in-progress
-  // game. A duplicate-key error means someone created it first — surface it as
-  // a conflict and let the client re-load the existing row.
+  const rngSeed = `${gameId}-${Date.now().toString()}`;
+  // The dev sandbox seeds an immediate-play game (skips the lobby); every
+  // other id seeds a fresh lobby. Insert-only either way, so a concurrent
+  // creator can't clobber an in-progress game — a duplicate-key error means
+  // someone created it first, surfaced as a conflict so the client re-loads
+  // the existing row.
+  const seeded =
+    gameId === DEV_GAME_ID
+      ? freshGame(rngSeed, action.profile)
+      : createLobby(action.profile, rngSeed);
   const { error } = await supabase
     .from(TABLE)
     .insert({ id: gameId, state: seeded, version: 0 });
@@ -121,10 +192,73 @@ async function seed(
   return json({ ok: true, state: seeded, version: 0 });
 }
 
-async function advance(
+/** Outcome of computing the next state for a version-guarded write.
+ *  `noop` means the op was valid but produced no change (e.g. a `step` at a
+ *  decision point) — the current row is returned unchanged. */
+type Computed =
+  | { ok: true; state: GameState }
+  | { ok: true; noop: true }
+  | { ok: false; reason: string };
+
+/** Map a pure `lobby.ts` result onto the route's computed shape. */
+function fromLobby(result: LobbyResult): Computed {
+  return result.ok ? { ok: true, state: result.state } : result;
+}
+
+/** Compute the next state for a version-guarded op. Pure given the current
+ *  state and an injected `rngSeed` (used only by `dev` restart) — the version
+ *  guard and write happen in `mutate`. */
+function compute(
+  state: GameState,
+  action: Extract<MonopolyAction, { fromVersion: number }>,
+  rngSeed: string,
+): Computed {
+  switch (action.type) {
+    case "dev":
+      return { ok: true, state: applyDevCommand(state, action.command, rngSeed) };
+    case "join":
+      return fromLobby(joinLobby(state, action.profile));
+    case "addBot":
+      return fromLobby(addBot(state));
+    case "removePlayer":
+      return fromLobby(removePlayer(state, action.playerId));
+    case "setColor":
+      return fromLobby(setPlayerColor(state, action.playerId, action.color));
+    case "setIcon":
+      return fromLobby(setPlayerIcon(state, action.playerId, action.icon));
+    case "setName":
+      return fromLobby(setPlayerName(state, action.playerId, action.name));
+    case "start":
+      return fromLobby(startGame(state));
+    case "submit": {
+      // Apply-only: intents do NOT auto-drain mechanics. One unit of progress
+      // per call is the contract — a separate `step` runs each `autoStep`,
+      // which re-opens the off-turn interject windows between mechanical
+      // beats. See monopoly/CLAUDE.md "Multiplayer / networking".
+      let working = state;
+      for (const intent of action.intents) {
+        const result = apply(working, intent);
+        if (!result.ok) return result;
+        working = result.state;
+      }
+      return { ok: true, state: working };
+    }
+    case "step": {
+      const stepped = autoStep(state);
+      // Already at a decision point / paused / game over — nothing to do.
+      if (stepped.state === state) return { ok: true, noop: true };
+      return { ok: true, state: stepped.state };
+    }
+  }
+}
+
+/** Read the row, reject a stale `fromVersion` as a conflict, compute the next
+ *  state, and write it back under an optimistic CAS guard. Shared by every
+ *  version-guarded action (lobby ops and play ops alike). */
+async function mutate(
   supabase: Db,
   gameId: string,
-  action: Extract<MonopolyAction, { type: "submit" | "step" }>,
+  action: Extract<MonopolyAction, { fromVersion: number }>,
 ): Promise<NextResponse> {
   const { data, error } = await supabase
     .from(TABLE)
@@ -141,33 +275,17 @@ async function advance(
     return json({ ok: false, conflict: true });
   }
 
-  let next: GameState;
-  if (action.type === "submit") {
-    // Apply-only: intents do NOT auto-drain mechanics. One unit of progress
-    // per call is the contract — a separate `step` runs each `autoStep`, which
-    // re-opens the off-turn interject windows between mechanical beats. See
-    // monopoly/CLAUDE.md "Multiplayer / networking".
-    let working = data.state;
-    for (const intent of action.intents) {
-      const result = apply(working, intent);
-      if (!result.ok) return json({ ok: false, reason: result.reason });
-      working = result.state;
-    }
-    next = working;
-  } else {
-    const stepped = autoStep(data.state);
-    if (stepped.state === data.state) {
-      // Already at a decision point / paused / game over — nothing to do.
-      return json({ ok: true, state: data.state, version: data.version });
-    }
-    next = stepped.state;
+  const result = compute(data.state, action, `${gameId}-${Date.now().toString()}`);
+  if (!result.ok) return json({ ok: false, reason: result.reason });
+  if ("noop" in result) {
+    return json({ ok: true, state: data.state, version: data.version });
   }
 
   const newVersion = data.version + 1;
   const { data: updated, error: writeErr } = await supabase
     .from(TABLE)
     .update({
-      state: next,
+      state: result.state,
       version: newVersion,
       updated_at: new Date().toISOString(),
     })
@@ -179,5 +297,5 @@ async function advance(
   // Lost the optimistic race between our read and write — a no-op, the winner
   // broadcast its state to every subscriber.
   if (!updated) return json({ ok: false, conflict: true });
-  return json({ ok: true, state: next, version: newVersion });
+  return json({ ok: true, state: result.state, version: newVersion });
 }

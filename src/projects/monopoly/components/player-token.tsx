@@ -12,7 +12,9 @@ import {
 import type { Player, PlayerIcon } from "../types";
 import { PLAYER_COLOR_VAR } from "../theme";
 
-const PLAYER_ICONS: Record<PlayerIcon, LucideIcon> = {
+/** Maps each player icon token to its lucide component. Shared so the board
+ *  token and the lobby icon picker render the same glyph for a given icon. */
+export const PLAYER_ICON_COMPONENTS: Record<PlayerIcon, LucideIcon> = {
   dog: Dog,
   car: Car,
   ship: Ship,
@@ -32,7 +34,7 @@ interface Props {
 }
 
 export function PlayerToken({ player, className = "" }: Props) {
-  const Icon = PLAYER_ICONS[player.icon];
+  const Icon = PLAYER_ICON_COMPONENTS[player.icon];
   return (
     <div
       className={`flex shrink-0 items-center justify-center rounded-full ${className}`}

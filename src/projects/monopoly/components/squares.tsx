@@ -182,12 +182,11 @@ export function Squares() {
   const [moving, setMoving] = useState<MovingToken | null>(null);
   const tokenRef = useRef<HTMLDivElement>(null);
   // Last board position we recorded for each player. Seeded once from the full
-  // roster so even a player's first move animates from the right square — and
-  // crucially, so a move still animates when the turn handoff and the next
-  // player's roll arrive in the same render. (The local sandbox folds them into
-  // one commit; an online game delivers them as separate single-unit updates —
-  // the seed handles both.) Only the active player moves on a given turn, so
-  // updating the active entry keeps the whole map current.
+  // roster so even a player's first move animates from the right square. Every
+  // authoritative update is a single unit (the route applies one beat per
+  // call), so a roll lands as its own commit and the diff against this map
+  // drives the slide. Only the active player moves on a given turn, so updating
+  // the active entry keeps the whole map current.
   const prevPos = useRef<Map<string, number> | null>(null);
 
   const endAnim = useCallback(() => {

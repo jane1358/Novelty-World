@@ -350,6 +350,10 @@ export type ApplyResult =
  *    The row is kept for history but excluded from the lobby's joinable list. */
 export type GameStatus = "lobby" | "active" | "finished";
 
+/** Seat counts a fresh game can be sized to — the lobby caps here and the dev
+ *  `restart` command swaps between them. Bounded by the eight-hue palette. */
+export type PlayerCount = 2 | 4 | 8;
+
 /** Authoritative game state. Stored as a single Supabase row; broadcast to
  *  guests via Realtime. */
 export interface GameState {

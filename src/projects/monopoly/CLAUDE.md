@@ -115,7 +115,7 @@ The baseline lives in `bots/policy.ts` as `botIntent(state, playerId): Intent | 
 A game row carries a `GameState.status` of `lobby` | `active` | `finished`. The lifecycle:
 
 - `createLobby(host, rngSeed)` seeds a `lobby` row seating the host alone. Other clients `joinLobby` (auto-assigned the first free color + icon), `addBot`, `removePlayer`, and tweak seats via `setPlayerColor` / `setPlayerIcon` / `setPlayerName`. `startGame` validates the roster (≥2 players, ≥1 human) and flips `status` to `active`.
-- These **lobby ops live in `lobby.ts` and are pure** (same discipline as the engine: no side effects, no `Math.random`/`Date.now` — the rng seed and any ids are injected or derived from the roster). Color/icon uniqueness is enforced on every seat and edit. Stage 4 wires them through the authoritative route + UI.
+- These **lobby ops live in `lobby.ts` and are pure** (same discipline as the engine: no side effects, no `Math.random`/`Date.now` — the rng seed and any ids are injected or derived from the roster). Color/icon uniqueness is enforced on every seat and edit. They are wired through the authoritative route (the `join` … `start` actions in `protocol.ts`, applied version-guarded in `route.ts`) and surfaced by the seat-room UI (`components/seat-room.tsx`).
 - The auto-pacer only runs while `status === "active"`, so a lobby (or a finished game) sits at rest. The immediate-play seed (`freshGame`, used by the local `dev` sandbox and the current online seed) skips the lobby and starts `active`; the engine flips `status` to `finished` when a winner is declared.
 
 ## Multiplayer / networking
@@ -126,6 +126,11 @@ A game row carries a `GameState.status` of `lobby` | `active` | `finished`. The 
 real-time co-presence; Monopoly is turn-based and runs on a single authoritative
 server row instead. (The shared **profile** helper, `@/shared/lib/profile`, is
 fine — that's just local player identity, not networking.)
+
+**There is no local/in-process mode.** Every game — including the `dev` sandbox —
+runs on the authoritative route against a Supabase row. `dev` is just a reserved
+game id that additionally accepts the debug actions (see "Dev sandbox" below);
+it is otherwise a normal backend game.
 
 **How networking actually works here — server-authoritative, one row per game:**
 
@@ -139,13 +144,17 @@ fine — that's just local player identity, not networking.)
   sole writer. It runs the engine itself (`apply` / `autoStep`), so the stored
   state can never be set to anything illegal. The request/response contract is
   `protocol.ts`.
-- **Clients never touch the DB directly.** They POST actions
-  (`create` / `submit` / `step` / `reset`) through `sync.ts:submitAction`, read
-  the row via `loadGame`, and subscribe to changes via `subscribeGame`
-  (Supabase Realtime postgres-changes on the anon key). Incoming state is folded
-  in through the store's `applyStateUpdate`. There is **no client-to-client
-  channel** — every message is an HTTPS call to the route plus the read-only
-  subscription.
+- **Clients never touch the DB directly.** They POST actions through
+  `sync.ts:submitAction` — `create` (seed a lobby on first open), the lobby ops
+  (`join` / `addBot` / `removePlayer` / `setColor` / `setIcon` / `setName` /
+  `start`), the play ops (`submit` / `step`), and the dev-only `reset` — read
+  the row via `loadGame`, list joinable games via `listGames`, and subscribe to
+  changes via `subscribeGame` (Supabase Realtime postgres-changes on the anon
+  key). Incoming state is folded in through the store's `applyStateUpdate`.
+  There is **no client-to-client channel** — every message is an HTTPS call to
+  the route plus the read-only subscription. The route shares one
+  version-guarded write path (`mutate`) across every lobby and play op; only
+  `create` (insert-only) and `reset` (upsert) seed without a version.
 - **Writes are version-guarded** (optimistic CAS: `update … where version =
   fromVersion`). A stale write is rejected as a `conflict` no-op and the client
   resyncs from the subscription. This is what makes it safe for more than one
@@ -161,8 +170,22 @@ fine — that's just local player identity, not networking.)
   tracking. A turn belonging to a *disconnected human* simply waits until they
   return (AFK timers are out of scope).
 
-`?game=<id>` connects a client to that row; `?game=dev` is a local-only sandbox
-that never touches the DB; no param is the lobby (Stage 4).
+**URL / routing** (`components/monopoly.tsx`): no `?game=` param shows the lobby
+browser (`components/lobby-browser.tsx`); `?game=<id>` connects to that row —
+while it's a `lobby` the seat room renders, once it's `active`/`finished` the
+board does. `?game=dev` is the same path: it connects to the `dev` row (seeded
+as an immediate-play game, so it lands on the board). The id is read from the
+URL via `useSyncExternalStore` and changed with `history.pushState`, so browser
+back/forward works. In the store, `gameId` is `null` while parked (the lobby
+browser — the pacer is idle), or the row id (including `"dev"`) once connected.
+
+**Dev sandbox.** The `dev` game accepts debug actions that no other game does:
+the route only applies a `dev`-type action when `gameId === "dev"` (otherwise it
+ignores it). The hotkeys (`dev.ts`) submit these like any move; the route runs
+the pure transforms in `dev-ops.ts` (`restart` N-player, `own-all`,
+`random-own` — randomness from `rngState`, never `Math.random`) and writes the
+result, so they round-trip through the same version-guarded path + subscription.
+`?game=dev`'s seed is `freshGame` (1 human + 3 bots, immediate play).
 
 ## File layout
 
@@ -170,7 +193,9 @@ that never touches the DB; no param is the lobby (Stage 4).
 src/projects/monopoly/
   CLAUDE.md            ← this file
   index.tsx            ← re-export of the root component
-  types.ts             ← GameState, Intent, GameEvent, TurnState, GameStatus, etc.
+  types.ts             ← GameState, Intent, GameEvent, TurnState, GameStatus, PlayerCount, etc.
+  protocol.ts          ← route transport contract (MonopolyAction incl. lobby + dev ops, DevCommand)
+  sync.ts              ← client DB access: submitAction, loadGame, listGames, subscribeGame
   data.ts              ← static board data (SPACES, cards, PLAYER_COLORS/ICONS palette)
   theme.ts             ← color tokens, theming
   logic.ts             ← pure helpers (hasMonopoly, rentAt, isLegal*, ...)
@@ -179,14 +204,15 @@ src/projects/monopoly/
   engine.ts            ← apply(intent), autoStep, applyXxx per-intent reducers
   engine.test.ts       ← unit tests for apply / autoStep
   logic.test.ts        ← unit tests for pure helpers
-  driver.ts            ← driverRole(connection, state, myId): self | proxy | none
+  driver.ts            ← driverRole(state, myId): self | proxy | none
   driver.test.ts       ← unit tests for driver role
-  store.ts             ← Zustand store, "use client", wraps engine + auto-pacer for the UI
-  mocks.ts             ← MOCK_STATE + freshGame (immediate-play seed) for visual development
-  dev.ts               ← debug-only helpers (slice state, randomize ownership, debug keys)
+  store.ts             ← Zustand store, "use client", route client + auto-pacer for the UI
+  mocks.ts             ← MOCK_STATE (test fixture) + freshGame (immediate-play seed)
+  dev-ops.ts           ← pure dev state transforms (own-all, random-own, restart) (+ dev-ops.test.ts)
+  dev.ts               ← debug-only hotkeys that submit dev commands to the route
   bots/
     policy.ts          ← botIntent baseline policy (+ policy.test.ts)
-  components/          ← React components, dumb where possible
+  components/          ← React components (monopoly root, lobby-browser, seat-room, board)
 ```
 
 **Engine code (`engine.ts`, `logic.ts`) must be pure and free of React, side effects, and `Math.random`.** Components consume state via the store; they do not mutate it.
@@ -197,7 +223,7 @@ src/projects/monopoly/
 - **Don't add buttons for non-decisions.** A button for "pay rent" or "continue" is a philosophy violation. If you're tempted to add one, the engine probably needs to take that step on its own.
 - **The intent surface is small on purpose.** Resist growing it. New mechanics belong inside `autoStep`.
 - **Events are derived.** Don't write code that synthesizes an event without the corresponding state change — that's how state and log drift apart.
-- **Debug helpers stay in `dev.ts`.** Never in the component. The component is for production play; debug keys (`2`/`4`/`8` for player count, etc.) and mock slicing live in `dev.ts` and are imported only behind a dev guard.
+- **Debug helpers stay in `dev.ts` / `dev-ops.ts`.** Never in the component. The hotkeys (`2`/`4`/`8` restart with N players, `0`/`1` ownership overrides, `n` new game) live in `dev.ts` behind a dev guard and submit `dev` actions; the pure state transforms live in `dev-ops.ts` and are applied server-side, gated to the `dev` game id.
 
 ## Testing
 

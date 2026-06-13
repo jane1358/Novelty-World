@@ -105,9 +105,9 @@ function enterPreRoll(
   nextPlayerId: string,
 ): { turn: TurnState; armedPauses: GameState["armedPauses"] } {
   // `armedPauses` is dense by invariant: every seated player has an entry
-  // (freshGame seeds it; sliceState preserves it). Routes that mutate the
-  // record (applySetArmedPause) only touch known players. So a direct
-  // lookup is safe — no optional chaining required.
+  // (freshGame and the lobby ops seed it). Routes that mutate the record
+  // (applySetArmedPause) only touch known players. So a direct lookup is
+  // safe — no optional chaining required.
   const paused = armedPausesIn[nextPlayerId].beforeRoll;
   const turn: TurnState = {
     playerId: nextPlayerId,
