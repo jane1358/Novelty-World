@@ -2,10 +2,12 @@
 
 import { createClient } from "@/shared/lib/supabase/client";
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
+import type { MonopolyAction, MonopolyResult } from "./protocol";
 import type { GameState } from "./types";
 
 // One row per game in public.monopoly_games (see supabase/monopoly.sql).
-// The host is the only writer; every client subscribes via postgres-changes.
+// The /api/monopoly route is the only writer; every client reads here and
+// subscribes via postgres-changes.
 const TABLE = "monopoly_games";
 
 // Object-literal type (not interface) so it satisfies the index-signature
@@ -13,42 +15,58 @@ const TABLE = "monopoly_games";
 type GameRow = {
   id: string;
   state: GameState;
+  version: number;
   updated_at: string;
 };
 
-/** Read the current GameState for a game, or null if the row doesn't exist
- *  yet. Throws on a real query error so the caller can surface it. */
-export async function loadGame(gameId: string): Promise<GameState | null> {
+/** A loaded game row: the authoritative state plus its optimistic-concurrency
+ *  version. */
+export interface LoadedGame {
+  state: GameState;
+  version: number;
+}
+
+/** Read the current game, or null if the row doesn't exist yet. Throws on a
+ *  real query error so the caller can surface it. */
+export async function loadGame(gameId: string): Promise<LoadedGame | null> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from(TABLE)
-    .select("state")
+    .select("state, version")
     .eq("id", gameId)
     .maybeSingle();
   if (error) throw error;
-  return data ? (data.state as GameState) : null;
+  if (!data) return null;
+  return { state: data.state as GameState, version: data.version as number };
 }
 
-/** Write the authoritative GameState for a game. Upsert so the first write
- *  creates the row and later writes replace it. Host-only. */
-export async function saveGame(
+/** Submit an action to the authoritative route. Clients can't write the table
+ *  directly (RLS); every mutation goes through here. Network/parse failures
+ *  surface as a rejected result rather than throwing, so callers have a single
+ *  shape to handle. */
+export async function submitAction(
   gameId: string,
-  state: GameState,
-): Promise<void> {
-  const supabase = createClient();
-  const { error } = await supabase
-    .from(TABLE)
-    .upsert({ id: gameId, state, updated_at: new Date().toISOString() });
-  if (error) throw error;
+  action: MonopolyAction,
+): Promise<MonopolyResult> {
+  try {
+    const res = await fetch("/api/monopoly", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ gameId, action }),
+    });
+    return (await res.json()) as MonopolyResult;
+  } catch (err) {
+    return { ok: false, reason: err instanceof Error ? err.message : String(err) };
+  }
 }
 
 /** Subscribe to authoritative state changes for a game. `onState` fires for
- *  every insert/update to the row with the new GameState. Returns a cleanup
- *  function that tears down the channel — call it on unmount or when the
- *  game id changes. Mirrors the channel lifecycle in webrtc/signaling.ts. */
+ *  every insert/update to the row with the new state and version. Returns a
+ *  cleanup function that tears down the channel — call it on unmount or when
+ *  the game id changes. Mirrors the channel lifecycle in webrtc/signaling.ts. */
 export function subscribeGame(
   gameId: string,
-  onState: (state: GameState) => void,
+  onState: (state: GameState, version: number) => void,
 ): () => void {
   const supabase = createClient();
   const channel = supabase.channel(`monopoly:${gameId}`);
@@ -66,7 +84,7 @@ export function subscribeGame(
       // DELETE carries no new row; inserts and updates do. Narrow on
       // eventType so we don't poke at a possibly-empty `new`.
       if (payload.eventType === "DELETE") return;
-      onState(payload.new.state);
+      onState(payload.new.state, payload.new.version);
     },
   );
 

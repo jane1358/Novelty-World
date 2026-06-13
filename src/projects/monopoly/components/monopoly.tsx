@@ -27,14 +27,17 @@ export function Monopoly() {
 }
 
 /** Read `?game=<id>` from the URL on mount and connect the store to the
- *  matching Supabase row using the local profile. With no `game` param we
- *  stay local (no DB, no subscription) — the current default for the bare
- *  route, which the future lobby will replace. */
+ *  matching Supabase row using the local profile. With no `game` param — or
+ *  the reserved `?game=dev` sandbox — we stay local (no DB, no subscription):
+ *  the in-memory game the debug hotkeys drive. The future lobby fills the
+ *  no-param case. */
 function useMonopolyConnection(): void {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const gameId = params.get("game");
-    if (!gameId) return;
+    // `dev` is the local-only testing sandbox; everything else is an online
+    // game served authoritatively by /api/monopoly.
+    if (!gameId || gameId === "dev") return;
 
     const { id, name } = useProfile.getState();
     void useMonopolyStore.getState().connect({

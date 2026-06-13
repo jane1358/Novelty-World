@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Novelty World is a Next.js 16 monorepo-style platform hosting multiple games and tools under a single dark-themed UI. Each "project" (game/tool) lives in `src/projects/<slug>/` and is lazy-loaded via `next/dynamic` in the catch-all route `src/app/[...slug]/page.tsx`. The homepage (`src/app/page.tsx`) renders a categorized directory of all projects.
 
+**Hosting:** the app is deployed on **Vercel**. Server-side code (route handlers, server actions) runs in Vercel's environment, so any server env var — e.g. `SUPABASE_SERVICE_ROLE_KEY` — must be set in **Vercel → Project Settings → Environment Variables**, not just in local `.env.local`. Env var changes only take effect on the next deployment.
+
 ## Commands
 
 | Task | Command |
@@ -56,6 +58,20 @@ There is a shared multiplayer library built on WebRTC with Supabase Realtime for
 ### Shared code
 
 Reusable components, hooks, and utilities live in `src/shared/`. Check there before building something new — use and extend what exists.
+
+### Database / Supabase SQL
+
+This project does **not** use a migrations folder or the Supabase CLI. SQL lives as flat, idempotent files in `supabase/*.sql` (one per feature, e.g. `monopoly.sql`), written to be safely re-runnable (`create table if not exists`, `add column if not exists`, `drop policy if exists` before `create policy`).
+
+To apply a SQL change to the remote project, run the file through `psql` against the **`aws-1-eu-north-1` pooler** (the only host that works on this network):
+
+```bash
+set -a && . ./.env.local && set +a && PGPASSWORD="$SUPABASE_DB_PASSWORD" psql "postgresql://postgres.${SUPABASE_PROJECT_REF}@aws-1-eu-north-1.pooler.supabase.com:5432/postgres" -f supabase/<file>.sql
+```
+
+Verify with `... -c "\d public.<table>"`. Editing a `supabase/*.sql` file is not enough — you must re-run it for the change to hit the database. Do **not** use the direct `db.<ref>.supabase.co` host (IPv6-only, DNS fails here), the `aws-0-` pooler, or `supabase db push` (CLI auth conflicts) — they don't work on this setup.
+
+**Authoritative server writes:** game tables are locked read-only at the RLS layer (a `select` policy only, no write policy). The single writer is a Next.js route handler (e.g. `src/app/api/monopoly/route.ts`) using the service-role client (`src/shared/lib/supabase/server-admin.ts`, keyed by `SUPABASE_SERVICE_ROLE_KEY`), which bypasses RLS. Clients read and subscribe via the anon key but cannot write directly.
 
 ### Styling
 

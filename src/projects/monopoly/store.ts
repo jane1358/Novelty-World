@@ -5,8 +5,15 @@ import type { PlayerProfile } from "@/shared/lib/profile";
 import { apply, autoStep } from "./engine";
 import { mortgageValueAt, ownablePrice } from "./logic";
 import { freshGame } from "./mocks";
-import { loadGame, saveGame, subscribeGame } from "./sync";
-import type { ApplyResult, GameState, Intent, TurnPhase } from "./types";
+import type { MonopolyResult } from "./protocol";
+import { loadGame, submitAction, subscribeGame, type LoadedGame } from "./sync";
+import type {
+  ApplyResult,
+  GameEvent,
+  GameState,
+  Intent,
+  TurnPhase,
+} from "./types";
 
 /** Staged mortgage toggles the user has clicked but not yet committed.
  *  Maps position -> target mortgaged-flag. Entries that match the current
@@ -75,23 +82,23 @@ interface MonopolyActions {
    *  state on the next render. */
   commitMortgageStaging: () => void;
 
-  /** Host: validate and apply an intent, then drain mechanics via autoStep
-   *  until the next decision point. Returns the full result including the
-   *  combined event stream so callers can drive animations or replay.
-   *  Rejected for online guests — they can't drive the engine until the
-   *  intent-relay transport lands. */
+  /** Submit an intent. In local mode the engine runs in-process and the
+   *  return carries the combined event stream. In online mode the intent is
+   *  POSTed to the authoritative route and the real state arrives via the
+   *  route response / subscription; the synchronous return is an optimistic
+   *  stub (callers don't read it). Rejected for online non-members until the
+   *  driver model lands in Stage 2. */
   submit: (intent: Intent) => ApplyResult;
 
-  /** Host: advance mechanics without an intent. Used to kick off the very
-   *  first roll on game start and to step between phases the pacing layer
-   *  drives in the UI. No-op when the state is already at a decision point
-   *  or for online guests. */
+  /** Advance mechanics by one unit without an intent — the paced loop's
+   *  heartbeat. Local mode steps in-process; online mode POSTs a `step` to
+   *  the route. No-op when already at a decision point or for non-members. */
   step: () => void;
 
-  /** Guest: replace local state with authoritative state from Supabase.
-   *  Also re-derives membership from the incoming roster — a fresh game
-   *  pushed by a host elsewhere may have reseated players. */
-  applyStateUpdate: (state: GameState) => void;
+  /** Replace local state with authoritative state (from the subscription or
+   *  a route response) at the given version. Re-derives membership from the
+   *  incoming roster — a reseated game may change who the local user is. */
+  applyStateUpdate: (state: GameState, version: number) => void;
 
   /** Reset back to a fresh local live game and drop any online connection.
    *  Bound to the `n` dev key. */
@@ -131,6 +138,11 @@ export type MonopolyStore = {
   connection: MonopolyConnection;
   /** Id of the connected game row in `monopoly_games`. Null in local mode. */
   gameId: string | null;
+  /** Optimistic-concurrency version of the connected row — the value the
+   *  next route write must match. Tracked from every authoritative update so
+   *  `submit` / `step` can advance from the version this client last saw. 0
+   *  in local mode. */
+  version: number;
   /** The local user's profile (used to determine host/guest in online mode). */
   profile: PlayerProfile | null;
   /** True iff the local user is the authoritative writer for the current
@@ -175,18 +187,49 @@ function errorMessage(err: unknown): string {
 }
 
 export const useMonopolyStore = create<MonopolyStore>((set, get) => {
-  // Commit a host-originated state change: set local state and, if online
-  // host, persist to Supabase. Guest applies (from postgres-changes) go
-  // through applyStateUpdate instead, which deliberately does NOT persist
-  // — that would echo a host's own write back at it.
-  function commit(next: GameState): void {
-    set({ state: next });
-    const { connection, isHost, gameId } = get();
-    if (connection === "online" && isHost && gameId) {
-      void saveGame(gameId, next).catch((err: unknown) => {
-        set({ syncError: errorMessage(err) });
-      });
+  // Fold an authoritative route response back into the store. A success
+  // applies the new state + version (and re-derives membership); a conflict
+  // is a no-op — the subscription will deliver the winning state — and a
+  // genuine rejection surfaces as a sync error.
+  function handleResult(res: MonopolyResult): void {
+    if (res.ok) {
+      get().applyStateUpdate(res.state, res.version);
+    } else if (!res.conflict && res.reason !== undefined) {
+      set({ syncError: res.reason });
     }
+  }
+
+  // Run a batch of intents. Online: POST to the authoritative route (one
+  // atomic, single-version write) and let the result arrive async — the
+  // synchronous return is an unread optimistic stub. Local: apply in order
+  // and drain mechanics once, in-process.
+  function runIntents(intents: readonly Intent[]): ApplyResult {
+    const { state, connection, isHost, gameId, version } = get();
+    if (connection === "online") {
+      if (!isHost) return { ok: false, reason: "not a member" };
+      if (!gameId) return { ok: false, reason: "not connected" };
+      void submitAction(gameId, {
+        type: "submit",
+        intents,
+        fromVersion: version,
+      }).then(handleResult);
+      return { ok: true, state, newEvents: [] };
+    }
+    let working = state;
+    const events: GameEvent[] = [];
+    for (const intent of intents) {
+      const result = apply(working, intent);
+      if (!result.ok) return result;
+      working = result.state;
+      events.push(...result.newEvents);
+    }
+    const stepped = autoStep(working);
+    set({ state: stepped.state });
+    return {
+      ok: true,
+      state: stepped.state,
+      newEvents: [...events, ...stepped.newEvents],
+    };
   }
 
   return {
@@ -195,6 +238,7 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
     mode: "live",
     connection: "local",
     gameId: null,
+    version: 0,
     profile: null,
     // Local mode treats the client as host so the pacer drives the game;
     // online mode recomputes this in `connect()`.
@@ -231,61 +275,49 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
     },
 
     commitMortgageStaging: () => {
-      const { mortgageStaged, myPlayerId, submit } = get();
+      const { mortgageStaged, myPlayerId } = get();
       const staged = mortgageStaged ?? {};
       if (!myPlayerId) {
         set({ mortgageStaged: null });
         return;
       }
-      // Two passes so any cash raised by a mortgage is in hand before an
-      // un-mortgage in the same batch tries to spend it.
+      // Mortgages first, then un-mortgages, so any cash raised is in hand
+      // before an un-mortgage in the same batch tries to spend it. Batched
+      // into one runIntents call so online it lands as a single atomic write.
+      const intents: Intent[] = [];
       for (const [posStr, target] of Object.entries(staged)) {
         if (target !== true) continue;
-        submit({
-          kind: "mortgage",
-          playerId: myPlayerId,
-          position: Number(posStr),
-        });
+        intents.push({ kind: "mortgage", playerId: myPlayerId, position: Number(posStr) });
       }
       for (const [posStr, target] of Object.entries(staged)) {
         if (target !== false) continue;
-        submit({
-          kind: "unmortgage",
-          playerId: myPlayerId,
-          position: Number(posStr),
-        });
+        intents.push({ kind: "unmortgage", playerId: myPlayerId, position: Number(posStr) });
       }
+      if (intents.length > 0) runIntents(intents);
       set({ mortgageStaged: null });
     },
 
-    submit: (intent) => {
-      const { state, connection, isHost } = get();
-      if (connection === "online" && !isHost) {
-        return { ok: false, reason: "not the host" };
-      }
-      const result = apply(state, intent);
-      if (!result.ok) return result;
-      const stepped = autoStep(result.state);
-      commit(stepped.state);
-      return {
-        ok: true,
-        state: stepped.state,
-        newEvents: [...result.newEvents, ...stepped.newEvents],
-      };
-    },
+    submit: (intent) => runIntents([intent]),
 
     step: () => {
-      const { state, connection, isHost } = get();
-      if (connection === "online" && !isHost) return;
+      const { state, connection, isHost, gameId, version } = get();
+      if (connection === "online") {
+        if (!isHost || !gameId) return;
+        void submitAction(gameId, { type: "step", fromVersion: version }).then(
+          handleResult,
+        );
+        return;
+      }
       const stepped = autoStep(state);
-      if (stepped.state !== state) commit(stepped.state);
+      if (stepped.state !== state) set({ state: stepped.state });
     },
 
-    applyStateUpdate: (next) => {
+    applyStateUpdate: (next, version) => {
       const { profile } = get();
       const host = profile ? isMember(next, profile) : false;
       set({
         state: next,
+        version,
         isHost: host,
         myPlayerId: host && profile ? profile.id : null,
       });
@@ -299,6 +331,7 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
         mode: "live",
         connection: "local",
         gameId: null,
+        version: 0,
         profile: null,
         isHost: true,
         syncError: null,
@@ -316,16 +349,24 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
         gameId,
         profile,
         mode: "live",
-        // isHost stays whatever it was until we know membership; the
-        // pacer's gate treats online + !isHost as paused, so a brief
-        // stale value during load won't drive the engine.
+        // isHost stays false until we know membership; the pacer's gate
+        // treats online + !isHost as paused, so a brief stale value during
+        // load won't drive the engine.
         isHost: false,
         syncError: null,
       });
 
-      let row: GameState | null;
+      // Subscribe before loading so an update landing in the gap isn't
+      // missed. Everyone subscribes now — the route is the sole writer, so a
+      // member receives its own writes back here just like anyone else.
+      activeUnsub = subscribeGame(gameId, (next, version) => {
+        if (activeGameId !== gameId) return;
+        useMonopolyStore.getState().applyStateUpdate(next, version);
+      });
+
+      let loaded: LoadedGame | null;
       try {
-        row = await loadGame(gameId);
+        loaded = await loadGame(gameId);
       } catch (err: unknown) {
         set({ syncError: errorMessage(err) });
         return;
@@ -333,34 +374,45 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
       // A newer connect() may have superseded us mid-await.
       if (activeGameId !== gameId) return;
 
-      if (!row) {
-        // First open of this game: seed fresh and become host.
-        const seeded = freshGame(`${gameId}-${Date.now().toString()}`, profile);
-        set({ state: seeded, isHost: true, myPlayerId: profile.id });
-        try {
-          await saveGame(gameId, seeded);
-        } catch (err: unknown) {
-          set({ syncError: errorMessage(err) });
-        }
+      if (loaded) {
+        const host = isMember(loaded.state, profile);
+        set({
+          state: loaded.state,
+          version: loaded.version,
+          isHost: host,
+          myPlayerId: host ? profile.id : null,
+        });
         return;
       }
 
-      const host = isMember(row, profile);
-      set({
-        state: row,
-        isHost: host,
-        myPlayerId: host ? profile.id : null,
-      });
-
-      // Hosts are the sole writer; subscribing to their own echoes would
-      // bounce them through applyStateUpdate and restart the pacer
-      // needlessly. Only guests subscribe.
-      if (!host) {
-        activeUnsub = subscribeGame(gameId, (next) => {
-          if (activeGameId !== gameId) return;
-          useMonopolyStore.getState().applyStateUpdate(next);
+      // First open of this game: ask the route to seed and insert it. On a
+      // create conflict (someone created it first) fall back to loading the
+      // existing row.
+      const res = await submitAction(gameId, { type: "create", profile });
+      if (activeGameId !== gameId) return;
+      if (res.ok) {
+        const host = isMember(res.state, profile);
+        set({
+          state: res.state,
+          version: res.version,
+          isHost: host,
+          myPlayerId: host ? profile.id : null,
         });
+        return;
       }
+      if (res.conflict) {
+        const row = await loadGame(gameId);
+        if (activeGameId !== gameId || !row) return;
+        const host = isMember(row.state, profile);
+        set({
+          state: row.state,
+          version: row.version,
+          isHost: host,
+          myPlayerId: host ? profile.id : null,
+        });
+        return;
+      }
+      set({ syncError: res.reason ?? "failed to create game" });
     },
 
     disconnect: () => {
@@ -368,6 +420,7 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
       set({
         connection: "local",
         gameId: null,
+        version: 0,
         profile: null,
         isHost: true,
         state: freshGame(),
@@ -379,18 +432,19 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
     },
 
     restart: async () => {
-      const { connection, isHost, gameId, profile } = get();
+      const { connection, gameId, profile } = get();
       if (connection !== "online" || !gameId || !profile) return;
-      if (!isHost) {
-        set({ syncError: "only the host can restart" });
-        return;
-      }
-      const seeded = freshGame(`${gameId}-${Date.now().toString()}`, profile);
-      set({ state: seeded, syncError: null });
-      try {
-        await saveGame(gameId, seeded);
-      } catch (err: unknown) {
-        set({ syncError: errorMessage(err) });
+      const res = await submitAction(gameId, { type: "reset", profile });
+      if (res.ok) {
+        set({
+          state: res.state,
+          version: res.version,
+          isHost: isMember(res.state, profile),
+          myPlayerId: profile.id,
+          syncError: null,
+        });
+      } else {
+        set({ syncError: res.reason ?? "failed to restart" });
       }
     },
 
@@ -403,9 +457,10 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
           set({ syncError: "no game row to resume" });
           return;
         }
-        const host = profile ? isMember(row, profile) : false;
+        const host = profile ? isMember(row.state, profile) : false;
         set({
-          state: row,
+          state: row.state,
+          version: row.version,
           isHost: host,
           myPlayerId: host && profile ? profile.id : null,
           syncError: null,
