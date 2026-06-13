@@ -39,7 +39,7 @@ apply(state, intent, rng): { ok: true, state, newEvents } | { ok: false, reason 
 autoStep(state, rng): { state, newEvents }
 ```
 
-The host calls `apply` for an intent, then `autoStep` to drain mechanics until the next decision. Guests receive the resulting state via Supabase Realtime.
+The authoritative route applies **one unit per call**: an `apply` for an external intent (no auto-drain), or a single `autoStep` per `step` request. Clients subscribe to the row and re-render as each unit lands. See the "Multiplayer / networking" section below.
 
 ### Intents vs mechanics — the line
 
@@ -107,16 +107,51 @@ type Bot = (state: GameState, playerId: string) => Intent;
 
 The bot is given the full state (Monopoly is open-information) and returns one intent. The engine handles everything else. The same shape works for the dumb early bot, the rule-based bot, and an eventual learned policy.
 
-## Multiplayer
+## Multiplayer / networking
 
-**No WebRTC for this project.** Monopoly is turn-based; Supabase Realtime postgres-changes subscriptions are enough. Authoritative model:
+**This project does not use the shared multiplayer stack.** Do **not** import from
+`src/shared/lib/webrtc/` or `src/shared/lib/multiplayer/`, and do not use
+`useLobbyRoom` / `useWorldRoom`. Those are peer-to-peer WebRTC meshes built for
+real-time co-presence; Monopoly is turn-based and runs on a single authoritative
+server row instead. (The shared **profile** helper, `@/shared/lib/profile`, is
+fine — that's just local player identity, not networking.)
 
-- Game state is a row in a Supabase table.
-- Host (or a server function — TBD) is the only writer. Validates intents, calls `apply` + `autoStep`, writes new state.
-- All clients (including host) subscribe to the row and re-render on change.
-- Events are stored inline in `state.turns` (existing `TurnGroup[]`). Revisit if rows get fat over very long games.
+**How networking actually works here — server-authoritative, one row per game:**
 
-This deviates from every other project in this repo. **Do not import from `src/shared/lib/webrtc/` or use `useLobbyRoom` / `useWorldRoom`.**
+- **State is a single Supabase row** in `monopoly_games` holding the entire
+  authoritative `GameState` plus an optimistic-concurrency `version`. Events
+  live inline in `state.turns` (`TurnGroup[]`); the log is derived, not a
+  separate table. Revisit if rows get fat over very long games.
+- **The only writer is a Next.js Route Handler** — `src/app/api/monopoly/route.ts`
+  — using the service-role client (`@/shared/lib/supabase/server-admin`). RLS
+  locks the table to **read-only** for clients, so the route is structurally the
+  sole writer. It runs the engine itself (`apply` / `autoStep`), so the stored
+  state can never be set to anything illegal. The request/response contract is
+  `protocol.ts`.
+- **Clients never touch the DB directly.** They POST actions
+  (`create` / `submit` / `step` / `reset`) through `sync.ts:submitAction`, read
+  the row via `loadGame`, and subscribe to changes via `subscribeGame`
+  (Supabase Realtime postgres-changes on the anon key). Incoming state is folded
+  in through the store's `applyStateUpdate`. There is **no client-to-client
+  channel** — every message is an HTTPS call to the route plus the read-only
+  subscription.
+- **Writes are version-guarded** (optimistic CAS: `update … where version =
+  fromVersion`). A stale write is rejected as a `conflict` no-op and the client
+  resyncs from the subscription. This is what makes it safe for more than one
+  client to drive the same game at once: duplicate requests collapse to no-ops.
+- **No server timer; the backend is delay-agnostic.** The route applies exactly
+  **one unit of progress per call** — an intent `apply` (no auto-drain) or one
+  `autoStep` per `step`. Pacing and animation are entirely client-side; the
+  engine only advances when a client asks it to.
+- **No host.** Every client POSTs actions to the route. The active player's own
+  client drives its turn; **bot or disconnected-player turns are driven by any
+  connected client** (the version guard dedupes the redundant writes). Whether a
+  seat is a bot is read from `Player.isBot` in the state — no presence/online
+  tracking. A turn belonging to a *disconnected human* simply waits until they
+  return (AFK timers are out of scope).
+
+`?game=<id>` connects a client to that row; `?game=dev` is a local-only sandbox
+that never touches the DB; no param is the lobby (Stage 4).
 
 ## File layout
 

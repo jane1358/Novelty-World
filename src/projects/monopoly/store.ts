@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import type { PlayerProfile } from "@/shared/lib/profile";
+import { driverRole } from "./driver";
 import { apply, autoStep } from "./engine";
 import { mortgageValueAt, ownablePrice } from "./logic";
 import { freshGame } from "./mocks";
@@ -86,13 +87,15 @@ interface MonopolyActions {
    *  return carries the combined event stream. In online mode the intent is
    *  POSTed to the authoritative route and the real state arrives via the
    *  route response / subscription; the synchronous return is an optimistic
-   *  stub (callers don't read it). Rejected for online non-members until the
-   *  driver model lands in Stage 2. */
+   *  stub (callers don't read it). Online needs a connected game id; the
+   *  engine (route-side) enforces turn ownership, so the store doesn't gate
+   *  on seat — a misdirected intent is simply rejected by `apply`. */
   submit: (intent: Intent) => ApplyResult;
 
   /** Advance mechanics by one unit without an intent — the paced loop's
    *  heartbeat. Local mode steps in-process; online mode POSTs a `step` to
-   *  the route. No-op when already at a decision point or for non-members. */
+   *  the route. No-op when already at a decision point, or online without a
+   *  connected game id. Driver eligibility is decided by the pacer, not here. */
   step: () => void;
 
   /** Replace local state with authoritative state (from the subscription or
@@ -143,12 +146,9 @@ export type MonopolyStore = {
    *  `submit` / `step` can advance from the version this client last saw. 0
    *  in local mode. */
   version: number;
-  /** The local user's profile (used to determine host/guest in online mode). */
+  /** The local user's profile. In online mode it determines which seat (if
+   *  any) this client owns — see `myPlayerId`. */
   profile: PlayerProfile | null;
-  /** True iff the local user is the authoritative writer for the current
-   *  game: always true in local mode, and in online mode iff the profile
-   *  is seated in `state.players`. */
-  isHost: boolean;
   /** Last persistence/subscription error, if any. Surfaces sync failures
    *  for debugging without breaking the play loop. */
   syncError: string | null;
@@ -204,9 +204,8 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
   // synchronous return is an unread optimistic stub. Local: apply in order
   // and drain mechanics once, in-process.
   function runIntents(intents: readonly Intent[]): ApplyResult {
-    const { state, connection, isHost, gameId, version } = get();
+    const { state, connection, gameId, version } = get();
     if (connection === "online") {
-      if (!isHost) return { ok: false, reason: "not a member" };
       if (!gameId) return { ok: false, reason: "not connected" };
       void submitAction(gameId, {
         type: "submit",
@@ -240,9 +239,6 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
     gameId: null,
     version: 0,
     profile: null,
-    // Local mode treats the client as host so the pacer drives the game;
-    // online mode recomputes this in `connect()`.
-    isHost: true,
     syncError: null,
     mortgageStaged: null,
 
@@ -300,9 +296,9 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
     submit: (intent) => runIntents([intent]),
 
     step: () => {
-      const { state, connection, isHost, gameId, version } = get();
+      const { state, connection, gameId, version } = get();
       if (connection === "online") {
-        if (!isHost || !gameId) return;
+        if (!gameId) return;
         void submitAction(gameId, { type: "step", fromVersion: version }).then(
           handleResult,
         );
@@ -314,12 +310,11 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
 
     applyStateUpdate: (next, version) => {
       const { profile } = get();
-      const host = profile ? isMember(next, profile) : false;
+      const seated = profile ? isMember(next, profile) : false;
       set({
         state: next,
         version,
-        isHost: host,
-        myPlayerId: host && profile ? profile.id : null,
+        myPlayerId: seated && profile ? profile.id : null,
       });
     },
 
@@ -333,7 +328,6 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
         gameId: null,
         version: 0,
         profile: null,
-        isHost: true,
         syncError: null,
         mortgageStaged: null,
       });
@@ -349,10 +343,10 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
         gameId,
         profile,
         mode: "live",
-        // isHost stays false until we know membership; the pacer's gate
-        // treats online + !isHost as paused, so a brief stale value during
-        // load won't drive the engine.
-        isHost: false,
+        // Seat unknown until the row loads. Null myPlayerId means the pacer
+        // can't claim "self" against the still-local default state during the
+        // load gap, so it stays idle until applyStateUpdate fills the seat.
+        myPlayerId: null,
         syncError: null,
       });
 
@@ -375,12 +369,11 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
       if (activeGameId !== gameId) return;
 
       if (loaded) {
-        const host = isMember(loaded.state, profile);
+        const seated = isMember(loaded.state, profile);
         set({
           state: loaded.state,
           version: loaded.version,
-          isHost: host,
-          myPlayerId: host ? profile.id : null,
+          myPlayerId: seated ? profile.id : null,
         });
         return;
       }
@@ -391,24 +384,22 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
       const res = await submitAction(gameId, { type: "create", profile });
       if (activeGameId !== gameId) return;
       if (res.ok) {
-        const host = isMember(res.state, profile);
+        const seated = isMember(res.state, profile);
         set({
           state: res.state,
           version: res.version,
-          isHost: host,
-          myPlayerId: host ? profile.id : null,
+          myPlayerId: seated ? profile.id : null,
         });
         return;
       }
       if (res.conflict) {
         const row = await loadGame(gameId);
         if (activeGameId !== gameId || !row) return;
-        const host = isMember(row.state, profile);
+        const seated = isMember(row.state, profile);
         set({
           state: row.state,
           version: row.version,
-          isHost: host,
-          myPlayerId: host ? profile.id : null,
+          myPlayerId: seated ? profile.id : null,
         });
         return;
       }
@@ -422,7 +413,6 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
         gameId: null,
         version: 0,
         profile: null,
-        isHost: true,
         state: freshGame(),
         myPlayerId: DEFAULT_PLAYER_ID,
         mode: "live",
@@ -439,8 +429,7 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
         set({
           state: res.state,
           version: res.version,
-          isHost: isMember(res.state, profile),
-          myPlayerId: profile.id,
+          myPlayerId: isMember(res.state, profile) ? profile.id : null,
           syncError: null,
         });
       } else {
@@ -457,12 +446,11 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
           set({ syncError: "no game row to resume" });
           return;
         }
-        const host = profile ? isMember(row.state, profile) : false;
+        const seated = profile ? isMember(row.state, profile) : false;
         set({
           state: row.state,
           version: row.version,
-          isHost: host,
-          myPlayerId: host && profile ? profile.id : null,
+          myPlayerId: seated && profile ? profile.id : null,
           syncError: null,
         });
       } catch (err: unknown) {
@@ -484,17 +472,16 @@ if (typeof window !== "undefined") {
   const pacerEnabled = (store: MonopolyStore): boolean => {
     if (store.mode !== "live") return false;
     if (store.state.turn.paused) return false;
-    if (!store.isHost) return false;
-    const { phase, playerId } = store.state.turn;
+    const role = driverRole(store.connection, store.state, store.myPlayerId);
+    if (role === "none") return false;
+    const { phase } = store.state.turn;
     if (!PACED_PHASES.has(phase)) return false;
-    // Buy decisions belong to the player landing on the square. The pacer
-    // bot-plays everyone else (no input channel for non-local seats yet),
-    // but the local human gets the Buy/Pass UI and chooses themselves.
-    if (phase === "buy-decision" && playerId === store.myPlayerId) return false;
-    // Must-raise-cash: same split. Bots are driven by the pacer's auto-
-    // mortgage policy; the local player owes the decision themselves and
-    // makes it through the mortgage panel.
-    if (phase === "must-raise-cash" && playerId === store.myPlayerId) return false;
+    // Buy and must-raise-cash are real decisions. A "proxy" driver resolves
+    // them for a bot / absent seat via bot policy below; a "self" driver
+    // leaves them to the local human's Buy/Pass UI and mortgage panel.
+    if (role === "self" && (phase === "buy-decision" || phase === "must-raise-cash")) {
+      return false;
+    }
     return true;
   };
 
@@ -562,15 +549,15 @@ if (typeof window !== "undefined") {
     if (
       next.state === prev.state &&
       next.mode === prev.mode &&
-      next.isHost === prev.isHost &&
+      next.connection === prev.connection &&
       next.myPlayerId === prev.myPlayerId
     ) {
       return;
     }
-    // State, mode, role, or local-seat changed — drop any pending tick that
-    // was scheduled against the old context, then re-evaluate from scratch.
-    // `myPlayerId` matters because the buy-decision pacer skips the local
-    // seat; assigning or clearing it must wake/sleep the pacer accordingly.
+    // State, mode, connection, or local seat changed — drop any pending tick
+    // scheduled against the old context, then re-evaluate from scratch. All
+    // four feed `driverRole`/`pacerEnabled`, so any of them changing can
+    // wake or sleep the pacer.
     cancel();
     schedule();
   });

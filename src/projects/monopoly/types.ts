@@ -78,6 +78,11 @@ export interface Player {
    *  former assets have been transferred to the creditor (or, eventually,
    *  the bank) at the moment the flag flipped. */
   bankrupt: boolean;
+  /** True for a computer-controlled seat. Drives the networking model: a
+   *  bot's turn (like a disconnected human's) may be driven by any connected
+   *  client, whereas a human's turn is driven only by that human's own
+   *  client. See `driver.ts` and `monopoly/CLAUDE.md` "Multiplayer". */
+  isBot: boolean;
 }
 
 export type CardSource = "chance" | "communityChest";

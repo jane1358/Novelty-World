@@ -143,13 +143,17 @@ async function advance(
 
   let next: GameState;
   if (action.type === "submit") {
+    // Apply-only: intents do NOT auto-drain mechanics. One unit of progress
+    // per call is the contract — a separate `step` runs each `autoStep`, which
+    // re-opens the off-turn interject windows between mechanical beats. See
+    // monopoly/CLAUDE.md "Multiplayer / networking".
     let working = data.state;
     for (const intent of action.intents) {
       const result = apply(working, intent);
       if (!result.ok) return json({ ok: false, reason: result.reason });
       working = result.state;
     }
-    next = autoStep(working).state;
+    next = working;
   } else {
     const stepped = autoStep(data.state);
     if (stepped.state === data.state) {
