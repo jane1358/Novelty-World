@@ -157,6 +157,22 @@ export function Squares() {
     [],
   );
 
+  // Smoothly scroll a board square to the top anchor, distance-scaled so a
+  // short hop is quick and a board-spanning handoff still finishes promptly.
+  // No-op when already there (avoids a zero-length animation).
+  const glideToAnchor = useCallback(
+    (el: HTMLDivElement, target: number) => {
+      const distance = Math.abs(target - el.scrollTop);
+      if (distance < 1) return;
+      const ms = Math.min(
+        ANCHOR_SCROLL_MAX_MS,
+        ANCHOR_SCROLL_BASE_MS + distance * ANCHOR_SCROLL_PER_PX,
+      );
+      animateScroll(el, target, ms);
+    },
+    [animateScroll],
+  );
+
   // Re-enter follow when toggling on (and on mount): jump the active player to
   // the top. Keyed on `following` only, so a mid-turn move never re-anchors.
   useEffect(() => {
@@ -188,6 +204,11 @@ export function Squares() {
   // drives the slide. Only the active player moves on a given turn, so updating
   // the active entry keeps the whole map current.
   const prevPos = useRef<Map<string, number> | null>(null);
+  // The active player id at the last effect run, so we can tell a turn handoff
+  // (id changed) from the same player moving. Each authoritative update is a
+  // single unit, so the handoff arrives as its own commit — before the new
+  // player has rolled — and needs a smooth camera glide, not an instant snap.
+  const lastActiveId = useRef<string | null>(null);
 
   const endAnim = useCallback(() => {
     if (scrollRaf.current !== null) {
@@ -204,6 +225,10 @@ export function Squares() {
     const el = ref.current;
     if (!el) return;
 
+    const prevActiveId = lastActiveId.current;
+    lastActiveId.current = active.id;
+    const isHandoff = prevActiveId !== null && prevActiveId !== active.id;
+
     if (prevPos.current === null) {
       prevPos.current = new Map(
         useMonopolyStore
@@ -219,9 +244,16 @@ export function Squares() {
       from === undefined ? 0 : (active.position - from + 40) % 40;
     const signed = forward <= 20 ? forward : forward - 40;
     // Not a move (first time we see this player, they didn't move, or a
-    // teleport like jail / "advance to" cards): just re-anchor, no slide.
+    // teleport like jail / "advance to" cards): re-anchor, no slide.
     if (from === undefined || signed === 0 || Math.abs(signed) > MAX_SLIDE_ROWS) {
-      if (following) anchorActiveTop();
+      if (following) {
+        // A turn handoff lands its own commit before the new player rolls —
+        // glide the camera to them so the next turn doesn't snap into view.
+        // (The roll that follows starts from this same anchor, so it won't
+        // re-glide.) Same-player non-moves (teleports) still snap.
+        if (isHandoff) glideToAnchor(el, bandedAnchor(active.position));
+        else anchorActiveTop();
+      }
       return;
     }
 
@@ -266,7 +298,7 @@ export function Squares() {
     // Hide the static copy of the token at its destination row so it isn't
     // drawn twice while the overlay slides; the slide effect reveals it again.
     useTokenAnim.getState().hide(active.id, active.position);
-  }, [active, following, anchorActiveTop]);
+  }, [active, following, anchorActiveTop, glideToAnchor]);
 
   // Play each move's beat: glide the start square to the top (follow mode),
   // pause so the player reads where they are, then slide the token to the
