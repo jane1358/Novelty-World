@@ -1,5 +1,5 @@
 import { SPACES } from "./data";
-import { ownablePrice } from "./logic";
+import { ownablePrice, rentDue } from "./logic";
 import type {
   ArmedPauses,
   ApplyResult,
@@ -148,6 +148,144 @@ function clearArmedFlag(
   return { ...armedPauses, [playerId]: { ...cur, [flag]: false } };
 }
 
+/** Hand control to the next non-bankrupt player in seating order: open a
+ *  new TurnGroup for them and route through `enterPreRoll` so any armed
+ *  pause fires identically to the end-turn path. Used by `applyEndTurn`
+ *  and by `autoStep` when a player busts mid-turn. Assumes at least one
+ *  non-bankrupt player exists — the winner check in `goBankrupt` flips the
+ *  phase to `game-over` before this can be reached otherwise. */
+function advanceToNextPlayer(
+  state: GameState,
+  currentPlayerId: string,
+): GameState {
+  const currentIdx = state.players.findIndex((p) => p.id === currentPlayerId);
+  for (let offset = 1; offset <= state.players.length; offset++) {
+    const idx = (currentIdx + offset) % state.players.length;
+    const candidate = state.players[idx];
+    if (candidate.bankrupt) continue;
+    const lastTurn = state.turns[state.turns.length - 1];
+    const nextTurnGroup: TurnGroup = {
+      turn: lastTurn.turn + 1,
+      playerId: candidate.id,
+      events: [],
+    };
+    const { turn, armedPauses } = enterPreRoll(state.armedPauses, candidate.id);
+    return {
+      ...state,
+      turns: [...state.turns, nextTurnGroup],
+      turn,
+      armedPauses,
+    };
+  }
+  return state;
+}
+
+/** Charge the active player rent for landing on `position`, transferring
+ *  cash to `recipientId` and emitting a `rent` event with the full amount
+ *  owed. If the payer can't cover the bill, the partial transfer happens
+ *  here (everything they have) and `goBankrupt` runs immediately after —
+ *  the rent event still reflects the FULL debt, so the log reads as
+ *  "owed $1100" → "bust → estate to Jordan" rather than papering over the
+ *  partial settlement. */
+function chargeRent(
+  state: GameState,
+  payerId: string,
+  recipientId: string,
+  position: number,
+  rentAmount: number,
+): { state: GameState; newEvents: readonly GameEvent[] } {
+  const payerIdx = state.players.findIndex((p) => p.id === payerId);
+  const recipientIdx = state.players.findIndex((p) => p.id === recipientId);
+  const payer = state.players[payerIdx];
+
+  const canAfford = payer.cash >= rentAmount;
+  const transferred = canAfford ? rentAmount : payer.cash;
+
+  const players = state.players.map((p, i) => {
+    if (i === payerIdx) return { ...p, cash: p.cash - transferred };
+    if (i === recipientIdx) return { ...p, cash: p.cash + transferred };
+    return p;
+  });
+
+  const rentEvent: GameEvent = {
+    kind: "rent",
+    ownerId: recipientId,
+    position,
+    amount: rentAmount,
+  };
+  const turns = appendEventToActiveTurn(state.turns, rentEvent);
+  const afterPayment: GameState = { ...state, players, turns };
+
+  if (canAfford) {
+    return { state: afterPayment, newEvents: [rentEvent] };
+  }
+
+  const bust = goBankrupt(afterPayment, payerId, recipientId);
+  return {
+    state: bust.state,
+    newEvents: [rentEvent, ...bust.newEvents],
+  };
+}
+
+/** Settle a player's estate to a creditor: their properties (with houses
+ *  and mortgage status) and Get-Out-of-Jail-Free cards flow to the
+ *  creditor; cash already moved in `chargeRent` so this just zeroes
+ *  whatever remains. Emits a `bankrupt` event, and a `winner` event +
+ *  game-over phase transition if exactly one non-bankrupt player remains.
+ *
+ *  Simplification flagged in CLAUDE.md (deferred): real Monopoly forces
+ *  houses to be sold back to the bank at half price when the estate
+ *  transfers. Here they ride along with the property — most house games
+ *  play it this way and the simpler rule keeps the engine lean. */
+function goBankrupt(
+  state: GameState,
+  debtorId: string,
+  creditorId: string,
+): { state: GameState; newEvents: readonly GameEvent[] } {
+  const debtorIdx = state.players.findIndex((p) => p.id === debtorId);
+  const players = state.players.map((p, i) =>
+    i === debtorIdx ? { ...p, cash: 0, bankrupt: true } : p,
+  );
+
+  const ownership: Record<number, string> = {};
+  for (const [posStr, ownerId] of Object.entries(state.ownership)) {
+    const pos = Number(posStr);
+    ownership[pos] = ownerId === debtorId ? creditorId : ownerId;
+  }
+
+  const jailFreeCards = { ...state.jailFreeCards };
+  if (jailFreeCards.chance === debtorId) jailFreeCards.chance = creditorId;
+  if (jailFreeCards.communityChest === debtorId) {
+    jailFreeCards.communityChest = creditorId;
+  }
+
+  const bankruptEvent: GameEvent = { kind: "bankrupt", creditorId };
+  let turns = appendEventToActiveTurn(state.turns, bankruptEvent);
+  const newEvents: GameEvent[] = [bankruptEvent];
+  let next: GameState = {
+    ...state,
+    players,
+    ownership,
+    jailFreeCards,
+    turns,
+  };
+
+  // Winner check: exactly one survivor means the game is over.
+  const alive = players.filter((p) => !p.bankrupt);
+  if (alive.length === 1) {
+    const winnerEvent: GameEvent = { kind: "winner", winnerId: alive[0].id };
+    turns = appendEventToActiveTurn(next.turns, winnerEvent);
+    newEvents.push(winnerEvent);
+    next = {
+      ...next,
+      turns,
+      turn: { ...next.turn, phase: "game-over", paused: false },
+    };
+  }
+
+  return { state: next, newEvents };
+}
+
 function applyBuy(
   state: GameState,
   intent: Extract<Intent, { kind: "buy" }>,
@@ -263,25 +401,9 @@ function applyEndTurn(
   if (state.turn.phase !== "post-roll") {
     return { ok: false, reason: `cannot end turn in phase ${state.turn.phase}` };
   }
-
-  const currentIdx = state.players.findIndex((p) => p.id === intent.playerId);
-  const nextIdx = (currentIdx + 1) % state.players.length;
-  const nextPlayer = state.players[nextIdx];
-  const lastTurn = state.turns[state.turns.length - 1];
-  const nextTurnGroup: TurnGroup = {
-    turn: lastTurn.turn + 1,
-    playerId: nextPlayer.id,
-    events: [],
-  };
-  const { turn, armedPauses } = enterPreRoll(state.armedPauses, nextPlayer.id);
   return {
     ok: true,
-    state: {
-      ...state,
-      turns: [...state.turns, nextTurnGroup],
-      turn,
-      armedPauses,
-    },
+    state: advanceToNextPlayer(state, intent.playerId),
     newEvents: [],
   };
 }
@@ -290,11 +412,14 @@ function applyEndTurn(
  *  the state hits a phase that requires a decision or has `turn.paused`
  *  set. No-op when the state is already at a decision point.
  *
- *  Current scope: rolls 2d6 in `pre-roll`, moves the active player, records
- *  the roll event, and either stops at `buy-decision` (when the landed
- *  square is an unowned property/railroad/utility) or at `post-roll`.
- *  Doubles, jail, rent, card draws, and tax are intentionally deferred —
- *  landing on a square is otherwise a no-op while we grow the loop. */
+ *  Current scope: rolls 2d6 in `pre-roll`, moves the active player, pays
+ *  rent if the landed square is owned by someone else (busting the active
+ *  player to the creditor when they can't cover), then either stops at
+ *  `buy-decision` (unowned ownable), `game-over` (only one survivor),
+ *  the next non-bankrupt player's `pre-roll` (active player just busted),
+ *  or `post-roll` (default). Doubles, jail, card draws, and tax are
+ *  intentionally deferred — those landings remain no-ops while we grow
+ *  the loop. */
 export function autoStep(
   state: GameState,
 ): { state: GameState; newEvents: readonly GameEvent[] } {
@@ -338,6 +463,7 @@ export function autoStep(
     turns,
     rngState: rng.getState(),
   };
+
   const landedOnUnownedOwnable =
     ownablePrice(toPos) !== null && !(toPos in state.ownership);
   if (landedOnUnownedOwnable) {
@@ -352,10 +478,45 @@ export function autoStep(
     };
     return { state: { ...afterMove, turn }, newEvents: [rollEvent] };
   }
-  const { turn, armedPauses } = enterPostRoll(afterMove);
+
+  let workingState = afterMove;
+  const newEvents: GameEvent[] = [rollEvent];
+
+  // Charge rent if owed. `rentDue` already returns null for unowned,
+  // self-owned, and mortgaged squares — no extra branching needed here.
+  const amount = rentDue(workingState, toPos, total, state.turn.playerId);
+  if (amount !== null && amount > 0) {
+    const ownerId = workingState.ownership[toPos];
+    const charged = chargeRent(
+      workingState,
+      state.turn.playerId,
+      ownerId,
+      toPos,
+      amount,
+    );
+    workingState = charged.state;
+    newEvents.push(...charged.newEvents);
+  }
+
+  // If rent busted the active player out, hand control to the next
+  // non-bankrupt player (or stay at game-over if `goBankrupt` already set
+  // the phase that way). Skips both `post-roll` and any armed `beforeEnd`
+  // pause for the bankrupt player — they're not making more decisions.
+  const activeAfter = workingState.players[playerIdx];
+  if (activeAfter.bankrupt) {
+    if (workingState.turn.phase === "game-over") {
+      return { state: workingState, newEvents };
+    }
+    return {
+      state: advanceToNextPlayer(workingState, state.turn.playerId),
+      newEvents,
+    };
+  }
+
+  const { turn, armedPauses } = enterPostRoll(workingState);
   return {
-    state: { ...afterMove, turn, armedPauses },
-    newEvents: [rollEvent],
+    state: { ...workingState, turn, armedPauses },
+    newEvents,
   };
 }
 

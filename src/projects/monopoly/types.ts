@@ -73,6 +73,11 @@ export interface Player {
   /** Which turn of the jail sentence the player is on (1–3 in standard rules).
    *  Ignored when `inJail` is false. */
   jailTurns: number;
+  /** True once the player has been declared bankrupt — they're skipped in
+   *  the turn rotation and can no longer roll, buy, or pay rent. Their
+   *  former assets have been transferred to the creditor (or, eventually,
+   *  the bank) at the moment the flag flipped. */
+  bankrupt: boolean;
 }
 
 export type CardSource = "chance" | "communityChest";

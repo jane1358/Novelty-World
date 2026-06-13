@@ -22,6 +22,35 @@ function placeActivePlayerAt(state: GameState, position: number): GameState {
   };
 }
 
+// Roll the seeded RNG, then position the active player so the eventual
+// landing square is `target`. Use after-move expectations are checked
+// against `target`, not the predicted dice — the predicted total is just
+// the placement math.
+function setupLandingOn(
+  state: GameState,
+  target: number,
+): { state: GameState; diceTotal: number } {
+  const { total } = predictRoll(state.rngState);
+  const startPos = (target - total + 40) % 40;
+  return { state: placeActivePlayerAt(state, startPos), diceTotal: total };
+}
+
+function setCash(state: GameState, playerId: string, cash: number): GameState {
+  return {
+    ...state,
+    players: state.players.map((p): Player =>
+      p.id === playerId ? { ...p, cash } : p,
+    ),
+  };
+}
+
+function withOwnership(
+  state: GameState,
+  ownership: Record<number, string>,
+): GameState {
+  return { ...state, ownership: { ...state.ownership, ...ownership } };
+}
+
 describe("createRng", () => {
   it("is deterministic for a given seed", () => {
     const a = createRng("alpha");
@@ -534,5 +563,230 @@ describe("apply resume", () => {
     };
     const result = apply(paused, { kind: "resume", playerId: "p2" });
     expect(result.ok).toBe(false);
+  });
+});
+
+// All rent tests target squares at position ≥ 12 so the active player
+// (starting at position 0) never wraps the board on the first roll —
+// avoids pass-GO bonuses muddying the cash assertions.
+
+describe("autoStep rent", () => {
+  it("transfers cash from lander to owner and emits a rent event", () => {
+    const start = freshGame("test-rent-basic");
+    const { state: placed } = setupLandingOn(start, 13); // States Avenue
+    // p2 owns States Avenue only — no monopoly, no houses → base rent $10.
+    const state = withOwnership(placed, { 13: "p2" });
+
+    const { state: next, newEvents } = autoStep(state);
+    const rentEvent = newEvents.find((e) => e.kind === "rent");
+    if (!rentEvent) throw new Error("expected a rent event");
+    expect(rentEvent).toEqual({
+      kind: "rent",
+      ownerId: "p2",
+      position: 13,
+      amount: 10,
+    });
+
+    const payer = next.players.find((p) => p.id === "p1");
+    const recipient = next.players.find((p) => p.id === "p2");
+    expect(payer?.cash).toBe(1500 - 10);
+    expect(recipient?.cash).toBe(1500 + 10);
+    expect(next.turn.phase).toBe("post-roll");
+  });
+
+  it("doubles base rent when the owner holds the full color set", () => {
+    const start = freshGame("test-rent-monopoly");
+    const { state: placed } = setupLandingOn(start, 13); // States Avenue
+    // p2 holds all three pinks (11 + 13 + 14), no houses → base $10 × 2 = $20.
+    const state = withOwnership(placed, { 11: "p2", 13: "p2", 14: "p2" });
+
+    const { newEvents } = autoStep(state);
+    const rentEvent = newEvents.find((e) => e.kind === "rent");
+    if (!rentEvent) throw new Error("expected a rent event");
+    expect(rentEvent.amount).toBe(20);
+  });
+
+  it("uses the houses ladder when the owner has built", () => {
+    const start = freshGame("test-rent-houses");
+    const { state: placed } = setupLandingOn(start, 13); // States Avenue
+    // p2 holds States Avenue with 3 houses → ladder index 2 = $450.
+    const state: GameState = {
+      ...withOwnership(placed, { 13: "p2" }),
+      houses: { 13: 3 },
+    };
+
+    const { newEvents } = autoStep(state);
+    const rentEvent = newEvents.find((e) => e.kind === "rent");
+    if (!rentEvent) throw new Error("expected a rent event");
+    expect(rentEvent.amount).toBe(450);
+  });
+
+  it("uses the railroad ladder based on how many the owner holds", () => {
+    const start = freshGame("test-rent-railroad");
+    const { state: placed } = setupLandingOn(start, 15); // Pennsylvania Railroad
+    // p2 holds 3 of the 4 railroads → $100.
+    const state = withOwnership(placed, { 5: "p2", 15: "p2", 25: "p2" });
+
+    const { newEvents } = autoStep(state);
+    const rentEvent = newEvents.find((e) => e.kind === "rent");
+    if (!rentEvent) throw new Error("expected a rent event");
+    expect(rentEvent.amount).toBe(100);
+  });
+
+  it("uses the utility 4× multiplier with a single utility owned", () => {
+    const start = freshGame("test-rent-utility-4x");
+    const { state: placed, diceTotal } = setupLandingOn(start, 12); // Electric Co.
+    const state = withOwnership(placed, { 12: "p2" });
+
+    const { newEvents } = autoStep(state);
+    const rentEvent = newEvents.find((e) => e.kind === "rent");
+    if (!rentEvent) throw new Error("expected a rent event");
+    expect(rentEvent.amount).toBe(diceTotal * 4);
+  });
+
+  it("uses the utility 10× multiplier when the owner holds both", () => {
+    const start = freshGame("test-rent-utility-10x");
+    const { state: placed, diceTotal } = setupLandingOn(start, 12); // Electric Co.
+    const state = withOwnership(placed, { 12: "p2", 28: "p2" });
+
+    const { newEvents } = autoStep(state);
+    const rentEvent = newEvents.find((e) => e.kind === "rent");
+    if (!rentEvent) throw new Error("expected a rent event");
+    expect(rentEvent.amount).toBe(diceTotal * 10);
+  });
+
+  it("collects no rent when the property is mortgaged", () => {
+    const start = freshGame("test-rent-mortgaged");
+    const { state: placed } = setupLandingOn(start, 13);
+    const state: GameState = {
+      ...withOwnership(placed, { 13: "p2" }),
+      mortgaged: { 13: true },
+    };
+    const cashBefore = state.players[0].cash;
+
+    const { state: next, newEvents } = autoStep(state);
+    expect(newEvents.find((e) => e.kind === "rent")).toBeUndefined();
+    const payer = next.players.find((p) => p.id === "p1");
+    expect(payer?.cash).toBe(cashBefore);
+    expect(next.turn.phase).toBe("post-roll");
+  });
+
+  it("collects no rent when the lander owns the square themselves", () => {
+    const start = freshGame("test-rent-self");
+    const { state: placed } = setupLandingOn(start, 13);
+    const state = withOwnership(placed, { 13: "p1" });
+    const cashBefore = state.players[0].cash;
+
+    const { state: next, newEvents } = autoStep(state);
+    expect(newEvents.find((e) => e.kind === "rent")).toBeUndefined();
+    expect(next.players.find((p) => p.id === "p1")?.cash).toBe(cashBefore);
+    expect(next.turn.phase).toBe("post-roll");
+  });
+});
+
+describe("bankruptcy", () => {
+  it("zeros the payer's cash, transfers properties + GOJF to the creditor, and emits a bankrupt event", () => {
+    const start = freshGame("test-bust-transfer");
+    const { state: placed } = setupLandingOn(start, 39); // Boardwalk
+    // p2 owns Boardwalk with a hotel: hotel rent $2000. p1 can't pay.
+    let state: GameState = {
+      ...withOwnership(placed, { 39: "p2", 37: "p2", 5: "p1", 12: "p1" }),
+      houses: { 39: 5 },
+      jailFreeCards: { chance: "p1" },
+    };
+    state = setCash(state, "p1", 100);
+
+    const { state: next, newEvents } = autoStep(state);
+
+    const bustEvent = newEvents.find((e) => e.kind === "bankrupt");
+    if (!bustEvent) throw new Error("expected a bankrupt event");
+    expect(bustEvent.creditorId).toBe("p2");
+
+    // p1's cash hits zero (the $100 they had got transferred to p2).
+    const payer = next.players.find((p) => p.id === "p1");
+    expect(payer?.cash).toBe(0);
+    expect(payer?.bankrupt).toBe(true);
+
+    // Reading Railroad and Electric Company belong to p2 now.
+    expect(next.ownership[5]).toBe("p2");
+    expect(next.ownership[12]).toBe("p2");
+    // p2's pre-bust holdings stay theirs.
+    expect(next.ownership[39]).toBe("p2");
+    expect(next.ownership[37]).toBe("p2");
+
+    // Chance GOJF moved from p1 to p2.
+    expect(next.jailFreeCards.chance).toBe("p2");
+
+    // p2 received p1's $100 via rent.
+    const creditor = next.players.find((p) => p.id === "p2");
+    expect(creditor?.cash).toBe(1500 + 100);
+
+    // The rent event in the log still reflects the FULL debt, not the
+    // partial transfer — readers see what was owed, then the bust.
+    const rentEvent = newEvents.find((e) => e.kind === "rent");
+    if (!rentEvent) throw new Error("expected a rent event");
+    expect(rentEvent.amount).toBe(2000);
+  });
+
+  it("advances control to the next non-bankrupt player when the active player busts", () => {
+    const start = freshGame("test-bust-advance");
+    const { state: placed } = setupLandingOn(start, 39); // Boardwalk
+    let state: GameState = {
+      ...withOwnership(placed, { 39: "p2" }),
+      houses: { 39: 5 },
+    };
+    state = setCash(state, "p1", 50);
+
+    const { state: next } = autoStep(state);
+    expect(next.turn.playerId).toBe("p2");
+    expect(next.turn.phase).toBe("pre-roll");
+    // A new TurnGroup was opened for p2.
+    const last = next.turns[next.turns.length - 1];
+    expect(last.playerId).toBe("p2");
+    expect(last.events).toEqual([]);
+  });
+
+  it("emits a winner event and parks at game-over when only one survivor remains", () => {
+    const start = freshGame("test-winner");
+    const { state: placed } = setupLandingOn(start, 39); // Boardwalk
+    // Two players are already bankrupt; p1's rent bust to p2 leaves p2
+    // alone on the board.
+    let state: GameState = {
+      ...placed,
+      players: placed.players.map((p): Player =>
+        p.id === "p3" || p.id === "p4" ? { ...p, bankrupt: true, cash: 0 } : p,
+      ),
+    };
+    state = withOwnership(state, { 39: "p2" });
+    state = { ...state, houses: { 39: 5 } };
+    state = setCash(state, "p1", 25);
+
+    const { state: next, newEvents } = autoStep(state);
+    const winnerEvent = newEvents.find((e) => e.kind === "winner");
+    if (!winnerEvent) throw new Error("expected a winner event");
+    expect(winnerEvent.winnerId).toBe("p2");
+    expect(next.turn.phase).toBe("game-over");
+  });
+});
+
+describe("end-turn skips bankrupt players", () => {
+  it("advances past a bankrupt player in the rotation", () => {
+    const start = freshGame("test-end-skip-bankrupt");
+    // p1 is rolling. Position them on Income Tax so autoStep stops at
+    // post-roll without triggering any rent path.
+    const { state: placed } = setupLandingOn(start, 4); // Income Tax
+    const state: GameState = {
+      ...placed,
+      players: placed.players.map((p): Player =>
+        p.id === "p2" ? { ...p, bankrupt: true, cash: 0 } : p,
+      ),
+    };
+    const rolled = autoStep(state).state;
+    expect(rolled.turn.phase).toBe("post-roll");
+
+    const ended = apply(rolled, { kind: "end-turn", playerId: "p1" });
+    if (!ended.ok) throw new Error(`expected ok, got ${ended.reason}`);
+    // p2 is bankrupt — control goes to p3 instead.
+    expect(ended.state.turn.playerId).toBe("p3");
   });
 });

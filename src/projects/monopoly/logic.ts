@@ -62,6 +62,33 @@ export type RentDisplay =
   | { kind: "dollars"; amount: number }
   | { kind: "dice-multiplier"; multiplier: number };
 
+/** Concrete dollar rent the active player owes on landing — utility
+ *  multiplier resolved against the actual dice roll, mortgage taken into
+ *  account, self-owned and unowned squares return null.
+ *
+ *  Returns null when:
+ *  - the square isn't owned by anyone (nobody to pay),
+ *  - the square is owned by the lander themselves (you don't pay yourself),
+ *  - the property is mortgaged (Monopoly rule: no rent collected).
+ *
+ *  Otherwise returns the exact amount. Use this from the engine; `rentAt`
+ *  is the display variant for the UI and doesn't need a dice roll. */
+export function rentDue(
+  state: GameState,
+  position: number,
+  diceTotal: number,
+  landerId: string,
+): number | null {
+  const ownerId = state.ownership[position];
+  if (!ownerId) return null;
+  if (ownerId === landerId) return null;
+  if (state.mortgaged[position]) return null;
+  const display = rentAt(state, position);
+  if (!display) return null;
+  if (display.kind === "dollars") return display.amount;
+  return display.multiplier * diceTotal;
+}
+
 /** Rent owed if a player landed on this square right now. Returns null when
  *  the space is unowned or unownable — callers can show the buy price or
  *  nothing as appropriate. */
