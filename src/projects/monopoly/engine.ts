@@ -1,5 +1,10 @@
 import { SPACES } from "./data";
-import { ownablePrice, rentDue } from "./logic";
+import {
+  mortgageValueAt,
+  ownablePrice,
+  rentDue,
+  unmortgageCostAt,
+} from "./logic";
 import type {
   ArmedPauses,
   ApplyResult,
@@ -81,6 +86,8 @@ export function apply(state: GameState, intent: Intent): ApplyResult {
   if (intent.kind === "set-armed-pause") {
     return applySetArmedPause(state, intent);
   }
+  if (intent.kind === "mortgage") return applyMortgage(state, intent);
+  if (intent.kind === "unmortgage") return applyUnmortgage(state, intent);
   if (intent.kind === "resume") return applyResume(state, intent);
   if (intent.kind === "end-turn") return applyEndTurn(state, intent);
   return { ok: false, reason: `intent ${intent.kind} not yet implemented` };
@@ -132,6 +139,7 @@ function enterPostRoll(
     phase: "post-roll",
     paused,
     pendingBuy: undefined,
+    pendingDebt: undefined,
   };
   const armedPauses = paused
     ? clearArmedFlag(state.armedPauses, state.turn.playerId, "beforeEnd")
@@ -208,13 +216,42 @@ function advanceToNextPlayer(
   return state;
 }
 
-/** Charge the active player rent for landing on `position`, transferring
- *  cash to `recipientId` and emitting a `rent` event with the full amount
- *  owed. If the payer can't cover the bill, the partial transfer happens
- *  here (everything they have) and `goBankrupt` runs immediately after —
- *  the rent event still reflects the FULL debt, so the log reads as
- *  "owed $1100" → "bust → estate to Jordan" rather than papering over the
- *  partial settlement. */
+/** Maximum cash a player could raise right now by mortgaging every
+ *  un-mortgaged, building-free ownable they own. Used to decide between
+ *  the must-raise-cash path (player CAN cover the debt with mortgages) and
+ *  immediate bankruptcy (they couldn't even if they mortgaged everything).
+ *
+ *  Buildings block mortgaging in official rules, so a property with houses
+ *  contributes nothing here — once selling buildings lands, this will
+ *  expand to "could sell N houses for $X" too. */
+function maxRaisableCash(state: GameState, ownerId: string): number {
+  let total = 0;
+  for (const [posStr, oid] of Object.entries(state.ownership)) {
+    if (oid !== ownerId) continue;
+    const pos = Number(posStr);
+    if (state.mortgaged[pos]) continue;
+    if (state.houses[pos]) continue;
+    const value = mortgageValueAt(pos);
+    if (value !== null) total += value;
+  }
+  return total;
+}
+
+/** Charge the active player rent for landing on `position`. Three branches:
+ *
+ *  1. Cash >= debt: pay in full immediately. Emit a `rent` event reflecting
+ *     the payment.
+ *  2. Cash < debt but cash + raisable >= debt: enter the `must-raise-cash`
+ *     phase with `pendingDebt` set. No cash moves and no event is emitted
+ *     yet — the rent event fires at settle time (in `applyMortgage` when
+ *     the player has scraped enough cash together to clear the debt). The
+ *     log reads "mortgage A, mortgage B, rent paid" in chronological order
+ *     rather than "rent owed" then a silent settlement.
+ *  3. Cash + raisable < debt: emit the rent event with the FULL debt
+ *     (records the obligation), transfer all of the payer's cash to the
+ *     creditor, and bust them. The log reads "owed $1100 → bust → estate
+ *     to Jordan" — papering over the partial settlement is more confusing
+ *     than calling it out. */
 function chargeRent(
   state: GameState,
   payerId: string,
@@ -226,15 +263,45 @@ function chargeRent(
   const recipientIdx = state.players.findIndex((p) => p.id === recipientId);
   const payer = state.players[payerIdx];
 
-  const canAfford = payer.cash >= rentAmount;
-  const transferred = canAfford ? rentAmount : payer.cash;
+  if (payer.cash >= rentAmount) {
+    const players = state.players.map((p, i) => {
+      if (i === payerIdx) return { ...p, cash: p.cash - rentAmount };
+      if (i === recipientIdx) return { ...p, cash: p.cash + rentAmount };
+      return p;
+    });
+    const rentEvent: GameEvent = {
+      kind: "rent",
+      ownerId: recipientId,
+      position,
+      amount: rentAmount,
+    };
+    const turns = appendEventToActiveTurn(state.turns, rentEvent);
+    return {
+      state: { ...state, players, turns },
+      newEvents: [rentEvent],
+    };
+  }
 
+  const raisable = maxRaisableCash(state, payerId);
+  if (payer.cash + raisable >= rentAmount) {
+    // Enter must-raise-cash. Cash transfer and rent event are deferred to
+    // settle time so the log reads in chronological order.
+    const turn: TurnState = {
+      ...state.turn,
+      phase: "must-raise-cash",
+      paused: false,
+      pendingDebt: { amount: rentAmount, creditorId: recipientId },
+    };
+    return { state: { ...state, turn }, newEvents: [] };
+  }
+
+  // Even mortgaging everything won't cover. Transfer whatever cash there
+  // is, log the full debt, bust.
   const players = state.players.map((p, i) => {
-    if (i === payerIdx) return { ...p, cash: p.cash - transferred };
-    if (i === recipientIdx) return { ...p, cash: p.cash + transferred };
+    if (i === payerIdx) return { ...p, cash: 0 };
+    if (i === recipientIdx) return { ...p, cash: p.cash + payer.cash };
     return p;
   });
-
   const rentEvent: GameEvent = {
     kind: "rent",
     ownerId: recipientId,
@@ -242,16 +309,61 @@ function chargeRent(
     amount: rentAmount,
   };
   const turns = appendEventToActiveTurn(state.turns, rentEvent);
-  const afterPayment: GameState = { ...state, players, turns };
-
-  if (canAfford) {
-    return { state: afterPayment, newEvents: [rentEvent] };
-  }
-
-  const bust = goBankrupt(afterPayment, payerId, recipientId);
+  const afterPartial: GameState = { ...state, players, turns };
+  const bust = goBankrupt(afterPartial, payerId, recipientId);
   return {
     state: bust.state,
     newEvents: [rentEvent, ...bust.newEvents],
+  };
+}
+
+/** Pay an active-turn `pendingDebt` and exit the must-raise-cash phase
+ *  through the same `afterLanding` path the original rent step would have
+ *  taken if cash had been available — which means doubles still grant
+ *  another roll, and armed `beforeEnd` pauses still fire when the streak
+ *  ends. Emits the deferred `rent` event recording the full debt amount.
+ *  Used by `applyMortgage` once the payer's cash crosses the threshold.
+ *
+ *  Assumes the caller has already verified `pendingDebt` is set and
+ *  `payer.cash >= debt.amount` — both conditions hold by construction at
+ *  every call site. */
+function settleDebt(
+  state: GameState,
+  payerId: string,
+  position: number,
+): { state: GameState; newEvents: readonly GameEvent[] } {
+  if (!state.turn.pendingDebt) {
+    throw new Error("settleDebt called without pendingDebt");
+  }
+  const debt = state.turn.pendingDebt;
+  const payerIdx = state.players.findIndex((p) => p.id === payerId);
+  const creditorIdx = state.players.findIndex((p) => p.id === debt.creditorId);
+
+  const players = state.players.map((p, i) => {
+    if (i === payerIdx) return { ...p, cash: p.cash - debt.amount };
+    if (i === creditorIdx) return { ...p, cash: p.cash + debt.amount };
+    return p;
+  });
+
+  const rentEvent: GameEvent = {
+    kind: "rent",
+    ownerId: debt.creditorId,
+    position,
+    amount: debt.amount,
+  };
+  const turns = appendEventToActiveTurn(state.turns, rentEvent);
+  // Drop the must-raise-cash phase (any value works as a placeholder —
+  // afterLanding will pick the correct next phase from doublesStreak) and
+  // clear pendingDebt before handing off.
+  const paid: GameState = {
+    ...state,
+    players,
+    turns,
+    turn: { ...state.turn, pendingDebt: undefined },
+  };
+  return {
+    state: afterLanding(paid),
+    newEvents: [rentEvent],
   };
 }
 
@@ -376,6 +488,128 @@ function applyDeclineBuy(
   // the property unowned and resolves the landing (post-roll, or another
   // roll when the move was doubles).
   return { ok: true, state: afterLanding(state), newEvents: [] };
+}
+
+/** Phases that allow voluntary mortgage / unmortgage actions on the active
+ *  player's own turn — gated by `paused` for the rolling phases so a
+ *  player can't sneak a mortgage between the auto-pacer's roll and rent
+ *  steps. `must-raise-cash` is a separate, forced entry point that only
+ *  accepts mortgage (not unmortgage) — see applyMortgage / applyUnmortgage. */
+function canActOnAssets(state: GameState): boolean {
+  const { phase, paused } = state.turn;
+  if (phase === "pre-roll" && paused) return true;
+  if (phase === "post-roll" && paused) return true;
+  return false;
+}
+
+function applyMortgage(
+  state: GameState,
+  intent: Extract<Intent, { kind: "mortgage" }>,
+): ApplyResult {
+  if (intent.playerId !== state.turn.playerId) {
+    return { ok: false, reason: "not your turn" };
+  }
+  const inRaiseCash = state.turn.phase === "must-raise-cash";
+  if (!inRaiseCash && !canActOnAssets(state)) {
+    return {
+      ok: false,
+      reason: `cannot mortgage in phase ${state.turn.phase}`,
+    };
+  }
+  if (state.ownership[intent.position] !== intent.playerId) {
+    return { ok: false, reason: "you don't own that square" };
+  }
+  if (state.mortgaged[intent.position]) {
+    return { ok: false, reason: "already mortgaged" };
+  }
+  if (state.houses[intent.position]) {
+    return { ok: false, reason: "must sell buildings first" };
+  }
+  const value = mortgageValueAt(intent.position);
+  if (value === null) {
+    return { ok: false, reason: "not an ownable space" };
+  }
+
+  const payerIdx = state.players.findIndex((p) => p.id === intent.playerId);
+  const players = state.players.map((p, i) =>
+    i === payerIdx ? { ...p, cash: p.cash + value } : p,
+  );
+  const mortgaged = { ...state.mortgaged, [intent.position]: true };
+  const mortgageEvent: GameEvent = {
+    kind: "mortgage",
+    position: intent.position,
+    received: value,
+  };
+  const turns = appendEventToActiveTurn(state.turns, mortgageEvent);
+  const afterMortgage: GameState = { ...state, players, mortgaged, turns };
+
+  // Auto-settle the must-raise-cash debt the moment cash crosses the
+  // threshold. The player's mortgage flow is "raise just enough" — no
+  // explicit confirmation step. settleDebt routes through enterPostRoll so
+  // armed `beforeEnd` pauses still fire correctly after the bust.
+  if (inRaiseCash && state.turn.pendingDebt) {
+    const updatedPayer = afterMortgage.players[payerIdx];
+    if (updatedPayer.cash >= state.turn.pendingDebt.amount) {
+      const position = state.players[payerIdx].position;
+      const settled = settleDebt(afterMortgage, intent.playerId, position);
+      return {
+        ok: true,
+        state: settled.state,
+        newEvents: [mortgageEvent, ...settled.newEvents],
+      };
+    }
+  }
+
+  return { ok: true, state: afterMortgage, newEvents: [mortgageEvent] };
+}
+
+function applyUnmortgage(
+  state: GameState,
+  intent: Extract<Intent, { kind: "unmortgage" }>,
+): ApplyResult {
+  if (intent.playerId !== state.turn.playerId) {
+    return { ok: false, reason: "not your turn" };
+  }
+  if (!canActOnAssets(state)) {
+    return {
+      ok: false,
+      reason: `cannot unmortgage in phase ${state.turn.phase}`,
+    };
+  }
+  if (state.ownership[intent.position] !== intent.playerId) {
+    return { ok: false, reason: "you don't own that square" };
+  }
+  if (!state.mortgaged[intent.position]) {
+    return { ok: false, reason: "not mortgaged" };
+  }
+  const cost = unmortgageCostAt(intent.position);
+  if (cost === null) {
+    return { ok: false, reason: "not an ownable space" };
+  }
+  const payerIdx = state.players.findIndex((p) => p.id === intent.playerId);
+  const payer = state.players[payerIdx];
+  if (payer.cash < cost) {
+    return { ok: false, reason: "insufficient cash" };
+  }
+  const players = state.players.map((p, i) =>
+    i === payerIdx ? { ...p, cash: p.cash - cost } : p,
+  );
+  const mortgaged: Record<number, boolean> = {};
+  for (const [posStr, flag] of Object.entries(state.mortgaged)) {
+    if (Number(posStr) === intent.position) continue;
+    mortgaged[Number(posStr)] = flag;
+  }
+  const unmortgageEvent: GameEvent = {
+    kind: "unmortgage",
+    position: intent.position,
+    cost,
+  };
+  const turns = appendEventToActiveTurn(state.turns, unmortgageEvent);
+  return {
+    ok: true,
+    state: { ...state, players, mortgaged, turns },
+    newEvents: [unmortgageEvent],
+  };
 }
 
 function applySetArmedPause(
@@ -541,6 +775,15 @@ export function autoStep(
       state: advanceToNextPlayer(workingState, state.turn.playerId),
       newEvents,
     };
+  }
+
+  // Rent couldn't be paid from cash but the player can raise it by
+  // mortgaging — chargeRent parked the state at must-raise-cash. Don't
+  // route through afterLanding; the player owes the engine a settle before
+  // the post-roll transition (which happens inside applyMortgage when cash
+  // crosses the debt threshold).
+  if (workingState.turn.phase === "must-raise-cash") {
+    return { state: workingState, newEvents };
   }
 
   return { state: afterLanding(workingState), newEvents };

@@ -43,6 +43,34 @@ export function SquareRow({ position }: Props) {
     : tokens;
   const rent = useMonopolyStore(useShallow((s) => rentAt(s.state, position)));
 
+  // Mortgage-mode interactivity: when the local player has the mortgage
+  // panel open (voluntary or forced), squares they own become tap targets
+  // that stage a mortgage flip. The panel itself shows the same staging
+  // — clicking either surface is just a faster path to the same toggle.
+  const stagedFlip = useMonopolyStore(
+    (s) => s.mortgageStaged?.[position] ?? null,
+  );
+  const clickable = useMonopolyStore((s) => {
+    const me = s.myPlayerId;
+    if (!me) return false;
+    if (s.state.turn.playerId !== me) return false;
+    const inMortgageMode =
+      s.mortgageStaged !== null || s.state.turn.phase === "must-raise-cash";
+    if (!inMortgageMode) return false;
+    if (s.state.ownership[position] !== me) return false;
+    if (s.state.houses[position]) return false;
+    // During forced raise-cash, mortgaged squares aren't toggleable — the
+    // engine refuses un-mortgages in this phase.
+    if (
+      s.state.turn.phase === "must-raise-cash" &&
+      s.state.mortgaged[position]
+    ) {
+      return false;
+    }
+    return true;
+  });
+  const toggleMortgageStage = useMonopolyStore((s) => s.toggleMortgageStage);
+
   // Two zones: a left identity panel (property color full-bleed, or card bg
   // for non-properties) and a right context panel tinted with the owner's
   // hue so ownership reads across the rest of the row.
@@ -64,11 +92,23 @@ export function SquareRow({ position }: Props) {
     ? `color-mix(in srgb, ${PLAYER_COLOR_VAR[ownerColor]} 28%, var(--mono-card))`
     : "var(--mono-card)";
 
-  return (
+  // Inline stage indicator: an orange ring around the row when this square
+  // is staged for a mortgage flip, so the player can see the staged set at
+  // a glance on the board itself (the panel shows it too, but the board is
+  // the spatial map). 2px inset ring overlay rather than a border to avoid
+  // shifting the row's content edges.
+  const stageOverlay: ReactNode = stagedFlip !== null && (
     <div
-      className="flex h-11 shrink-0 overflow-hidden"
-      style={{ color: "var(--mono-ink)" }}
-    >
+      className="pointer-events-none absolute inset-0"
+      style={{
+        boxShadow: "inset 0 0 0 2px var(--mono-orange)",
+      }}
+      aria-hidden="true"
+    />
+  );
+
+  const content = (
+    <>
       <div
         className="relative flex shrink-0 items-center justify-center"
         style={leftStyle}
@@ -88,6 +128,29 @@ export function SquareRow({ position }: Props) {
         <TokenStrip tokens={visibleTokens} />
         <CostCell space={space} mortgaged={mortgaged} rent={rent} />
       </div>
+      {stageOverlay}
+    </>
+  );
+
+  if (clickable) {
+    return (
+      <button
+        type="button"
+        onClick={() => { toggleMortgageStage(position); }}
+        className="relative flex h-11 w-full shrink-0 overflow-hidden text-left"
+        style={{ color: "var(--mono-ink)", cursor: "pointer" }}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <div
+      className="relative flex h-11 shrink-0 overflow-hidden"
+      style={{ color: "var(--mono-ink)" }}
+    >
+      {content}
     </div>
   );
 }

@@ -189,10 +189,27 @@ export type TurnPhase =
   | "pre-roll"
   | "post-roll"
   | "buy-decision"
+  | "must-raise-cash"
   | "auction"
   | "jail-decision"
   | "trade-pending"
   | "game-over";
+
+/** A debt the active player must settle before the turn can continue.
+ *  Created by `chargeRent` (later: tax, fines, card effects) when the player
+ *  can't cover the bill from cash but COULD cover it after mortgaging
+ *  un-built properties. Lives on `TurnState.pendingDebt` while the phase is
+ *  `must-raise-cash`; cleared (and the cash transferred) once the player
+ *  has mortgaged enough to settle.
+ *
+ *  Players who couldn't cover the debt even after maxing out mortgages
+ *  never reach this state — they go straight to bankrupt in `chargeRent`. */
+export interface PendingDebt {
+  amount: number;
+  /** Recipient of the cash on settle. Always set today (rent has a payee);
+   *  will become null when tax / fine debts wire through this same phase. */
+  creditorId: string;
+}
 
 /** Auction in progress after a player declined to buy a property they
  *  landed on. */
@@ -234,6 +251,12 @@ export interface TurnState {
   /** Position of an unowned ownable square the active player just landed
    *  on, awaiting a buy / decline-buy decision. */
   pendingBuy?: number;
+  /** Debt the active player must raise cash for before the turn continues.
+   *  Set when `chargeRent` (or future tax / fine paths) finds the player
+   *  can't pay from cash alone but could after mortgaging. The engine
+   *  auto-settles and transitions out of `must-raise-cash` as soon as a
+   *  mortgage intent brings cash up to the debt amount. */
+  pendingDebt?: PendingDebt;
   auction?: AuctionState;
   pendingTrade?: PendingTrade;
 }

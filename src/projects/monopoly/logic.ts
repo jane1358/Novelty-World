@@ -28,6 +28,29 @@ export function ownablePrice(position: number): number | null {
   return null;
 }
 
+/** Cash a player collects when mortgaging this square. Official rule: half
+ *  the printed price, rounded down for the odd dollar (Monopoly's price
+ *  table only has even prices today, so the floor is a safety net). Null
+ *  for non-ownable spaces. */
+export function mortgageValueAt(position: number): number | null {
+  const price = ownablePrice(position);
+  if (price === null) return null;
+  return Math.floor(price / 2);
+}
+
+/** Cash a player must pay to lift a mortgage on this square. Official rule:
+ *  mortgage value plus 10% interest, rounded up to the nearest dollar. Null
+ *  for non-ownable spaces.
+ *
+ *  Integer math (`value * 11 / 10`) because `value * 1.1` in IEEE 754 can
+ *  drift — e.g. `200 * 1.1` is `220.00000000000003`, which `Math.ceil`
+ *  would round up to 221 and produce off-by-one for round-number rents. */
+export function unmortgageCostAt(position: number): number | null {
+  const value = mortgageValueAt(position);
+  if (value === null) return null;
+  return Math.ceil((value * 11) / 10);
+}
+
 /** True when ownerId holds every property of `color`. */
 export function hasMonopoly(
   state: GameState,

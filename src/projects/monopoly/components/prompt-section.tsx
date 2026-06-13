@@ -6,6 +6,7 @@ import { ownablePrice } from "../logic";
 import { useMonopolyStore } from "../store";
 import { PROPERTY_COLOR_VAR } from "../theme";
 import type { GameState } from "../types";
+import { MortgagePanel } from "./mortgage-panel";
 
 interface Props {
   state: GameState;
@@ -29,11 +30,25 @@ interface Props {
 export function PromptSection({ state }: Props) {
   const myPlayerId = useMonopolyStore((s) => s.myPlayerId);
   const submit = useMonopolyStore((s) => s.submit);
+  const mortgageStaged = useMonopolyStore((s) => s.mortgageStaged);
+  const openMortgagePanel = useMonopolyStore((s) => s.openMortgagePanel);
 
   if (!myPlayerId) return null;
   if (state.turn.playerId !== myPlayerId) return null;
 
   const { phase, paused, pendingBuy } = state.turn;
+
+  // Must-raise-cash forces the panel open regardless of staging state —
+  // the player can't dismiss it, only settle the debt.
+  if (phase === "must-raise-cash") {
+    return <MortgagePanel state={state} playerId={myPlayerId} />;
+  }
+
+  // Voluntary mortgage mode: the panel stays open until the player commits
+  // or cancels, even between roll/end-of-turn moments.
+  if (mortgageStaged !== null) {
+    return <MortgagePanel state={state} playerId={myPlayerId} />;
+  }
 
   if (phase === "buy-decision" && pendingBuy !== undefined) {
     return (
@@ -59,6 +74,7 @@ export function PromptSection({ state }: Props) {
         onResume={() => {
           submit({ kind: "resume", playerId: myPlayerId });
         }}
+        onMortgage={() => { openMortgagePanel(); }}
       />
     );
   }
@@ -71,6 +87,7 @@ export function PromptSection({ state }: Props) {
         onResume={() => {
           submit({ kind: "resume", playerId: myPlayerId });
         }}
+        onMortgage={() => { openMortgagePanel(); }}
       />
     );
   }
@@ -90,25 +107,28 @@ function PausePrompt({
   label,
   action,
   onResume,
+  onMortgage,
 }: {
   label: string;
   action: string;
   onResume: () => void;
+  onMortgage: () => void;
 }) {
   return (
     <div className="relative z-10 flex shrink-0" style={SECTION_STYLE}>
       <div
-        className="flex flex-1 items-center px-3 py-3 font-semibold uppercase tracking-wide"
+        className="flex min-w-0 flex-1 items-center px-3 py-3 font-semibold uppercase tracking-wide"
         style={{ fontSize: "clamp(0.75rem, 2.2vmin, 1rem)", minHeight: "56px" }}
       >
         <span
-          className="inline-flex items-center gap-2"
+          className="inline-flex min-w-0 items-center gap-2"
           style={{ color: "var(--mono-orange)" }}
         >
           <PauseGlyph />
-          {label}
+          <span className="truncate">{label}</span>
         </span>
       </div>
+      <PromptButton label="Mortgage" onClick={onMortgage} />
       <PromptButton label={action} onClick={onResume} variant="primary" />
     </div>
   );

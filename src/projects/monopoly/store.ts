@@ -3,10 +3,17 @@
 import { create } from "zustand";
 import type { PlayerProfile } from "@/shared/lib/profile";
 import { apply, autoStep } from "./engine";
-import { ownablePrice } from "./logic";
+import { mortgageValueAt, ownablePrice } from "./logic";
 import { freshGame } from "./mocks";
 import { loadGame, saveGame, subscribeGame } from "./sync";
 import type { ApplyResult, GameState, Intent, TurnPhase } from "./types";
+
+/** Staged mortgage toggles the user has clicked but not yet committed.
+ *  Maps position -> target mortgaged-flag. Entries that match the current
+ *  authoritative `state.mortgaged[pos]` are removed (no-op) by
+ *  `toggleMortgageStage`, so a stale "no change" key never leaks through to
+ *  the commit step. Per-client UI state — never synced. */
+export type MortgageStaged = Readonly<Record<number, boolean>>;
 
 // Visible pause between mechanical steps so the user can read each roll land
 // in the log and watch the camera glide + token slide settle before the next
@@ -15,13 +22,14 @@ const STEP_DELAY_MS = 2000;
 
 // Phases the auto-pacer is allowed to drive. Anything else (auction,
 // trade, game-over) is a fixed point; the pacer leaves it alone and waits
-// for an intent to break out. `buy-decision` is paced only when the active
-// player is not the local user — bots auto-buy / auto-pass, the human gets
-// the Buy/Pass UI and decides at their own speed.
+// for an intent to break out. `buy-decision` and `must-raise-cash` are
+// paced only when the active player is not the local user — bots auto-buy
+// or auto-mortgage; the human gets the Buy/Pass UI or mortgage panel.
 const PACED_PHASES: ReadonlySet<TurnPhase> = new Set([
   "pre-roll",
   "post-roll",
   "buy-decision",
+  "must-raise-cash",
 ]);
 
 /** "live": auto-pacing drives the game forward; this is the actual play
@@ -39,6 +47,33 @@ export type MonopolyConnection = "local" | "online";
 interface MonopolyActions {
   /** Set this client's player id (assigned during lobby join). */
   setMyPlayer: (playerId: string) => void;
+
+  /** Open the mortgage staging panel (voluntary entry from a paused turn).
+   *  No-op if the panel is already open. Forced entries (must-raise-cash
+   *  phase) show the panel implicitly — toggleMortgageStage initializes
+   *  staged from null on the first click, so no explicit open is required. */
+  openMortgagePanel: () => void;
+
+  /** Toggle the staged mortgage flag for a position. Cycles between "no
+   *  change" and "stage flip" — clicking once stages the opposite of the
+   *  current mortgaged state, clicking again reverts to no change. Rejects
+   *  positions the local player doesn't own. */
+  toggleMortgageStage: (position: number) => void;
+
+  /** Close the voluntary mortgage panel, discarding any staged changes.
+   *  No-op while in the must-raise-cash phase — the player can't back out
+   *  of paying a debt. */
+  closeMortgagePanel: () => void;
+
+  /** Commit staged mortgage / unmortgage changes by submitting one intent
+   *  per staged flip. Mortgages run first so any cash needed for a same-
+   *  batch unmortgage is in hand by the time the unmortgage submits.
+   *  Engine auto-settles a must-raise-cash debt mid-batch if a mortgage
+   *  brings cash up to the threshold; remaining staged ops still try to
+   *  apply against the post-settle state. Clears the staged map at the end
+   *  regardless of per-intent outcomes — UI re-derives from authoritative
+   *  state on the next render. */
+  commitMortgageStaging: () => void;
 
   /** Host: validate and apply an intent, then drain mechanics via autoStep
    *  until the next decision point. Returns the full result including the
@@ -105,6 +140,11 @@ export type MonopolyStore = {
   /** Last persistence/subscription error, if any. Surfaces sync failures
    *  for debugging without breaking the play loop. */
   syncError: string | null;
+  /** Staged mortgage toggles awaiting commit. `null` when the panel is
+   *  closed (voluntary mode). Always treated as `{}` for rendering when
+   *  the turn is in `must-raise-cash` so the panel is implicitly open.
+   *  Cleared on reset / disconnect / restart. */
+  mortgageStaged: MortgageStaged | null;
 } & MonopolyActions;
 
 // First pass skips the lobby for local mode: the local client is always
@@ -160,8 +200,63 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
     // online mode recomputes this in `connect()`.
     isHost: true,
     syncError: null,
+    mortgageStaged: null,
 
     setMyPlayer: (playerId) => { set({ myPlayerId: playerId }); },
+
+    openMortgagePanel: () => {
+      if (get().mortgageStaged !== null) return;
+      set({ mortgageStaged: {} });
+    },
+
+    toggleMortgageStage: (position) => {
+      const { state, myPlayerId, mortgageStaged } = get();
+      if (!myPlayerId) return;
+      if (state.ownership[position] !== myPlayerId) return;
+      const current = mortgageStaged ?? {};
+      const currentlyMortgaged = state.mortgaged[position] === true;
+      const next: Record<number, boolean> = { ...current };
+      if (position in next) {
+        delete next[position];
+      } else {
+        next[position] = !currentlyMortgaged;
+      }
+      set({ mortgageStaged: next });
+    },
+
+    closeMortgagePanel: () => {
+      // Forced (must-raise-cash) entry: no Cancel — the player must pay.
+      if (get().state.turn.phase === "must-raise-cash") return;
+      set({ mortgageStaged: null });
+    },
+
+    commitMortgageStaging: () => {
+      const { mortgageStaged, myPlayerId, submit } = get();
+      const staged = mortgageStaged ?? {};
+      if (!myPlayerId) {
+        set({ mortgageStaged: null });
+        return;
+      }
+      // Two passes so any cash raised by a mortgage is in hand before an
+      // un-mortgage in the same batch tries to spend it.
+      for (const [posStr, target] of Object.entries(staged)) {
+        if (target !== true) continue;
+        submit({
+          kind: "mortgage",
+          playerId: myPlayerId,
+          position: Number(posStr),
+        });
+      }
+      for (const [posStr, target] of Object.entries(staged)) {
+        if (target !== false) continue;
+        submit({
+          kind: "unmortgage",
+          playerId: myPlayerId,
+          position: Number(posStr),
+        });
+      }
+      set({ mortgageStaged: null });
+    },
 
     submit: (intent) => {
       const { state, connection, isHost } = get();
@@ -207,6 +302,7 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
         profile: null,
         isHost: true,
         syncError: null,
+        mortgageStaged: null,
       });
     },
 
@@ -278,6 +374,7 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
         myPlayerId: DEFAULT_PLAYER_ID,
         mode: "live",
         syncError: null,
+        mortgageStaged: null,
       });
     },
 
@@ -339,6 +436,10 @@ if (typeof window !== "undefined") {
     // bot-plays everyone else (no input channel for non-local seats yet),
     // but the local human gets the Buy/Pass UI and chooses themselves.
     if (phase === "buy-decision" && playerId === store.myPlayerId) return false;
+    // Must-raise-cash: same split. Bots are driven by the pacer's auto-
+    // mortgage policy; the local player owes the decision themselves and
+    // makes it through the mortgage panel.
+    if (phase === "must-raise-cash" && playerId === store.myPlayerId) return false;
     return true;
   };
 
@@ -346,7 +447,7 @@ if (typeof window !== "undefined") {
     pacingTimer = null;
     const store = useMonopolyStore.getState();
     if (!pacerEnabled(store)) return;
-    const { phase, playerId, pendingBuy } = store.state.turn;
+    const { phase, playerId, pendingBuy, pendingDebt } = store.state.turn;
     if (phase === "pre-roll") {
       store.step();
     } else if (phase === "post-roll") {
@@ -363,6 +464,29 @@ if (typeof window !== "undefined") {
           ? { kind: "buy", playerId }
           : { kind: "decline-buy", playerId };
       store.submit(intent);
+    } else if (phase === "must-raise-cash" && pendingDebt) {
+      // Bot policy: mortgage the cheapest un-mortgaged, building-free
+      // property the bot owns. The engine auto-settles the debt once cash
+      // crosses the threshold, so one mortgage per tick is enough — the
+      // pacer will fire again next state change until the phase exits.
+      const candidates: { pos: number; value: number }[] = [];
+      for (const [posStr, oid] of Object.entries(store.state.ownership)) {
+        if (oid !== playerId) continue;
+        const pos = Number(posStr);
+        if (store.state.mortgaged[pos]) continue;
+        if (store.state.houses[pos]) continue;
+        const value = mortgageValueAt(pos);
+        if (value !== null) candidates.push({ pos, value });
+      }
+      // Cheapest first preserves the more valuable assets for as long as
+      // possible — pure heuristic, swap in a real policy when bots learn.
+      if (candidates.length === 0) return;
+      candidates.sort((a, b) => a.value - b.value);
+      store.submit({
+        kind: "mortgage",
+        playerId,
+        position: candidates[0].pos,
+      });
     }
   };
 

@@ -845,3 +845,297 @@ describe("end-turn skips bankrupt players", () => {
     expect(ended.state.turn.playerId).toBe("p3");
   });
 });
+
+// Park the active player at post-roll (no rent triggered) and arm a paused
+// state so mortgage / unmortgage validation accepts them. Used as the
+// starting point for the voluntary mortgage tests below.
+function pausedPostRoll(seed: string): GameState {
+  const start = freshGame(seed);
+  // Land on Income Tax (non-ownable) so autoStep stops cleanly at post-roll
+  // with no rent / buy detours.
+  const { state: placed } = setupLandingOn(start, 4);
+  const rolled = autoStep(placed).state;
+  if (rolled.turn.phase !== "post-roll") {
+    throw new Error(`expected post-roll, got ${rolled.turn.phase}`);
+  }
+  return { ...rolled, turn: { ...rolled.turn, paused: true } };
+}
+
+describe("apply mortgage", () => {
+  it("credits the mortgage value to cash and flips the mortgaged flag", () => {
+    const base = pausedPostRoll("test-mortgage-basic");
+    // Mediterranean Avenue (pos 1, price $60) -> mortgage value $30.
+    const state = withOwnership(base, { 1: "p1" });
+    const before = state.players.find((p) => p.id === "p1")?.cash ?? 0;
+
+    const result = apply(state, { kind: "mortgage", playerId: "p1", position: 1 });
+    if (!result.ok) throw new Error(`expected ok, got ${result.reason}`);
+
+    expect(result.state.mortgaged[1]).toBe(true);
+    const after = result.state.players.find((p) => p.id === "p1");
+    expect(after?.cash).toBe(before + 30);
+
+    const event = result.newEvents.find((e) => e.kind === "mortgage");
+    if (!event) throw new Error("expected a mortgage event");
+    expect(event.position).toBe(1);
+    expect(event.received).toBe(30);
+  });
+
+  it("rejects mortgaging a square the player doesn't own", () => {
+    const base = pausedPostRoll("test-mortgage-not-owner");
+    const state = withOwnership(base, { 1: "p2" });
+    const result = apply(state, { kind: "mortgage", playerId: "p1", position: 1 });
+    expect(result.ok).toBe(false);
+  });
+
+  it("rejects mortgaging a square that's already mortgaged", () => {
+    const base = pausedPostRoll("test-mortgage-already");
+    const state: GameState = {
+      ...withOwnership(base, { 1: "p1" }),
+      mortgaged: { 1: true },
+    };
+    const result = apply(state, { kind: "mortgage", playerId: "p1", position: 1 });
+    expect(result.ok).toBe(false);
+  });
+
+  it("rejects mortgaging a property with buildings on it", () => {
+    const base = pausedPostRoll("test-mortgage-houses");
+    const state: GameState = {
+      ...withOwnership(base, { 1: "p1" }),
+      houses: { 1: 1 },
+    };
+    const result = apply(state, { kind: "mortgage", playerId: "p1", position: 1 });
+    expect(result.ok).toBe(false);
+  });
+
+  it("rejects mortgaging during pre-roll without a pause armed", () => {
+    const start = freshGame("test-mortgage-no-pause");
+    const state = withOwnership(start, { 1: "p1" });
+    const result = apply(state, { kind: "mortgage", playerId: "p1", position: 1 });
+    expect(result.ok).toBe(false);
+  });
+
+  it("allows mortgaging during a paused pre-roll", () => {
+    const start = freshGame("test-mortgage-preroll-pause");
+    const state: GameState = {
+      ...withOwnership(start, { 1: "p1" }),
+      turn: { ...start.turn, paused: true },
+    };
+    const result = apply(state, { kind: "mortgage", playerId: "p1", position: 1 });
+    expect(result.ok).toBe(true);
+  });
+
+  it("rejects mortgaging on someone else's turn", () => {
+    // Build the state directly so the seed-driven autoStep can't introduce
+    // unrelated phase noise (doubles, landings, etc.).
+    const start = freshGame("test-mortgage-wrong-turn");
+    const state: GameState = {
+      ...start,
+      ownership: { 1: "p2" },
+      turn: { ...start.turn, phase: "post-roll", paused: true },
+    };
+    const result = apply(state, { kind: "mortgage", playerId: "p2", position: 1 });
+    expect(result.ok).toBe(false);
+  });
+});
+
+describe("apply unmortgage", () => {
+  it("debits the un-mortgage cost from cash and clears the mortgaged flag", () => {
+    const base = pausedPostRoll("test-unmortgage-basic");
+    // Mediterranean (price $60) -> mortgage $30 -> unmortgage $30 * 1.1 = $33.
+    const state: GameState = {
+      ...withOwnership(base, { 1: "p1" }),
+      mortgaged: { 1: true },
+    };
+    const before = state.players.find((p) => p.id === "p1")?.cash ?? 0;
+
+    const result = apply(state, {
+      kind: "unmortgage",
+      playerId: "p1",
+      position: 1,
+    });
+    if (!result.ok) throw new Error(`expected ok, got ${result.reason}`);
+
+    expect(result.state.mortgaged[1]).toBeUndefined();
+    const after = result.state.players.find((p) => p.id === "p1");
+    expect(after?.cash).toBe(before - 33);
+
+    const event = result.newEvents.find((e) => e.kind === "unmortgage");
+    if (!event) throw new Error("expected an unmortgage event");
+    expect(event.cost).toBe(33);
+  });
+
+  it("rejects un-mortgaging a square that isn't mortgaged", () => {
+    const base = pausedPostRoll("test-unmortgage-not-flagged");
+    const state = withOwnership(base, { 1: "p1" });
+    const result = apply(state, {
+      kind: "unmortgage",
+      playerId: "p1",
+      position: 1,
+    });
+    expect(result.ok).toBe(false);
+  });
+
+  it("rejects un-mortgaging without enough cash", () => {
+    const base = pausedPostRoll("test-unmortgage-poor");
+    let state: GameState = {
+      ...withOwnership(base, { 1: "p1" }),
+      mortgaged: { 1: true },
+    };
+    state = setCash(state, "p1", 5); // cost is $33
+    const result = apply(state, {
+      kind: "unmortgage",
+      playerId: "p1",
+      position: 1,
+    });
+    expect(result.ok).toBe(false);
+  });
+
+  it("rejects un-mortgaging during the must-raise-cash phase", () => {
+    // Force a must-raise-cash entry: land p1 on Boardwalk (rent $50 base for
+    // p2 owner), with $0 cash but a mortgageable property (Mediterranean
+    // unowned-by-p1; give them p1 ownership of Reading Railroad so they
+    // have something to mortgage).
+    const start = freshGame("test-unmortgage-blocked");
+    const { state: placed } = setupLandingOn(start, 39);
+    let state: GameState = withOwnership(placed, { 39: "p2", 5: "p1", 1: "p1" });
+    state = { ...state, mortgaged: { 1: true } };
+    state = setCash(state, "p1", 0);
+    const rolled = autoStep(state).state;
+    expect(rolled.turn.phase).toBe("must-raise-cash");
+
+    // p1 owns mortgaged Mediterranean. Trying to UN-mortgage during raise-
+    // cash should be rejected.
+    const result = apply(rolled, {
+      kind: "unmortgage",
+      playerId: "p1",
+      position: 1,
+    });
+    expect(result.ok).toBe(false);
+  });
+});
+
+describe("must-raise-cash phase", () => {
+  it("enters must-raise-cash when rent exceeds cash but is coverable by mortgaging", () => {
+    // p1 lands on p2's Boardwalk ($50 base rent) with $0 cash and one
+    // un-mortgaged ownable (Reading Railroad, mortgage value $100).
+    const start = freshGame("test-raise-enter");
+    const { state: placed } = setupLandingOn(start, 39);
+    let state = withOwnership(placed, { 39: "p2", 5: "p1" });
+    state = setCash(state, "p1", 0);
+
+    const { state: next, newEvents } = autoStep(state);
+
+    expect(next.turn.phase).toBe("must-raise-cash");
+    expect(next.turn.pendingDebt?.amount).toBe(50);
+    expect(next.turn.pendingDebt?.creditorId).toBe("p2");
+    // Rent isn't logged yet — it fires at settle time. The only event from
+    // this autoStep is the roll itself.
+    expect(newEvents.find((e) => e.kind === "rent")).toBeUndefined();
+    // Cash hasn't moved.
+    expect(next.players.find((p) => p.id === "p1")?.cash).toBe(0);
+    expect(next.players.find((p) => p.id === "p2")?.cash).toBe(1500);
+  });
+
+  it("settles the debt and emits the deferred rent event once mortgaging covers it", () => {
+    const start = freshGame("test-raise-settle");
+    const { state: placed } = setupLandingOn(start, 39);
+    let state = withOwnership(placed, { 39: "p2", 5: "p1" });
+    state = setCash(state, "p1", 0);
+    const raising = autoStep(state).state;
+    expect(raising.turn.phase).toBe("must-raise-cash");
+
+    // Mortgage Reading Railroad (value $100), which puts cash at $100,
+    // crossing the $50 debt threshold and auto-settling.
+    const result = apply(raising, {
+      kind: "mortgage",
+      playerId: "p1",
+      position: 5,
+    });
+    if (!result.ok) throw new Error(`expected ok, got ${result.reason}`);
+
+    expect(result.state.turn.phase).toBe("post-roll");
+    expect(result.state.turn.pendingDebt).toBeUndefined();
+    // Mortgage event then the deferred rent event, in that order.
+    const kinds = result.newEvents.map((e) => e.kind);
+    expect(kinds).toEqual(["mortgage", "rent"]);
+    // p1 cash: started at $0, +$100 mortgage, -$50 rent -> $50.
+    expect(result.state.players.find((p) => p.id === "p1")?.cash).toBe(50);
+    // p2 cash: started at $1500, +$50 rent -> $1550.
+    expect(result.state.players.find((p) => p.id === "p2")?.cash).toBe(1550);
+  });
+
+  it("stays in must-raise-cash when a mortgage still leaves the debt short", () => {
+    // Land p1 on Boardwalk owned by p2 (no monopoly, no houses -> rent $50).
+    // p1 has $0 cash; owns Mediterranean ($30 mortgage value) and Reading
+    // Railroad ($100). $0 + $130 raisable >= $50 -> must-raise-cash entered.
+    // First mortgage Mediterranean -> cash $30 < $50 -> phase persists.
+    const start = freshGame("test-raise-partial");
+    const { state: placed } = setupLandingOn(start, 39);
+    let state = withOwnership(placed, { 39: "p2", 1: "p1", 5: "p1" });
+    state = setCash(state, "p1", 0);
+
+    const raising = autoStep(state).state;
+    expect(raising.turn.phase).toBe("must-raise-cash");
+    expect(raising.turn.pendingDebt?.amount).toBe(50);
+
+    const r1 = apply(raising, { kind: "mortgage", playerId: "p1", position: 1 });
+    if (!r1.ok) throw new Error(`expected ok, got ${r1.reason}`);
+    expect(r1.state.turn.phase).toBe("must-raise-cash");
+    expect(r1.state.players.find((p) => p.id === "p1")?.cash).toBe(30);
+  });
+
+  it("auto-bankrupts when even max mortgaging can't cover the debt", () => {
+    // Boardwalk hotel rent = $2000. p1 has $0 cash and only Mediterranean
+    // (mortgage $30) and Reading Railroad (mortgage $100) — total $130 max
+    // raisable. Should bankrupt immediately without entering must-raise-cash.
+    const start = freshGame("test-raise-impossible");
+    const { state: placed } = setupLandingOn(start, 39);
+    let state: GameState = {
+      ...withOwnership(placed, { 39: "p2", 5: "p1", 1: "p1" }),
+      houses: { 39: 5 },
+    };
+    state = setCash(state, "p1", 0);
+
+    const { state: next, newEvents } = autoStep(state);
+
+    expect(next.turn.phase).not.toBe("must-raise-cash");
+    expect(next.players.find((p) => p.id === "p1")?.bankrupt).toBe(true);
+    expect(newEvents.find((e) => e.kind === "bankrupt")).toBeDefined();
+    // Rent event still logged with the FULL debt.
+    const rentEvent = newEvents.find((e) => e.kind === "rent");
+    if (!rentEvent) throw new Error("expected rent event");
+    expect(rentEvent.amount).toBe(2000);
+  });
+
+  it("ignores buildings + mortgaged squares when computing max raisable", () => {
+    // p1 lands on rent of $200. p1 has $0 cash. They own three squares:
+    // (a) a mortgaged property — excluded;
+    // (b) a property with houses — excluded;
+    // (c) one free un-mortgaged property worth $100 mortgage value.
+    // Total raisable = $100 < $200 -> bankrupt, not must-raise-cash.
+    const start = freshGame("test-raise-filter");
+    const { state: placed } = setupLandingOn(start, 39);
+    let state: GameState = {
+      ...withOwnership(placed, {
+        39: "p2",  // creditor's
+        1: "p1",   // mortgaged
+        3: "p1",   // has houses
+        5: "p1",   // free, value $100
+      }),
+      mortgaged: { 1: true },
+      houses: { 3: 1, 39: 4 }, // p1's pos 3 has a house; p2's Boardwalk -> rent ~$200
+    };
+    state = setCash(state, "p1", 0);
+    // Boardwalk with 4 houses rent = $1700, not $200. Need a different
+    // landing tile. Use Indiana Avenue (pos 23, red color, base rent $20,
+    // hotel $1050). Re-do with a tile we control more easily. Simpler: use
+    // Mediterranean (pos 1) as the landing target and Baltic as p2's.
+    // Actually we can stick with Boardwalk hotel = $2000.
+    // p1 cash $0 + raisable $100 = $100 < $2000 -> bankrupt.
+    state = { ...state, houses: { 3: 1, 39: 5 } };
+
+    const { state: next } = autoStep(state);
+    expect(next.players.find((p) => p.id === "p1")?.bankrupt).toBe(true);
+  });
+});
