@@ -71,10 +71,10 @@ export function SquareRow({ position }: Props) {
   // Staged build levels and a staged mortgage both light the orange ring so the
   // staged set reads at a glance on the board itself.
   const stagedBuild = useMonopolyStore(
-    (s) => s.manageStaged?.build[position] ?? null,
+    (s) => s.state.turn.manageStaged?.build[position] ?? null,
   );
   const stagedMortgage = useMonopolyStore(
-    (s) => s.manageStaged?.mortgage[position] ?? null,
+    (s) => s.state.turn.manageStaged?.mortgage[position] ?? null,
   );
   const tradeStaged = useMonopolyStore((s) => {
     const draft = s.state.turn.tradeDraft;
@@ -104,7 +104,7 @@ export function SquareRow({ position }: Props) {
       return developmentLevel(s.state, position) > 0;
     }
     // Voluntary: buildable only on an unmortgaged set (counting staged flips).
-    const staged = s.manageStaged;
+    const staged = s.state.turn.manageStaged;
     return !groupPositions(color).some((pos) =>
       staged && pos in staged.mortgage
         ? staged.mortgage[pos]
@@ -122,7 +122,7 @@ export function SquareRow({ position }: Props) {
     }
     // Mortgaging needs the lot building-free; selling its buildings to 0 in the
     // same commit (staged level 0) re-enables it.
-    const stagedLevel = s.manageStaged?.build[position] ?? developmentLevel(s.state, position);
+    const stagedLevel = s.state.turn.manageStaged?.build[position] ?? developmentLevel(s.state, position);
     const alreadyMortgaged = s.state.mortgaged[position] === true;
     return alreadyMortgaged || stagedLevel === 0;
   });

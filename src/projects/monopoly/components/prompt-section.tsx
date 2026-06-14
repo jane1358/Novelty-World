@@ -15,19 +15,21 @@ interface Props {
   state: GameState;
 }
 
-/** Contextual single-action prompt that lives between the board and the
- *  event log. Visible only to the local player and only when something
- *  needs their input. Rendering paths so far:
+/** Contextual prompt that lives between the board and the event log. The
+ *  synced-state panels (trade, auction, manage / raise-cash) are shown to
+ *  EVERYONE — including spectators — as live views; the per-player decision
+ *  prompts (jail, buy) are shown only to the player who must act. Rendering
+ *  paths so far:
  *
  *  - Trade building / pending: shown to everyone (the proposal is synced).
- *  - Must-raise-cash: the current debtor sells / mortgages back to ≥ 0 via the
- *    same manage panel + board staging as a voluntary intermission.
- *  - Managing: the manager's open intermission (board two-zone tap + summary).
- *  - Buy decision: the active player buys or passes a landed-on property.
+ *  - Auction: shown to everyone (the auction is synced).
+ *  - Must-raise-cash / Managing: shown to everyone — the staging is synced, so
+ *    the table watches the actor sell / mortgage / build in real time; the panel
+ *    gates its controls to the actor (debtor / manager, possibly off-turn).
+ *  - Jail / Buy decision: only the active player who must act.
  *
  *  When none of the above is true, the section renders nothing and the log
- *  flows directly under the board. Spectators never see this section —
- *  they infer state from the event log (roll, buy / auction). */
+ *  flows directly under the board. */
 export function PromptSection({ state }: Props) {
   const myPlayerId = useMonopolyStore((s) => s.myPlayerId);
   const submit = useMonopolyStore((s) => s.submit);
@@ -50,22 +52,21 @@ export function PromptSection({ state }: Props) {
     return <AuctionPanel state={state} />;
   }
 
-  if (!myPlayerId) return null;
-
-  // Must-raise-cash forces the manage panel open for the current debtor
-  // (whoever is in the red — possibly off-turn after a trade), who can't dismiss
-  // it, only sell buildings and / or mortgage back to ≥ 0. Same panel + board
-  // two-zone staging as the voluntary intermission, constrained to raising.
+  // Manage / must-raise-cash staging lives in synced state, so the panel is
+  // shown to EVERYONE as a live view — the actor (the manager, or the current
+  // debtor, possibly off-turn) drives it via the board's two-zone tap + the
+  // commit / pay buttons; everyone else watches it take shape read-only. The
+  // panel gates its own interactivity on whether this client is the actor.
   if (phase === "must-raise-cash") {
-    if (firstNegativePlayer(state) !== myPlayerId) return null;
-    return <ManagePanel state={state} playerId={myPlayerId} />;
+    const debtor = firstNegativePlayer(state);
+    if (debtor === null) return null;
+    return <ManagePanel state={state} playerId={debtor} />;
+  }
+  if (phase === "managing" && state.turn.managerId !== undefined) {
+    return <ManagePanel state={state} playerId={state.turn.managerId} />;
   }
 
-  // Manage intermission for the queued manager (may be off-turn): the board
-  // rows are the controls, this panel is the summary + commit / cancel.
-  if (phase === "managing" && state.turn.managerId === myPlayerId) {
-    return <ManagePanel state={state} playerId={myPlayerId} />;
-  }
+  if (!myPlayerId) return null;
 
   // Everything below is the active player's own decision.
   if (state.turn.playerId !== myPlayerId) return null;

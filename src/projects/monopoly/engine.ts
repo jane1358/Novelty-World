@@ -130,6 +130,9 @@ export function apply(state: GameState, intent: Intent): ApplyResult {
   if (intent.kind === "mortgage") return applyMortgage(state, intent);
   if (intent.kind === "toggle-queue") return applyToggleQueue(state, intent);
   if (intent.kind === "cancel-manage") return applyCancelManage(state, intent);
+  if (intent.kind === "update-manage-staging") {
+    return applyUpdateManageStaging(state, intent);
+  }
   if (intent.kind === "update-trade-draft") {
     return applyUpdateTradeDraft(state, intent);
   }
@@ -277,6 +280,9 @@ function settleOrRaise(state: GameState, resume: RaiseCashResume): GameState {
         phase: "must-raise-cash",
         raiseCash: resume,
         pendingBuy: undefined,
+        // Seed empty staging fresh on every (re-)entry so a prior debtor's
+        // staged maps never leak into the next debtor's broadcast view.
+        manageStaged: { build: {}, mortgage: {} },
         tradeDraft: undefined,
         pendingTrade: undefined,
       },
@@ -284,7 +290,7 @@ function settleOrRaise(state: GameState, resume: RaiseCashResume): GameState {
   }
   const cleared: GameState = {
     ...state,
-    turn: { ...state.turn, raiseCash: undefined },
+    turn: { ...state.turn, raiseCash: undefined, manageStaged: undefined },
   };
   if (resume === "after-landing") return afterLanding(cleared);
   return {
@@ -1290,7 +1296,14 @@ function tryEnterBoundary(state: GameState): GameState | null {
   return {
     ...state,
     boundaryQueue,
-    turn: { ...state.turn, phase: "managing", managerId: entry.playerId },
+    turn: {
+      ...state.turn,
+      phase: "managing",
+      managerId: entry.playerId,
+      // Seed empty staging so the broadcast view has a shape from the moment the
+      // intermission opens (mirrors the trade branch seeding `tradeDraft`).
+      manageStaged: { build: {}, mortgage: {} },
+    },
   };
 }
 
@@ -1323,6 +1336,44 @@ function applyCancelManage(
     return { ok: false, reason: "not the manager" };
   }
   return { ok: true, state: returnToPreRoll(state), newEvents: [] };
+}
+
+/** Replace the live manage staging with a fresh snapshot the actor computed
+ *  client-side. Staging is a broadcast preview — the real legality (even build,
+ *  bank supply, affordability) is enforced at the `manage` commit — so this only
+ *  guards the things that would make the broadcast itself dishonest: the right
+ *  phase, the right actor, and ownership of every staged square. The actor is the
+ *  manager (`managing`) or the current debtor (`must-raise-cash`); mirrors
+ *  `manageActorId`, inlined to avoid an engine→manage import cycle. */
+function applyUpdateManageStaging(
+  state: GameState,
+  intent: Extract<Intent, { kind: "update-manage-staging" }>,
+): ApplyResult {
+  const { phase, managerId } = state.turn;
+  let actor: string | null;
+  if (phase === "managing") actor = managerId ?? null;
+  else if (phase === "must-raise-cash") actor = firstNegativePlayer(state);
+  else return { ok: false, reason: "no manage intermission open" };
+  if (actor === null || intent.playerId !== actor) {
+    return { ok: false, reason: "not the manage actor" };
+  }
+  for (const posStr of [
+    ...Object.keys(intent.staged.build),
+    ...Object.keys(intent.staged.mortgage),
+  ]) {
+    if (state.ownership[Number(posStr)] !== intent.playerId) {
+      return { ok: false, reason: "you don't own that property" };
+    }
+  }
+  const manageStaged = {
+    build: intent.staged.build,
+    mortgage: intent.staged.mortgage,
+  };
+  return {
+    ok: true,
+    state: { ...state, turn: { ...state.turn, manageStaged } },
+    newEvents: [],
+  };
 }
 
 function applyUpdateTradeDraft(

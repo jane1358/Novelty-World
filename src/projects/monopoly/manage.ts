@@ -6,22 +6,12 @@ import {
 import { firstNegativePlayer } from "./engine";
 import { mortgageValueAt, unmortgageCostAt } from "./logic";
 import type { DevelopmentNote } from "./development";
-import type { GameState } from "./types";
+import type { GameState, ManageStaged } from "./types";
 
-/** Local, client-only staging for a manage intermission (or the must-raise-cash
- *  forced settle). Never synced — mirrors the old mortgage-staging discipline.
- *
- *  - `build` maps a position to its STAGED development level (0 bare … 5 hotel).
- *    Only positions the actor is changing are present.
- *  - `mortgage` maps a position to its STAGED mortgaged flag. Only positions the
- *    actor is changing are present.
- *
- *  Both maps store only entries that differ from the live state's intent; the
- *  store prunes keys that fall back to the current value as the player cycles. */
-export interface ManageStaged {
-  build: Readonly<Record<number, number>>;
-  mortgage: Readonly<Record<number, boolean>>;
-}
+// `ManageStaged` now lives in the authoritative `GameState` (`turn.manageStaged`)
+// and is broadcast like a trade draft; re-exported here so the manage helpers and
+// their callers keep a single import site.
+export type { ManageStaged };
 
 /** Who the manage UI is acting as: the queued manager during `managing`, or the
  *  current debtor (`firstNegativePlayer`, possibly off-turn) during

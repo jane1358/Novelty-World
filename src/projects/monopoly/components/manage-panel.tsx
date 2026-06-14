@@ -22,6 +22,11 @@ const EMPTY_STAGED: ManageStaged = { build: {}, mortgage: {} };
  *  running cash delta, the bank's remaining houses / hotels, any shortage-forced
  *  liquidation, and the commit / cancel actions.
  *
+ *  Staging lives in synced `turn.manageStaged`, so this is shown to EVERY player
+ *  as a live view — `playerId` is the ACTOR (the manager, or the forced debtor),
+ *  not necessarily the local player. Only the actor gets the action buttons and
+ *  the interactive board zones; everyone else watches it take shape read-only.
+ *
  *  Two entry paths share it:
  *
  *  - Voluntary `managing`: the queued manager builds / sells / mortgages. Done
@@ -32,13 +37,15 @@ const EMPTY_STAGED: ManageStaged = { build: {}, mortgage: {} };
  *    once the staged raise brings them back to ≥ 0, at which point the engine
  *    auto-settles and the phase exits. */
 export function ManagePanel({ state, playerId }: Props) {
-  const staged = useMonopolyStore((s) => s.manageStaged) ?? EMPTY_STAGED;
+  const staged = useMonopolyStore((s) => s.state.turn.manageStaged) ?? EMPTY_STAGED;
+  const myPlayerId = useMonopolyStore((s) => s.myPlayerId);
   const cancelManage = useMonopolyStore((s) => s.cancelManage);
   const commitManage = useMonopolyStore((s) => s.commitManage);
 
   const player = state.players.find((p) => p.id === playerId);
   if (!player) return null;
 
+  const isActor = myPlayerId === playerId;
   const isForced = state.turn.phase === "must-raise-cash";
   const summary = manageSummary(state, playerId, staged);
   const netCash = summary.ok ? summary.netCash : 0;
@@ -95,7 +102,7 @@ export function ManagePanel({ state, playerId }: Props) {
           )}
         </div>
       </div>
-      {!isForced && (
+      {isActor && !isForced && (
         <PanelButton
           label="Done"
           onClick={() => {
@@ -103,14 +110,16 @@ export function ManagePanel({ state, playerId }: Props) {
           }}
         />
       )}
-      <PanelButton
-        label={isForced ? "Pay" : "Commit"}
-        onClick={() => {
-          commitManage();
-        }}
-        disabled={!canCommit}
-        variant="primary"
-      />
+      {isActor && (
+        <PanelButton
+          label={isForced ? "Pay" : "Commit"}
+          onClick={() => {
+            commitManage();
+          }}
+          disabled={!canCommit}
+          variant="primary"
+        />
+      )}
     </div>
   );
 }

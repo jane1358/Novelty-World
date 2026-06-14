@@ -146,10 +146,26 @@ export interface TradeTerms {
 }
 
 /** A trade being assembled by its proposer. Lives in the authoritative
- *  GameState (not local UI state, unlike mortgage staging) so every player
- *  watches it take shape in real time. */
+ *  GameState (`turn.tradeDraft`) so every player watches it take shape in real
+ *  time — the same broadcast discipline as a manage intermission's
+ *  `ManageStaged`. */
 export interface TradeDraft extends TradeTerms {
   proposerId: string;
+}
+
+/** A manage intermission's staged changes — the build levels and mortgage flags
+ *  the actor has toggled but not yet committed. Lives in the authoritative
+ *  GameState (`turn.manageStaged`) so every player watches the intermission take
+ *  shape in real time, the same way a `TradeDraft` is broadcast.
+ *
+ *  - `build` maps a position to its STAGED development level (0 bare … 5 hotel).
+ *  - `mortgage` maps a position to its STAGED mortgaged flag.
+ *
+ *  Both maps store only entries that differ from the live state; the store prunes
+ *  a key the moment it falls back to the current value as the actor cycles. */
+export interface ManageStaged {
+  build: Readonly<Record<number, number>>;
+  mortgage: Readonly<Record<number, boolean>>;
 }
 
 /** Single recorded action in the play log. Every kind that mutates the
@@ -365,6 +381,11 @@ export interface TurnState {
    *  here — see `firstNegativePlayer`. */
   raiseCash?: RaiseCashResume;
   auction?: AuctionState;
+  /** Present during `managing` / `must-raise-cash`: the actor's staged build /
+   *  mortgage changes before they commit. Seeded empty when the intermission
+   *  opens and dropped when the phase exits; broadcast so every player watches
+   *  the intermission take shape, the same as `tradeDraft`. */
+  manageStaged?: ManageStaged;
   /** Present iff `phase === "trade-building"`: the proposal being assembled,
    *  visible to all players as the proposer edits it. */
   tradeDraft?: TradeDraft;
@@ -425,6 +446,12 @@ export type Intent =
   /** The manager abandons their open manage intermission with nothing
    *  committed, returning to pre-roll (the next autoStep re-checks the queue). */
   | { kind: "cancel-manage"; playerId: string }
+  /** Actor replaces their live manage staging wholesale (the client computes the
+   *  next staged maps and sends a full snapshot — same shape and broadcast model
+   *  as `update-trade-draft`). Only legal in `managing` for the manager, or in
+   *  `must-raise-cash` for the current debtor; staging is a preview, validated
+   *  finally at the `manage` commit. */
+  | { kind: "update-manage-staging"; playerId: string; staged: ManageStaged }
   /** Proposer replaces the live draft wholesale (the client computes the next
    *  terms and sends a full snapshot — keeps the intent surface small and the
    *  draft trivially broadcastable). Only legal in `trade-building` for the

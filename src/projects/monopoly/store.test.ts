@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { freshGame } from "./mocks";
 import type { MonopolyAction, MonopolyResult } from "./protocol";
-import type { GameState } from "./types";
+import type { GameState, ManageStaged } from "./types";
 
-// Capture route actions instead of hitting Supabase. `commitManage` /
-// `cancelManage` POST through `submitAction`; everything else under test only
-// mutates local staging.
+// Capture route actions instead of hitting Supabase. Manage staging now lives in
+// synced state, so every staging tap (`cycleBuild` / `toggleMortgage`) POSTs an
+// `update-manage-staging` intent through `predict`, alongside the `manage` /
+// `cancel-manage` commits. The mock resolves to a conflict (a no-op), so the
+// optimistic overlay we assert on is never disturbed within a synchronous test.
 const submitted: { id: string; action: MonopolyAction }[] = [];
 vi.mock("./sync", () => ({
   submitAction: (id: string, action: MonopolyAction): Promise<MonopolyResult> => {
@@ -47,15 +49,33 @@ function managingState(overrides: Partial<GameState> = {}): GameState {
   };
 }
 
+// The staging the local client renders is the optimistic display head's
+// `turn.manageStaged`, not a top-level store field any more.
+const stagedNow = (): ManageStaged | undefined =>
+  useMonopolyStore.getState().state.turn.manageStaged;
+
+/** Seed both the playback head and the display state — `predict` folds each
+ *  staging tap onto the optimistic overlay built off `headState`. */
 function setup(state: GameState): void {
   submitted.length = 0;
   useMonopolyStore.setState({
     state,
+    headState: state,
     version: 1,
     gameId: "dev",
     myPlayerId: "p1",
-    manageStaged: null,
+    optimistic: null,
+    outbox: [],
+    buffer: [],
   });
+}
+
+/** Stamp staging directly onto the display state, as if a peer's snapshot (or a
+ *  prior local tap) had set it — used to set up commit / cancel cases. */
+function stage(staged: ManageStaged): void {
+  useMonopolyStore.setState((s) => ({
+    state: { ...s.state, turn: { ...s.state.turn, manageStaged: staged } },
+  }));
 }
 
 beforeEach(() => {
@@ -66,8 +86,7 @@ describe("cycleBuild", () => {
   it("cycles a buildable property 0 → 1 → … → 5 → 0", () => {
     setup(managingState());
     const { cycleBuild } = useMonopolyStore.getState();
-    const levelOf = (pos: number): number =>
-      useMonopolyStore.getState().manageStaged?.build[pos] ?? 0;
+    const levelOf = (pos: number): number => stagedNow()?.build[pos] ?? 0;
 
     for (const expected of [1, 2, 3, 4, 5]) {
       cycleBuild(16);
@@ -75,7 +94,7 @@ describe("cycleBuild", () => {
     }
     // 5 → 0 wraps back to the live level, which prunes the entry.
     cycleBuild(16);
-    expect(useMonopolyStore.getState().manageStaged?.build[16]).toBeUndefined();
+    expect(stagedNow()?.build[16]).toBeUndefined();
   });
 
   it("prunes the entry when it lands back on the committed level", () => {
@@ -83,29 +102,29 @@ describe("cycleBuild", () => {
     const { cycleBuild } = useMonopolyStore.getState();
     // Live level is 2; one cycle goes to 3, staged.
     cycleBuild(16);
-    expect(useMonopolyStore.getState().manageStaged?.build[16]).toBe(3);
+    expect(stagedNow()?.build[16]).toBe(3);
     // 3 → 4 → 5 → 0 → 1 → 2: five more cycles return to live 2, which prunes.
     for (let i = 0; i < 5; i++) cycleBuild(16);
-    expect(useMonopolyStore.getState().manageStaged?.build[16]).toBeUndefined();
+    expect(stagedNow()?.build[16]).toBeUndefined();
   });
 
   it("rejects building without the full monopoly", () => {
     setup(managingState({ ownership: { 16: "p1", 18: "p1" } })); // missing 19
     useMonopolyStore.getState().cycleBuild(16);
-    expect(useMonopolyStore.getState().manageStaged).toBeNull();
+    expect(stagedNow()?.build[16]).toBeUndefined();
   });
 
   it("rejects a property the actor doesn't own", () => {
     setup(managingState({ ownership: { 16: "p2", 18: "p1", 19: "p1" } }));
     useMonopolyStore.getState().cycleBuild(16);
-    expect(useMonopolyStore.getState().manageStaged).toBeNull();
+    expect(stagedNow()?.build[16]).toBeUndefined();
   });
 
   it("does nothing when the local player isn't the manage actor", () => {
     setup(managingState());
     useMonopolyStore.setState({ myPlayerId: "p2" });
     useMonopolyStore.getState().cycleBuild(16);
-    expect(useMonopolyStore.getState().manageStaged).toBeNull();
+    expect(stagedNow()?.build[16]).toBeUndefined();
   });
 
   it("only sells down in the forced must-raise-cash branch", () => {
@@ -120,8 +139,7 @@ describe("cycleBuild", () => {
     };
     setup(forced);
     const { cycleBuild } = useMonopolyStore.getState();
-    const levelOf = (): number =>
-      useMonopolyStore.getState().manageStaged?.build[16] ?? 2;
+    const levelOf = (): number => stagedNow()?.build[16] ?? 2;
     // From live 2: decrements down toward 0, never up to 3.
     cycleBuild(16);
     expect(levelOf()).toBe(1);
@@ -129,7 +147,7 @@ describe("cycleBuild", () => {
     expect(levelOf()).toBe(0);
     // 0 wraps back to live (2), pruning the entry.
     cycleBuild(16);
-    expect(useMonopolyStore.getState().manageStaged?.build[16]).toBeUndefined();
+    expect(stagedNow()?.build[16]).toBeUndefined();
   });
 });
 
@@ -138,21 +156,21 @@ describe("toggleMortgage", () => {
     setup(managingState());
     const { toggleMortgage } = useMonopolyStore.getState();
     toggleMortgage(1);
-    expect(useMonopolyStore.getState().manageStaged?.mortgage[1]).toBe(true);
+    expect(stagedNow()?.mortgage[1]).toBe(true);
     toggleMortgage(1);
-    expect(useMonopolyStore.getState().manageStaged?.mortgage[1]).toBeUndefined();
+    expect(stagedNow()?.mortgage[1]).toBeUndefined();
   });
 
   it("stages an unmortgage on an already-mortgaged property", () => {
     setup(managingState({ mortgaged: { 1: true } }));
     useMonopolyStore.getState().toggleMortgage(1);
-    expect(useMonopolyStore.getState().manageStaged?.mortgage[1]).toBe(false);
+    expect(stagedNow()?.mortgage[1]).toBe(false);
   });
 
   it("refuses to mortgage a property that still has buildings", () => {
     setup(managingState({ houses: { 16: 2, 18: 2, 19: 2 } }));
     useMonopolyStore.getState().toggleMortgage(16);
-    expect(useMonopolyStore.getState().manageStaged).toBeNull();
+    expect(stagedNow()?.mortgage[16]).toBeUndefined();
   });
 
   it("allows mortgaging once buildings are staged down to 0", () => {
@@ -161,24 +179,22 @@ describe("toggleMortgage", () => {
     // Voluntary cycle goes up and wraps: from live 1, five cycles reach 0
     // (1→2→3→4→5→0).
     for (let i = 0; i < 5; i++) cycleBuild(16);
-    expect(useMonopolyStore.getState().manageStaged?.build[16]).toBe(0);
+    expect(stagedNow()?.build[16]).toBe(0);
     // The toggle gate checks only this lot's staged level — now 0 — so
     // mortgaging it is offered (even-build legality is the engine's concern).
     toggleMortgage(16);
-    expect(useMonopolyStore.getState().manageStaged?.mortgage[16]).toBe(true);
+    expect(stagedNow()?.mortgage[16]).toBe(true);
   });
 });
 
 describe("commitManage", () => {
   it("submits only the entries that differ from the live state", () => {
     setup(managingState({ houses: { 16: 1, 18: 1, 19: 1 }, mortgaged: { 1: true } }));
-    useMonopolyStore.setState({
-      manageStaged: {
-        // 16 staged to its live level (1) — a no-op that must be pruned.
-        build: { 16: 1, 18: 2 },
-        // 3 staged to its live flag (false) — pruned; 1 flips true → false.
-        mortgage: { 1: false, 3: false },
-      },
+    // Stage an even build-up to 2, unmortgage 1 (true → false), and a no-op flip
+    // on 3 (already unmortgaged) that must be pruned.
+    stage({
+      build: { 16: 2, 18: 2, 19: 2 },
+      mortgage: { 1: false, 3: false },
     });
     useMonopolyStore.getState().commitManage();
     expect(submitted).toHaveLength(1);
@@ -187,22 +203,24 @@ describe("commitManage", () => {
     if (action.type !== "submit") throw new Error("expected submit");
     const intent = action.intents[0];
     if (intent.kind !== "manage") throw new Error("expected manage intent");
-    expect(intent.build).toEqual({ 18: 2 });
+    expect(intent.build).toEqual({ 16: 2, 18: 2, 19: 2 });
     expect(intent.mortgage).toEqual({ 1: false });
-    // Staging is cleared after commit.
-    expect(useMonopolyStore.getState().manageStaged).toBeNull();
+    // The successful commit's phase transition (pre-roll) drops the synced
+    // staging — no separate local clear.
+    expect(stagedNow()).toBeUndefined();
   });
 });
 
 describe("cancelManage", () => {
-  it("clears staging and fires the cancel intent", () => {
+  it("fires the cancel intent and drops the staging", () => {
     setup(managingState());
-    useMonopolyStore.setState({ manageStaged: { build: { 16: 3 }, mortgage: {} } });
+    stage({ build: { 16: 3 }, mortgage: {} });
     useMonopolyStore.getState().cancelManage();
-    expect(useMonopolyStore.getState().manageStaged).toBeNull();
     expect(submitted).toHaveLength(1);
     const action = submitted[0].action;
     if (action.type !== "submit") throw new Error("expected submit");
     expect(action.intents[0].kind).toBe("cancel-manage");
+    // cancel-manage returns to pre-roll, which drops the synced staging.
+    expect(stagedNow()).toBeUndefined();
   });
 });

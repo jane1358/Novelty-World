@@ -564,6 +564,208 @@ describe("apply manage", () => {
   });
 });
 
+describe("apply update-manage-staging", () => {
+  const ORANGES = { 16: "p1", 18: "p1", 19: "p1" };
+
+  function managing(state: GameState, managerId = "p1"): GameState {
+    return {
+      ...state,
+      turn: {
+        ...state.turn,
+        phase: "managing",
+        managerId,
+        manageStaged: { build: {}, mortgage: {} },
+      },
+    };
+  }
+
+  it("records the manager's staged maps in synced state", () => {
+    const state = managing(withOwnership(freshGame("ums-build"), ORANGES));
+    const result = apply(state, {
+      kind: "update-manage-staging",
+      playerId: "p1",
+      staged: { build: { 16: 3 }, mortgage: { 18: true } },
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.turn.manageStaged).toEqual({
+      build: { 16: 3 },
+      mortgage: { 18: true },
+    });
+    // Staging is a preview — no events, no cash / house movement.
+    expect(result.newEvents).toHaveLength(0);
+    expect(result.state.houses).toEqual({});
+  });
+
+  it("records staging for the forced debtor during must-raise-cash", () => {
+    let state = withOwnership(freshGame("ums-forced"), { 5: "p2" });
+    state = setCash(state, "p2", -50);
+    state = {
+      ...state,
+      turn: {
+        ...state.turn,
+        phase: "must-raise-cash",
+        raiseCash: "after-landing",
+        manageStaged: { build: {}, mortgage: {} },
+      },
+    };
+    expect(firstNegativePlayer(state)).toBe("p2");
+    const result = apply(state, {
+      kind: "update-manage-staging",
+      playerId: "p2",
+      staged: { build: {}, mortgage: { 5: true } },
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.turn.manageStaged).toEqual({
+      build: {},
+      mortgage: { 5: true },
+    });
+  });
+
+  it("rejects staging from someone who isn't the actor", () => {
+    const state = managing(withOwnership(freshGame("ums-not-actor"), ORANGES));
+    const result = apply(state, {
+      kind: "update-manage-staging",
+      playerId: "p2",
+      staged: { build: { 16: 1 }, mortgage: {} },
+    });
+    expect(result.ok).toBe(false);
+  });
+
+  it("rejects staging a property the actor doesn't own", () => {
+    const state = managing(withOwnership(freshGame("ums-not-owned"), ORANGES));
+    const result = apply(state, {
+      kind: "update-manage-staging",
+      playerId: "p1",
+      staged: { build: {}, mortgage: { 5: true } }, // p1 doesn't own 5
+    });
+    expect(result.ok).toBe(false);
+  });
+
+  it("rejects staging outside a manage intermission", () => {
+    const state = withOwnership(freshGame("ums-no-phase"), ORANGES);
+    const result = apply(state, {
+      kind: "update-manage-staging",
+      playerId: "p1",
+      staged: { build: { 16: 1 }, mortgage: {} },
+    });
+    expect(result.ok).toBe(false);
+  });
+});
+
+describe("manage staging lifecycle", () => {
+  const ORANGES = { 16: "p1", 18: "p1", 19: "p1" };
+
+  it("a voluntary commit drops the synced staging", () => {
+    let state = withOwnership(freshGame("mgl-commit"), ORANGES);
+    state = setCash(state, "p1", 1500);
+    state = {
+      ...state,
+      turn: {
+        ...state.turn,
+        phase: "managing",
+        managerId: "p1",
+        manageStaged: { build: { 16: 1, 18: 1, 19: 1 }, mortgage: {} },
+      },
+    };
+    const result = apply(state, {
+      kind: "manage",
+      playerId: "p1",
+      build: { 16: 1, 18: 1, 19: 1 },
+      mortgage: {},
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.turn.phase).toBe("pre-roll");
+    expect(result.state.turn.manageStaged).toBeUndefined();
+  });
+
+  it("a forced commit that clears the debt drops the staging", () => {
+    let state = withOwnership(freshGame("mgl-forced-clear"), { 5: "p1" });
+    state = { ...state, mortgaged: {} };
+    state = setCash(state, "p1", -50);
+    state = {
+      ...state,
+      turn: {
+        ...state.turn,
+        phase: "must-raise-cash",
+        raiseCash: "after-landing",
+        manageStaged: { build: {}, mortgage: { 5: true } },
+      },
+    };
+    const result = apply(state, {
+      kind: "manage",
+      playerId: "p1",
+      build: {},
+      mortgage: { 5: true }, // +$100 mortgage clears the -$50
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(firstNegativePlayer(result.state)).toBe(null);
+    expect(result.state.turn.manageStaged).toBeUndefined();
+  });
+
+  it("a forced commit that leaves another debtor seeds fresh empty staging", () => {
+    // p1 and p2 both in the red. p1 settles; p2 is still negative, so the phase
+    // stays must-raise-cash and p1's staged maps must NOT leak into p2's view.
+    let state = withOwnership(freshGame("mgl-next-debtor"), { 5: "p1" });
+    state = setCash(state, "p1", -50);
+    state = setCash(state, "p2", -100);
+    state = {
+      ...state,
+      turn: {
+        ...state.turn,
+        phase: "must-raise-cash",
+        raiseCash: "after-landing",
+        manageStaged: { build: {}, mortgage: { 5: true } },
+      },
+    };
+    expect(firstNegativePlayer(state)).toBe("p1");
+    const result = apply(state, {
+      kind: "manage",
+      playerId: "p1",
+      build: {},
+      mortgage: { 5: true }, // p1 settles; p2 still owes
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.turn.phase).toBe("must-raise-cash");
+    expect(firstNegativePlayer(result.state)).toBe("p2");
+    expect(result.state.turn.manageStaged).toEqual({ build: {}, mortgage: {} });
+  });
+
+  it("cancel-manage drops the synced staging", () => {
+    let state = withOwnership(freshGame("mgl-cancel"), ORANGES);
+    state = {
+      ...state,
+      turn: {
+        ...state.turn,
+        phase: "managing",
+        managerId: "p1",
+        manageStaged: { build: { 16: 3 }, mortgage: {} },
+      },
+    };
+    const result = apply(state, { kind: "cancel-manage", playerId: "p1" });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.turn.phase).toBe("pre-roll");
+    expect(result.state.turn.manageStaged).toBeUndefined();
+  });
+
+  it("opening a manage intermission at the boundary seeds empty staging", () => {
+    const state: GameState = {
+      ...withOwnership(freshGame("mgl-boundary"), ORANGES),
+      boundaryQueue: [{ playerId: "p1", kind: "manage" }],
+    };
+    // p1 is the active player (freshGame seats p1 first), so the boundary opens.
+    const { state: next } = autoStep(state);
+    expect(next.turn.phase).toBe("managing");
+    expect(next.turn.managerId).toBe("p1");
+    expect(next.turn.manageStaged).toEqual({ build: {}, mortgage: {} });
+  });
+});
+
 describe("autoStep buy-decision", () => {
   it("transitions to buy-decision when landing on an unowned property", () => {
     const state = freshGame("test-land-property");
