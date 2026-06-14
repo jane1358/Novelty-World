@@ -106,7 +106,7 @@ interface GameState {
 
 ### Debt — one path, may go negative (`must-raise-cash`)
 
-Every charge a player can't cover from cash on hand resolves the same way, whether it's rent, a tax/fine (later), or the 10% mortgage interest from a trade:
+Every charge a player can't cover from cash on hand resolves the same way, whether it's rent, a tax/fine, or the 10% mortgage interest from a trade:
 
 - The charge is applied **immediately** — the debtor's cash can go **negative**.
 - If `cash + raisable < 0` (raisable = mortgaging building-free properties; later also selling buildings at half), they can't recover → **bankruptcy** at charge time.

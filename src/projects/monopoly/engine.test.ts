@@ -185,8 +185,8 @@ describe("apply", () => {
   it("advances to the next player and opens a new TurnGroup on end-turn", () => {
     const start = freshGame("test-end-turn");
     // Position the active player so the deterministic first roll lands on
-    // Income Tax (pos 4) — a non-ownable square, so autoStep settles at
-    // post-roll instead of branching into buy-decision.
+    // Income Tax (pos 4) — a non-ownable square, so autoStep charges the tax
+    // and settles at post-roll instead of branching into buy-decision.
     const { total } = predictRoll(start.rngState);
     const positioned = placeActivePlayerAt(start, (4 - total + 40) % 40);
     const rolled = autoStep(positioned).state;
@@ -586,6 +586,74 @@ describe("autoStep buy-decision", () => {
   });
 });
 
+describe("tax", () => {
+  it("charges Income Tax ($200) to the bank on landing", () => {
+    const start = freshGame("test-income-tax");
+    const before = start.players.find((p) => p.id === "p1")?.cash ?? 0;
+    const { state: placed } = setupLandingOn(start, 4); // Income Tax
+    const { state: next, newEvents } = autoStep(placed);
+
+    const taxEvent = newEvents.find((e) => e.kind === "tax");
+    if (!taxEvent) throw new Error("expected a tax event");
+    expect(taxEvent.taxName).toBe("Income Tax");
+    expect(taxEvent.amount).toBe(200);
+    // Income Tax (pos 4) is near GO, so the deterministic placement may wrap the
+    // token past GO — credit that $200 salary back before checking the net.
+    const roll = newEvents.find((e) => e.kind === "roll");
+    const goBonus = roll?.kind === "roll" && roll.passedGo ? 200 : 0;
+    expect(next.players.find((p) => p.id === "p1")?.cash).toBe(before - 200 + goBonus);
+  });
+
+  // Luxury Tax (pos 38) can't be reached without passing GO, so these
+  // cash-sensitive cases use it to keep the math free of GO salary.
+  it("charges Luxury Tax ($100) to the bank on landing", () => {
+    const start = freshGame("test-luxury-tax");
+    const before = start.players.find((p) => p.id === "p1")?.cash ?? 0;
+    const { state: placed } = setupLandingOn(start, 38); // Luxury Tax
+    const { state: next, newEvents } = autoStep(placed);
+
+    const taxEvent = newEvents.find((e) => e.kind === "tax");
+    if (!taxEvent) throw new Error("expected a tax event");
+    expect(taxEvent.taxName).toBe("Luxury Tax");
+    expect(taxEvent.amount).toBe(100);
+    expect(next.players.find((p) => p.id === "p1")?.cash).toBe(before - 100);
+  });
+
+  it("drops a short-on-cash player into must-raise-cash", () => {
+    // p1 has $50 cash and one un-mortgaged ownable (Reading Railroad, mortgage
+    // value $100) — enough to recover from the $100 Luxury Tax, but not enough
+    // to pay it outright, so they go negative and must raise cash.
+    const start = freshGame("test-tax-raise");
+    const { state: placed } = setupLandingOn(start, 38); // Luxury Tax
+    let state = withOwnership(placed, { 5: "p1" });
+    state = setCash(state, "p1", 50);
+
+    const { state: next, newEvents } = autoStep(state);
+
+    expect(next.turn.phase).toBe("must-raise-cash");
+    expect(next.turn.raiseCash).toBe("after-landing");
+    const taxEvent = newEvents.find((e) => e.kind === "tax");
+    if (!taxEvent) throw new Error("expected a tax event");
+    expect(next.players.find((p) => p.id === "p1")?.cash).toBe(-50);
+    expect(firstNegativePlayer(next)).toBe("p1");
+  });
+
+  it("busts a player who cannot cover the tax even after liquidating", () => {
+    // p1 has $30 and no assets to mortgage — they can't cover the $100 Luxury
+    // Tax, so they go bankrupt to the bank.
+    const start = freshGame("test-tax-bust");
+    const { state: placed } = setupLandingOn(start, 38); // Luxury Tax
+    const state = setCash(placed, "p1", 30);
+
+    const { state: next, newEvents } = autoStep(state);
+
+    const bankruptEvent = newEvents.find((e) => e.kind === "bankrupt");
+    if (!bankruptEvent) throw new Error("expected a bankrupt event");
+    expect(next.players.find((p) => p.id === "p1")?.bankrupt).toBe(true);
+    expect(next.players.find((p) => p.id === "p1")?.cash).toBe(0);
+  });
+});
+
 describe("autoStep doubles", () => {
   it("grants the active player another roll on doubles, keeping the streak", () => {
     const start = freshGame("test-doubles-roll"); // rolls [4,4]
@@ -939,8 +1007,8 @@ describe("bankruptcy", () => {
 describe("end-turn skips bankrupt players", () => {
   it("advances past a bankrupt player in the rotation", () => {
     const start = freshGame("test-end-skip-bankrupt-b");
-    // p1 is rolling. Position them on Income Tax so autoStep stops at
-    // post-roll without triggering any rent path.
+    // p1 is rolling. Position them on Income Tax (which they can afford) so
+    // autoStep stops at post-roll without branching into a buy or rent path.
     const { state: placed } = setupLandingOn(start, 4); // Income Tax
     const state: GameState = {
       ...placed,

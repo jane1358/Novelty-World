@@ -277,19 +277,68 @@ function settleOrRaise(state: GameState, resume: RaiseCashResume): GameState {
   };
 }
 
-/** Charge the active player rent for landing on `position`. Two branches:
+/** Charge `payerId` an `amount` owed to `creditorId` — a **player** (rent) or
+ *  the **bank** (`creditorId === null`, e.g. tax). `event` is the already-built
+ *  log entry for the charge (`rent` / `tax`). Two branches:
  *
- *  1. Cash + raisable < rent: they can't cover it even after mortgaging
- *     everything. Transfer whatever cash they have, log the FULL debt (so the
- *     log reads "owed $1100 → bust → estate to Jordan"), bust to the creditor,
- *     and hand control onward (or end at game-over).
- *  2. Otherwise: deduct the rent immediately — cash may go negative — log it,
+ *  1. Cash + raisable < amount: they can't cover it even after mortgaging
+ *     everything. Transfer whatever cash they have (to a player creditor; the
+ *     bank keeps nothing), log the FULL debt (so the log reads "owed $1100 →
+ *     bust → estate to Jordan"), bust to the creditor, and hand control onward
+ *     (or end at game-over).
+ *  2. Otherwise: deduct the amount immediately — cash may go negative — log it,
  *     then `settleOrRaise`. If they had the cash, play continues at once; if
  *     not, they drop into `must-raise-cash` and mortgage back to ≥ 0. The log
  *     reads "rent −$500 (now in the red), mortgage A, mortgage B".
  *
  *  This is the unified debt path: a debtor who CAN recover always does so by
  *  going negative then raising, never by deferring the payment. */
+function chargeToCreditor(
+  state: GameState,
+  payerId: string,
+  creditorId: string | null,
+  amount: number,
+  event: GameEvent,
+): { state: GameState; newEvents: readonly GameEvent[] } {
+  const payerIdx = state.players.findIndex((p) => p.id === payerId);
+  const payer = state.players[payerIdx];
+
+  // Can't cover even after mortgaging everything: partial transfer + bust.
+  if (payer.cash + maxRaisableCash(state, payerId) < amount) {
+    const players = state.players.map((p, i) => {
+      if (i === payerIdx) return { ...p, cash: 0 };
+      if (creditorId !== null && p.id === creditorId) {
+        return { ...p, cash: p.cash + payer.cash };
+      }
+      return p;
+    });
+    const turns = appendEventToActiveTurn(state.turns, event);
+    const bust = goBankrupt({ ...state, players, turns }, payerId, creditorId);
+    // Hand control onward unless the bust already ended the game.
+    const resolved =
+      bust.state.turn.phase === "game-over"
+        ? bust.state
+        : advanceToNextPlayer(bust.state, payerId);
+    return { state: resolved, newEvents: [event, ...bust.newEvents] };
+  }
+
+  // Pay now (cash may dip below zero), log it, then settle or raise.
+  const players = state.players.map((p, i) => {
+    if (i === payerIdx) return { ...p, cash: p.cash - amount };
+    if (creditorId !== null && p.id === creditorId) {
+      return { ...p, cash: p.cash + amount };
+    }
+    return p;
+  });
+  const turns = appendEventToActiveTurn(state.turns, event);
+  const charged: GameState = { ...state, players, turns };
+  return {
+    state: settleOrRaise(charged, "after-landing"),
+    newEvents: [event],
+  };
+}
+
+/** Charge the active player rent for landing on `position`, paid to its owner. */
 function chargeRent(
   state: GameState,
   payerId: string,
@@ -297,45 +346,13 @@ function chargeRent(
   position: number,
   rentAmount: number,
 ): { state: GameState; newEvents: readonly GameEvent[] } {
-  const payerIdx = state.players.findIndex((p) => p.id === payerId);
-  const recipientIdx = state.players.findIndex((p) => p.id === recipientId);
-  const payer = state.players[payerIdx];
   const rentEvent: GameEvent = {
     kind: "rent",
     ownerId: recipientId,
     position,
     amount: rentAmount,
   };
-
-  // Can't cover even after mortgaging everything: partial transfer + bust.
-  if (payer.cash + maxRaisableCash(state, payerId) < rentAmount) {
-    const players = state.players.map((p, i) => {
-      if (i === payerIdx) return { ...p, cash: 0 };
-      if (i === recipientIdx) return { ...p, cash: p.cash + payer.cash };
-      return p;
-    });
-    const turns = appendEventToActiveTurn(state.turns, rentEvent);
-    const bust = goBankrupt({ ...state, players, turns }, payerId, recipientId);
-    // Hand control onward unless the bust already ended the game.
-    const resolved =
-      bust.state.turn.phase === "game-over"
-        ? bust.state
-        : advanceToNextPlayer(bust.state, payerId);
-    return { state: resolved, newEvents: [rentEvent, ...bust.newEvents] };
-  }
-
-  // Pay now (cash may dip below zero), log it, then settle or raise.
-  const players = state.players.map((p, i) => {
-    if (i === payerIdx) return { ...p, cash: p.cash - rentAmount };
-    if (i === recipientIdx) return { ...p, cash: p.cash + rentAmount };
-    return p;
-  });
-  const turns = appendEventToActiveTurn(state.turns, rentEvent);
-  const charged: GameState = { ...state, players, turns };
-  return {
-    state: settleOrRaise(charged, "after-landing"),
-    newEvents: [rentEvent],
-  };
+  return chargeToCreditor(state, payerId, recipientId, rentAmount, rentEvent);
 }
 
 /** Settle a player's estate when they go bankrupt. Two creditors:
@@ -1144,7 +1161,19 @@ function resolveTile(
 ): { state: GameState; newEvents: readonly GameEvent[] } {
   const idx = state.players.findIndex((p) => p.id === state.turn.playerId);
   const toPos = state.players[idx].position;
-  if (SPACES[toPos].kind === "go-to-jail") return sendToJail(state, "tile");
+  const space = SPACES[toPos];
+  if (space.kind === "go-to-jail") return sendToJail(state, "tile");
+
+  // Tax (Income / Luxury): a fixed fee to the bank, routed through the unified
+  // debt path so it can bust or drop into must-raise-cash like any other charge.
+  if (space.kind === "tax") {
+    const taxEvent: GameEvent = {
+      kind: "tax",
+      taxName: space.name,
+      amount: space.amount,
+    };
+    return chargeToCreditor(state, state.turn.playerId, null, space.amount, taxEvent);
+  }
 
   const landedOnUnownedOwnable =
     ownablePrice(toPos) !== null && !(toPos in state.ownership);
@@ -1348,7 +1377,7 @@ function applyUseJailCard(
  *  double sends the player to jail without moving. Otherwise `resolveTile`
  *  finishes the landing — `go-to-jail` tile, `buy-decision` (unowned ownable),
  *  rent (busting to the creditor when uncoverable), `game-over`, another roll
- *  (doubles), or `post-roll`. Card draws and tax remain deferred. */
+ *  (doubles), or `post-roll`. Card draws remain deferred. */
 export function autoStep(
   state: GameState,
 ): { state: GameState; newEvents: readonly GameEvent[] } {
