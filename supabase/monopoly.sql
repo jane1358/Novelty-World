@@ -2,8 +2,10 @@
 -- Run this once in the Supabase SQL editor.
 
 create table if not exists public.monopoly_games (
-  -- Game id. The local "dev" sandbox never persists here; lobby games use
-  -- minted ids.
+  -- Game id. `"dev"` is a reserved id for the debug sandbox (it additionally
+  -- accepts dev-only actions) but is otherwise a normal persisted row; lobby
+  -- games use minted ids. Every game — dev included — runs on the
+  -- authoritative route and lives here; there is no local-only mode.
   id text primary key,
   -- The serialized GameState (see src/projects/monopoly/types.ts). Written
   -- only by the authoritative server route (/api/monopoly) using the service
