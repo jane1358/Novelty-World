@@ -27,14 +27,18 @@ export const MONOPOLY_THEME = {
   // JAIL / JAIL→ labels on the board (the card's whole purpose is jail).
   "--mono-rail": "#94a3b8",
   "--mono-utility": "#9333ea",
-  "--mono-player-crimson": "#b91c1c",
-  "--mono-player-violet": "#7c3aed",
-  "--mono-player-teal": "#0d9488",
-  "--mono-player-amber": "#d97706",
-  "--mono-player-emerald": "#059669",
-  "--mono-player-indigo": "#4338ca",
-  "--mono-player-magenta": "#c026d3",
-  "--mono-player-slate": "#475569",
+  // Eight player hues spread evenly around the wheel so tokens stay distinct at
+  // 30px on the dark board — red, amber, green, cyan, blue, violet, pink, plus
+  // slate as the desaturated neutral. The cool end is deliberately fanned out
+  // (cyan → blue → violet → pink) so no two read as the same color.
+  "--mono-player-crimson": "#ef4444",
+  "--mono-player-amber": "#f59e0b",
+  "--mono-player-emerald": "#22c55e",
+  "--mono-player-teal": "#06b6d4",
+  "--mono-player-indigo": "#2563eb",
+  "--mono-player-violet": "#a855f7",
+  "--mono-player-magenta": "#ec4899",
+  "--mono-player-slate": "#64748b",
 } as CSSProperties;
 
 export const PROPERTY_COLOR_VAR: Record<PropertyColor, string> = {
