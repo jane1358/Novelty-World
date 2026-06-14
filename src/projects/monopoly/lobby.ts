@@ -1,4 +1,5 @@
 import type { PlayerProfile } from "@/shared/lib/profile";
+import { shuffleArray } from "@/shared/lib/utils";
 import { PLAYER_COLORS, PLAYER_ICONS } from "./data";
 import { createRng, initialDecks } from "./engine";
 import type {
@@ -285,9 +286,12 @@ export function setPlayerName(
 }
 
 /** Flip the lobby into play. Requires the minimum participant count with at
- *  least one human. Rebuilds the turn pointer and opening TurnGroup for the
- *  final roster (seat order = play order) and re-derives the dense records, so
- *  the game starts clean regardless of join/leave churn. */
+ *  least one human. Randomizes the seating into play order (so turn order isn't
+ *  the lobby join order — that would hand early joiners a first-move edge),
+ *  then rebuilds the turn pointer and opening TurnGroup for the shuffled roster
+ *  and re-derives the dense records, so the game starts clean regardless of
+ *  join/leave churn. The shuffle advances the game's injected RNG (never
+ *  `Math.random`) so it stays pure and reproducible. */
 export function startGame(state: GameState): LobbyResult {
   if (state.status !== "lobby") {
     return { ok: false, reason: "game already started" };
@@ -298,7 +302,9 @@ export function startGame(state: GameState): LobbyResult {
   if (!state.players.some((p) => !p.isBot)) {
     return { ok: false, reason: "need at least one human" };
   }
-  const first = state.players[0];
+  const rng = createRng(state.rngState);
+  const players = shuffleArray(state.players, () => rng.next());
+  const first = players[0];
   const turn: TurnState = {
     playerId: first.id,
     phase: "pre-roll",
@@ -310,9 +316,11 @@ export function startGame(state: GameState): LobbyResult {
     state: {
       ...state,
       status: "active",
+      players,
       turn,
       turns,
-      preferences: densePreferences(state.players),
+      preferences: densePreferences(players),
+      rngState: rng.getState(),
     },
   };
 }

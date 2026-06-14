@@ -153,12 +153,47 @@ describe("setPlayerName", () => {
   });
 });
 
+/** A lobby seating the host plus `count` bots, on the given rng seed. */
+function lobbyWith(count: number, seed = "seed-1"): GameState {
+  let state = createLobby(HOST, seed);
+  for (let i = 0; i < count; i++) state = ok(addBot(state));
+  return state;
+}
+
 describe("startGame", () => {
-  it("flips to active and opens turn 1 for the first seat", () => {
-    const state = ok(startGame(ok(addBot(lobby()))));
+  it("flips to active and opens turn 1 for the new first seat", () => {
+    const seated = ok(addBot(lobby()));
+    const state = ok(startGame(seated));
     expect(state.status).toBe("active");
-    expect(state.turn).toMatchObject({ playerId: "host", phase: "pre-roll" });
-    expect(state.turns).toEqual([{ turn: 1, playerId: "host", events: [] }]);
+    // Play order is randomized, so whoever lands first drives turn 1 — but the
+    // turn pointer and opening TurnGroup must agree with the shuffled roster.
+    const first = state.players[0];
+    expect(state.turn).toMatchObject({ playerId: first.id, phase: "pre-roll" });
+    expect(state.turns).toEqual([{ turn: 1, playerId: first.id, events: [] }]);
+    // The roster is a permutation of the lobby — same seats, no loss.
+    expect(new Set(state.players.map((p) => p.id))).toEqual(
+      new Set(seated.players.map((p) => p.id)),
+    );
+    expect(state.preferences[first.id]).toBeDefined();
+  });
+
+  it("randomizes play order off the lobby join order", () => {
+    // Across a spread of seeds, at least one must reorder a 4-seat lobby —
+    // otherwise turn order would still just be the join order.
+    const reordered = Array.from({ length: 16 }, (_, i) => {
+      const seated = lobbyWith(3, `shuffle-seed-${i.toString()}`);
+      const joinOrder = seated.players.map((p) => p.id);
+      const playOrder = ok(startGame(seated)).players.map((p) => p.id);
+      return joinOrder.join() !== playOrder.join();
+    });
+    expect(reordered.some(Boolean)).toBe(true);
+  });
+
+  it("shuffles deterministically for a given rng seed", () => {
+    const seated = lobbyWith(3);
+    const a = ok(startGame(seated)).players.map((p) => p.id);
+    const b = ok(startGame(seated)).players.map((p) => p.id);
+    expect(a).toEqual(b);
   });
 
   it("requires at least two participants", () => {
