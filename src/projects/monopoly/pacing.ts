@@ -6,7 +6,7 @@ import type { GameState, Intent } from "./types";
  *  player, slide their token, hold on the landing — plays out over roughly
  *  this long. Per-client local preference (see the store's `turnMs`); this is
  *  the fallback when none is set. */
-export const DEFAULT_TURN_MS = 3000;
+export const DEFAULT_TURN_MS = 2500;
 
 /** How a turn's time budget splits between its two visible phases. The glide
  *  phase (camera re-anchors on the new active player, then an orient hold) gets
