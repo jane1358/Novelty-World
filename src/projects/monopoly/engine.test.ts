@@ -220,8 +220,292 @@ describe("apply", () => {
 
   it("rejects intents that aren't implemented yet", () => {
     const state = freshGame("test-unimpl");
-    const result = apply(state, { kind: "build", playerId: "p1", position: 1 });
+    const result = apply(state, { kind: "bid", playerId: "p1", amount: 50 });
     expect(result.ok).toBe(false);
+  });
+});
+
+describe("apply manage", () => {
+  const ORANGES = { 16: "p1", 18: "p1", 19: "p1" };
+
+  function pausedPreRoll(state: GameState): GameState {
+    return { ...state, turn: { ...state.turn, paused: true } };
+  }
+
+  function mustRaiseCash(
+    state: GameState,
+    debtorId: string,
+    debt: number,
+  ): GameState {
+    return {
+      ...setCash(state, debtorId, -debt),
+      turn: {
+        ...state.turn,
+        phase: "must-raise-cash",
+        paused: false,
+        raiseCash: "after-landing",
+      },
+    };
+  }
+
+  const cashOf = (state: GameState, id: string): number | undefined =>
+    state.players.find((p) => p.id === id)?.cash;
+
+  describe("building", () => {
+    it("builds an even row on the active player's paused turn", () => {
+      let state = pausedPreRoll(withOwnership(freshGame("mg-build"), ORANGES));
+      state = setCash(state, "p1", 1500);
+      const result = apply(state, {
+        kind: "manage",
+        playerId: "p1",
+        build: { 16: 1, 18: 1, 19: 1 },
+        mortgage: {},
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.state.houses).toMatchObject({ 16: 1, 18: 1, 19: 1 });
+      expect(cashOf(result.state, "p1")).toBe(1200);
+      expect(result.newEvents.filter((e) => e.kind === "build")).toHaveLength(3);
+    });
+
+    it("rejects managing when the turn isn't paused", () => {
+      const state = withOwnership(freshGame("mg-unpaused"), ORANGES);
+      const result = apply(state, {
+        kind: "manage",
+        playerId: "p1",
+        build: { 16: 1, 18: 1, 19: 1 },
+        mortgage: {},
+      });
+      expect(result.ok).toBe(false);
+    });
+
+    it("rejects managing on someone else's turn", () => {
+      const state = pausedPreRoll(withOwnership(freshGame("mg-off"), ORANGES));
+      const result = apply(state, {
+        kind: "manage",
+        playerId: "p2",
+        build: { 16: 1, 18: 1, 19: 1 },
+        mortgage: {},
+      });
+      expect(result.ok).toBe(false);
+    });
+
+    it("rejects a build the player can't afford", () => {
+      let state = pausedPreRoll(withOwnership(freshGame("mg-poor"), ORANGES));
+      state = setCash(state, "p1", 100);
+      const result = apply(state, {
+        kind: "manage",
+        playerId: "p1",
+        build: { 16: 1, 18: 1, 19: 1 },
+        mortgage: {},
+      });
+      expect(result.ok).toBe(false);
+    });
+
+    it("rejects a no-op manage with nothing staged", () => {
+      const state = pausedPreRoll(withOwnership(freshGame("mg-noop"), ORANGES));
+      const result = apply(state, {
+        kind: "manage",
+        playerId: "p1",
+        build: {},
+        mortgage: {},
+      });
+      expect(result.ok).toBe(false);
+    });
+  });
+
+  describe("mortgaging", () => {
+    it("mortgages a property for half its price", () => {
+      let state = pausedPreRoll(
+        withOwnership(freshGame("mg-mort"), { 5: "p1" }),
+      ); // Reading Railroad ($200)
+      state = setCash(state, "p1", 1000);
+      const result = apply(state, {
+        kind: "manage",
+        playerId: "p1",
+        build: {},
+        mortgage: { 5: true },
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.state.mortgaged[5]).toBe(true);
+      expect(cashOf(result.state, "p1")).toBe(1100);
+    });
+
+    it("unmortgages for the mortgage value plus 10% interest", () => {
+      let state = pausedPreRoll(withOwnership(freshGame("mg-unmort"), { 5: "p1" }));
+      state = { ...state, mortgaged: { 5: true } };
+      state = setCash(state, "p1", 1000);
+      const result = apply(state, {
+        kind: "manage",
+        playerId: "p1",
+        build: {},
+        mortgage: { 5: false },
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.state.mortgaged[5]).toBeUndefined();
+      // $100 mortgage value + 10% = $110.
+      expect(cashOf(result.state, "p1")).toBe(890);
+    });
+
+    it("refuses to mortgage a property that still has buildings", () => {
+      let state = pausedPreRoll(withOwnership(freshGame("mg-built"), ORANGES));
+      state = { ...state, houses: { 16: 1, 18: 1, 19: 1 } };
+      const result = apply(state, {
+        kind: "manage",
+        playerId: "p1",
+        build: {},
+        mortgage: { 16: true },
+      });
+      expect(result.ok).toBe(false);
+    });
+  });
+
+  describe("combined build + mortgage in one commit", () => {
+    it("sells a set's houses then mortgages the bare lots", () => {
+      let state = pausedPreRoll(withOwnership(freshGame("mg-sell-mort"), ORANGES));
+      state = { ...state, houses: { 16: 2, 18: 2, 19: 2 } };
+      state = setCash(state, "p1", 1500);
+      const result = apply(state, {
+        kind: "manage",
+        playerId: "p1",
+        build: { 16: 0, 18: 0, 19: 0 },
+        mortgage: { 16: true, 18: true, 19: true },
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.state.houses).toEqual({});
+      expect(result.state.mortgaged).toMatchObject({
+        16: true,
+        18: true,
+        19: true,
+      });
+      // Sells 6 house tiers (+$300) + mortgages 16/18/19 (prices 180/180/200 ->
+      // half = $90+$90+$100 = +$280) = +$580.
+      expect(cashOf(result.state, "p1")).toBe(2080);
+    });
+
+    it("mortgages one property to fund building another set", () => {
+      let state = pausedPreRoll(
+        withOwnership(freshGame("mg-fund"), { ...ORANGES, 5: "p1" }),
+      );
+      state = setCash(state, "p1", 250); // can't afford $300 of houses alone
+      const result = apply(state, {
+        kind: "manage",
+        playerId: "p1",
+        build: { 16: 1, 18: 1, 19: 1 },
+        mortgage: { 5: true },
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      // +$100 mortgage - $300 houses = -$200 -> 250 - 200 = 50.
+      expect(cashOf(result.state, "p1")).toBe(50);
+      expect(result.state.houses).toMatchObject({ 16: 1, 18: 1, 19: 1 });
+      expect(result.state.mortgaged[5]).toBe(true);
+    });
+
+    it("unmortgages a set member so the set becomes buildable in the same commit", () => {
+      let state = pausedPreRoll(withOwnership(freshGame("mg-unmort-build"), ORANGES));
+      state = { ...state, mortgaged: { 19: true } };
+      state = setCash(state, "p1", 1500);
+      const result = apply(state, {
+        kind: "manage",
+        playerId: "p1",
+        build: { 16: 1, 18: 1, 19: 1 },
+        mortgage: { 19: false },
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.state.mortgaged[19]).toBeUndefined();
+      expect(result.state.houses).toMatchObject({ 16: 1, 18: 1, 19: 1 });
+      // -$110 unmortgage - $300 houses = -$410 -> 1500 - 410 = 1090.
+      expect(cashOf(result.state, "p1")).toBe(1090);
+    });
+
+    it("rejects building a set that stays mortgaged", () => {
+      let state = pausedPreRoll(withOwnership(freshGame("mg-still-mort"), ORANGES));
+      state = { ...state, mortgaged: { 19: true } };
+      state = setCash(state, "p1", 1500);
+      const result = apply(state, {
+        kind: "manage",
+        playerId: "p1",
+        build: { 16: 1, 18: 1, 19: 1 },
+        mortgage: {}, // 19 left mortgaged
+      });
+      expect(result.ok).toBe(false);
+    });
+  });
+
+  describe("must-raise-cash", () => {
+    it("lets the debtor sell buildings and mortgage to settle", () => {
+      let state = withOwnership(freshGame("mg-raise"), {
+        16: "p2",
+        18: "p2",
+        19: "p2",
+        5: "p2",
+      });
+      state = { ...state, houses: { 16: 2, 18: 2, 19: 2 } };
+      state = mustRaiseCash(state, "p2", 200);
+      expect(firstNegativePlayer(state)).toBe("p2");
+      const result = apply(state, {
+        kind: "manage",
+        playerId: "p2",
+        build: { 16: 0, 18: 0, 19: 0 }, // +$300
+        mortgage: { 5: true }, // +$100
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      // -200 + 300 + 100 = +200, debt clears and play resumes.
+      expect(cashOf(result.state, "p2")).toBe(200);
+      expect(result.state.turn.phase).not.toBe("must-raise-cash");
+      expect(firstNegativePlayer(result.state)).toBe(null);
+    });
+
+    it("rejects building (a net spend) while raising cash", () => {
+      let state = withOwnership(freshGame("mg-raise-build"), ORANGES);
+      state = mustRaiseCash(setCash(state, "p1", 0), "p1", 100);
+      // p1 is the active player AND the debtor here.
+      const result = apply(state, {
+        kind: "manage",
+        playerId: "p1",
+        build: { 16: 1, 18: 1, 19: 1 },
+        mortgage: {},
+      });
+      expect(result.ok).toBe(false);
+    });
+
+    it("rejects unmortgaging while raising cash", () => {
+      let state = withOwnership(freshGame("mg-raise-unmort"), { 5: "p1" });
+      state = { ...state, mortgaged: { 5: true } };
+      state = mustRaiseCash(state, "p1", 100);
+      const result = apply(state, {
+        kind: "manage",
+        playerId: "p1",
+        build: {},
+        mortgage: { 5: false },
+      });
+      expect(result.ok).toBe(false);
+    });
+
+    it("rejects a non-debtor managing during must-raise-cash", () => {
+      let state = withOwnership(freshGame("mg-raise-other"), {
+        ...ORANGES,
+        21: "p2",
+        23: "p2",
+        24: "p2",
+      });
+      state = { ...state, houses: { 21: 2, 23: 2, 24: 2 } };
+      state = mustRaiseCash(state, "p2", 100);
+      // p1 (active, solvent) can't manage while p2 is the debtor.
+      const result = apply(state, {
+        kind: "manage",
+        playerId: "p1",
+        build: { 16: 1, 18: 1, 19: 1 },
+        mortgage: {},
+      });
+      expect(result.ok).toBe(false);
+    });
   });
 });
 

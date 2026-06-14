@@ -210,77 +210,66 @@ export function planDevelopment(
     }
   }
 
-  // 5. Run the simulation, freeing-first across groups.
+  // 5. Search for a legal, supply-safe order to resolve all affected groups,
+  //    preferring schedules that need no shortage liquidation.
   const bank = bankSupply(state);
-  const steps: DevStep[] = [];
-  const notes: DevelopmentNote[] = [];
+  const solution = solveGroups([...affectedColors], levels, targets, bank);
+  if (!solution) return { ok: false, reason: "not enough houses in the bank" };
 
-  for (const color of orderGroups(affectedColors, levels, targets)) {
-    const result = processGroup(color, levels, targets, bank);
-    if (!result.ok) return { ok: false, reason: result.reason };
-    steps.push(...result.steps);
-    if (result.usedEscape) notes.push({ color, kind: "shortage-liquidation" });
-  }
-
-  const netCash = steps.reduce((sum, step) => {
+  const netCash = solution.steps.reduce((sum, step) => {
     return step.kind === "build" ? sum - step.cost : sum + step.refund;
   }, 0);
 
-  return { ok: true, steps, netCash, notes };
+  return { ok: true, steps: solution.steps, netCash, notes: solution.notes };
 }
 
-/** Order affected groups so the ones that *return* buildings to the bank run
- *  before the ones that *consume* them — a group selling down frees houses a
- *  later group's build can reuse in the same commit. Pure sell-downs first,
- *  then groups that break hotels (which transiently need houses), then builds. */
-function orderGroups(
-  colors: ReadonlySet<PropertyColor>,
-  levels: Levels,
-  targets: Levels,
-): PropertyColor[] {
-  const rank = (color: PropertyColor): number => {
-    const positions = groupPositions(color);
-    const anyBuild = positions.some((p) => targets.get(p)! > levels.get(p)!);
-    const anySell = positions.some((p) => targets.get(p)! < levels.get(p)!);
-    const breaksHotel = positions.some(
-      (p) => levels.get(p)! === 5 && targets.get(p)! < 5,
-    );
-    if (anySell && !anyBuild && !breaksHotel) return 0; // pure house frees
-    if (breaksHotel) return 1; // hotel breakdown (may need houses)
-    return 2; // builds
-  };
-  return [...colors].sort((a, b) => rank(a) - rank(b));
+interface SolveResult {
+  steps: DevStep[];
+  notes: DevelopmentNote[];
 }
 
-type GroupResult =
-  | { ok: true; steps: DevStep[]; usedEscape: boolean }
-  | { ok: false; reason: string };
-
-/** Resolve one color group to its target. Tries the pure even-build path
- *  first (cheapest); if the bank can't supply the houses a hotel breakdown
- *  needs, retries with the whole-hotel liquidation escape. Mutates `levels` and
- *  `bank` to the post-group state on success. */
-function processGroup(
-  color: PropertyColor,
+/** Find a legal order to resolve every affected color group to its target,
+ *  threading the bank through so a group that returns buildings can run before
+ *  one that needs them — regardless of board order. Backtracks over group order
+ *  (and whether a group takes the liquidation escape), trying pure schedules
+ *  first so the costlier escape is only used when genuinely forced. Returns null
+ *  when no legal schedule exists. Groups process whole, one at a time: a
+ *  group's transient house demand (breaking hotels, or building up to them)
+ *  resolves by the time it finishes, so no cross-group interleaving is ever
+ *  required. Group count is tiny (≤ 8, usually 1-3), so the search is cheap. */
+function solveGroups(
+  remaining: readonly PropertyColor[],
   levels: Levels,
   targets: Levels,
   bank: { houses: number; hotels: number },
-): GroupResult {
-  const positions = groupPositions(color);
+): SolveResult | null {
+  if (remaining.length === 0) return { steps: [], notes: [] };
 
-  const pure = simulateGroup(positions, levels, targets, bank, false);
-  if (pure.ok) {
-    commitSim(pure, levels, bank);
-    return { ok: true, steps: pure.steps, usedEscape: false };
+  // Round 1 resolves a group on its pure (cheapest) path; round 2 only fires
+  // when no pure-first schedule completes, letting one group liquidate. A
+  // pure-feasible group never benefits from escaping early (a clean breakdown
+  // frees the same hotels), so trying pure first loses no solutions.
+  for (const allowEscape of [false, true]) {
+    for (const color of remaining) {
+      const sim = simulateGroup(groupPositions(color), levels, targets, bank, allowEscape);
+      if (!sim.ok) continue;
+      // In the escape round, skip groups that resolved without escaping — those
+      // were already explored (and exhausted) in round 1 at this same bank.
+      if (allowEscape && !sim.usedEscape) continue;
+
+      const rest = remaining.filter((c) => c !== color);
+      const nextLevels = new Map(levels);
+      for (const [pos, level] of sim.endLevels) nextLevels.set(pos, level);
+      const sub = solveGroups(rest, nextLevels, targets, sim.endBank);
+      if (sub) {
+        const notes = sim.usedEscape
+          ? [{ color, kind: "shortage-liquidation" as const }, ...sub.notes]
+          : sub.notes;
+        return { steps: [...sim.steps, ...sub.steps], notes };
+      }
+    }
   }
-
-  const escape = simulateGroup(positions, levels, targets, bank, true);
-  if (escape.ok) {
-    commitSim(escape, levels, bank);
-    return { ok: true, steps: escape.steps, usedEscape: escape.usedEscape };
-  }
-
-  return { ok: false, reason: escape.reason };
+  return null;
 }
 
 type SimResult =
@@ -292,18 +281,6 @@ type SimResult =
       endBank: { houses: number; hotels: number };
     }
   | { ok: false; reason: string };
-
-/** Fold a successful simulation's end state back into the live `levels` map
- *  and `bank` counter. */
-function commitSim(
-  sim: Extract<SimResult, { ok: true }>,
-  levels: Levels,
-  bank: { houses: number; hotels: number },
-): void {
-  for (const [pos, level] of sim.endLevels) levels.set(pos, level);
-  bank.houses = sim.endBank.houses;
-  bank.hotels = sim.endBank.hotels;
-}
 
 /** Walk one group from its current levels to its target, one legal tier at a
  *  time, against a copy of the bank. Prefers moves that *free* buildings

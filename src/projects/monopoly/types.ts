@@ -325,8 +325,24 @@ export type Intent =
   | { kind: "decline-buy"; playerId: string }
   | { kind: "bid"; playerId: string; amount: number }
   | { kind: "pass-bid"; playerId: string }
-  | { kind: "build"; playerId: string; position: number }
-  | { kind: "sell-building"; playerId: string; position: number }
+  /** Atomic "manage my properties" commit — the unified output of the manage
+   *  intermission. Carries the player's full staged target development levels
+   *  (`build`: position -> 0-5) AND mortgage flags (`mortgage`: position ->
+   *  mortgaged) for everything they're changing. The engine applies it whole,
+   *  raise-first / spend-second, all-or-nothing: it can never leave the board
+   *  uneven, half-mortgaged, or partially applied even if the bank shifted under
+   *  it. This ordering is what lets one commit sell a property's houses and then
+   *  mortgage the bare lot, or mortgage one property to fund building another.
+   *  Building/un-mortgaging require the active player's own paused turn (or a
+   *  manage intermission); selling/mortgaging are also allowed for the current
+   *  debtor during `must-raise-cash`. Emits per-tier `build` / `sell-building`
+   *  and `mortgage` / `unmortgage` events. */
+  | {
+      kind: "manage";
+      playerId: string;
+      build: Readonly<Record<number, number>>;
+      mortgage: Readonly<Record<number, boolean>>;
+    }
   | { kind: "mortgage"; playerId: string; position: number }
   | { kind: "unmortgage"; playerId: string; position: number }
   /** Toggle membership in the FIFO trade queue — "I want to trade". Anyone

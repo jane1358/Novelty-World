@@ -310,6 +310,52 @@ describe("planDevelopment — cross-set supply interaction", () => {
   });
 });
 
+describe("planDevelopment — cross-set fixpoint scheduling", () => {
+  // Regression for the scheduler bug the fuzz investigation found: a
+  // build-to-hotel group is a net house-FREER (each hotel returns 4 houses), so
+  // it must be allowed to run before a hotel-breakdown group that needs those
+  // houses. A static "builds last" order wrongly rejected this as infeasible.
+  it("builds one set to hotels (freeing houses) so another can break hotels down", () => {
+    const LIGHT_BLUE = [6, 8, 9];
+    const YELLOW = [26, 27, 29];
+    const state = makeState({
+      ownership: { ...own(LIGHT_BLUE, "p1"), ...own(YELLOW, "p1") },
+      houses: {
+        6: 1,
+        8: 1,
+        9: 1,
+        26: 5,
+        27: 5,
+        29: 5,
+        // Filler draining the bank to exactly 9 free houses (32 - 5*4 - 3 = 9).
+        1: 4,
+        3: 4,
+        11: 4,
+        13: 4,
+        14: 4,
+      },
+    });
+    // Light-blue 1->hotel needs the 9 free houses to reach 4,4,4 first, then the
+    // hotels return 12, funding the yellow breakdown to 1,1,1.
+    const plan = planDevelopment(state, "p1", {
+      6: 5,
+      8: 5,
+      9: 5,
+      26: 1,
+      27: 1,
+      29: 1,
+    });
+    expect(plan.ok).toBe(true);
+    if (!plan.ok) return;
+    // No liquidation needed — a clean legal schedule exists.
+    expect(plan.steps.some((s) => s.kind === "liquidate")).toBe(false);
+    expect(plan.notes).toEqual([]);
+    // Light-blue 1->5 = 4 tiers * $50 * 3 = -$600 build.
+    // Yellow 5->1 = 4 tiers * $75 refund * 3 = +$900 sell. Net +$300.
+    expect(plan.netCash).toBe(300);
+  });
+});
+
 /** Assert no build step ever pushes a property more than one tier above the
  *  lowest in its group — a structural check that the even-build rule held
  *  throughout, replaying the steps. */

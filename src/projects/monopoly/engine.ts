@@ -1,5 +1,10 @@
 import { SPACES } from "./data";
 import {
+  developmentLevel,
+  maxBuildingSaleValue,
+  planDevelopment,
+} from "./development";
+import {
   mortgageInterestAt,
   mortgageValueAt,
   ownablePrice,
@@ -91,6 +96,7 @@ export function apply(state: GameState, intent: Intent): ApplyResult {
   if (intent.kind === "set-armed-pause") {
     return applySetArmedPause(state, intent);
   }
+  if (intent.kind === "manage") return applyManage(state, intent);
   if (intent.kind === "mortgage") return applyMortgage(state, intent);
   if (intent.kind === "unmortgage") return applyUnmortgage(state, intent);
   if (intent.kind === "request-trade") return applyRequestTrade(state, intent);
@@ -229,21 +235,21 @@ function advanceToNextPlayer(
   return state;
 }
 
-/** Maximum cash a player could raise right now by mortgaging every
- *  un-mortgaged, building-free ownable they own. Used to decide between
- *  the must-raise-cash path (player CAN cover the debt with mortgages) and
- *  immediate bankruptcy (they couldn't even if they mortgaged everything).
+/** Maximum cash a player could raise right now by liquidating everything:
+ *  selling every building back at half price AND mortgaging every un-mortgaged
+ *  ownable. Used to decide between the must-raise-cash path (player CAN cover
+ *  the debt) and immediate bankruptcy (they couldn't even after liquidating).
  *
- *  Buildings block mortgaging in official rules, so a property with houses
- *  contributes nothing here — once selling buildings lands, this will
- *  expand to "could sell N houses for $X" too. */
+ *  A built property counts its mortgage value too — buildings block mortgaging,
+ *  but they'd be sold first, so the bare lot is still mortgageable. The two
+ *  sources are additive: half the buildings (`maxBuildingSaleValue`) plus half
+ *  the printed price of every unmortgaged ownable. */
 function maxRaisableCash(state: GameState, ownerId: string): number {
-  let total = 0;
+  let total = maxBuildingSaleValue(state, ownerId);
   for (const [posStr, oid] of Object.entries(state.ownership)) {
     if (oid !== ownerId) continue;
     const pos = Number(posStr);
     if (state.mortgaged[pos]) continue;
-    if (state.houses[pos]) continue;
     const value = mortgageValueAt(pos);
     if (value !== null) total += value;
   }
@@ -503,6 +509,167 @@ function canActOnAssets(state: GameState): boolean {
   if (phase === "pre-roll" && paused) return true;
   if (phase === "post-roll" && paused) return true;
   return false;
+}
+
+/** Apply a "manage my properties" commit — the atomic unified output of the
+ *  manage intermission, carrying both a build target and mortgage flags. The
+ *  engine validates and applies the whole thing at once, in cash-flow order
+ *  (raise first, spend second), so it's all-or-nothing and never leaves the
+ *  board uneven or half-applied. The build side runs through `planDevelopment`
+ *  (even-build, supply, the hotel-shortage liquidation escape); the mortgage
+ *  side flips the per-property flags. Combining them is what lets one commit
+ *  sell a property's houses and then mortgage the bare lot, or mortgage one
+ *  property to fund building another.
+ *
+ *  Two entry contexts share the reducer:
+ *  - Voluntary: the active player on their own paused turn (or a manage
+ *    intermission — added later). Any net cash they can afford.
+ *  - Forced: the current debtor during `must-raise-cash`. Raising only — no
+ *    builds, no un-mortgages — then re-runs `settleOrRaise` so play resumes
+ *    once they're back to ≥ 0. */
+function applyManage(
+  state: GameState,
+  intent: Extract<Intent, { kind: "manage" }>,
+): ApplyResult {
+  const inRaiseCash = state.turn.phase === "must-raise-cash";
+  if (inRaiseCash) {
+    // The forced settler is whoever is in the red, which need not be the
+    // active player (a trade can put an off-turn player there).
+    if (intent.playerId !== firstNegativePlayer(state)) {
+      return { ok: false, reason: "not the current debtor" };
+    }
+  } else {
+    if (intent.playerId !== state.turn.playerId) {
+      return { ok: false, reason: "not your turn" };
+    }
+    if (!canActOnAssets(state)) {
+      return { ok: false, reason: `cannot manage in phase ${state.turn.phase}` };
+    }
+  }
+
+  const playerIdx = state.players.findIndex((p) => p.id === intent.playerId);
+  const player = state.players[playerIdx];
+
+  // --- Resolve the mortgage flips (only entries that change the flag). The
+  //     build's final levels gate whether a property can be mortgaged. ---
+  const finalLevel = (pos: number): number =>
+    intent.build[pos] ?? developmentLevel(state, pos);
+  const finalMortgaged: Record<number, boolean> = {};
+  for (const [posStr, flag] of Object.entries(state.mortgaged)) {
+    finalMortgaged[Number(posStr)] = flag;
+  }
+  const mortgageEvents: GameEvent[] = [];
+  let mortgageNet = 0;
+  for (const [posStr, want] of Object.entries(intent.mortgage)) {
+    const pos = Number(posStr);
+    if (want === (state.mortgaged[pos] === true)) continue;
+    if (state.ownership[pos] !== intent.playerId) {
+      return { ok: false, reason: "you don't own that property" };
+    }
+    if (want) {
+      // Mortgaging raises cash; the lot must be building-free once the build
+      // side runs (so "sell its houses then mortgage it" works in one commit).
+      if (finalLevel(pos) !== 0) {
+        return { ok: false, reason: "sell buildings before mortgaging" };
+      }
+      const value = mortgageValueAt(pos);
+      if (value === null) return { ok: false, reason: "not an ownable space" };
+      finalMortgaged[pos] = true;
+      mortgageNet += value;
+      mortgageEvents.push({ kind: "mortgage", position: pos, received: value });
+    } else {
+      // Un-mortgaging spends cash — not allowed while settling a debt.
+      if (inRaiseCash) {
+        return { ok: false, reason: "can only raise cash now" };
+      }
+      const cost = unmortgageCostAt(pos);
+      if (cost === null) return { ok: false, reason: "not an ownable space" };
+      delete finalMortgaged[pos];
+      mortgageNet -= cost;
+      mortgageEvents.push({ kind: "unmortgage", position: pos, cost });
+    }
+  }
+
+  // --- Plan the build against the POST-unmortgage mortgage state, so a set
+  //     being unmortgaged in this same commit is buildable. ---
+  const plan = planDevelopment(
+    { ...state, mortgaged: finalMortgaged },
+    intent.playerId,
+    intent.build,
+  );
+  if (!plan.ok) return { ok: false, reason: plan.reason };
+  if (inRaiseCash && plan.steps.some((s) => s.kind === "build")) {
+    return { ok: false, reason: "can only sell to raise cash" };
+  }
+  if (plan.steps.length === 0 && mortgageEvents.length === 0) {
+    return { ok: false, reason: "nothing to change" };
+  }
+
+  // Cash check: with raise-first ordering the low-water mark is the final
+  // balance, so a non-negative end state is sufficient (forced settlers are
+  // already negative and only raising, so they skip this).
+  const totalNet = plan.netCash + mortgageNet;
+  if (!inRaiseCash && player.cash + totalNet < 0) {
+    return { ok: false, reason: "insufficient cash" };
+  }
+
+  // --- Apply. Houses from the build plan, mortgage flags from finalMortgaged,
+  //     cash by the combined net. ---
+  const houses = { ...state.houses };
+  const sellEvents: GameEvent[] = [];
+  const buildEvents: GameEvent[] = [];
+  for (const step of plan.steps) {
+    if (step.kind === "build") {
+      houses[step.position] = step.toLevel;
+      buildEvents.push({
+        kind: "build",
+        position: step.position,
+        toLevel: step.toLevel,
+        cost: step.cost,
+      });
+    } else {
+      // `sell` (one tier) and `liquidate` (whole hotel -> bare lot) both log as
+      // a sell-building event at the resulting level; a bare lot clears the key.
+      const toLevel = step.kind === "liquidate" ? 0 : step.toLevel;
+      if (toLevel === 0) delete houses[step.position];
+      else houses[step.position] = toLevel;
+      sellEvents.push({
+        kind: "sell-building",
+        position: step.position,
+        toLevel,
+        refund: step.refund,
+      });
+    }
+  }
+  // Order the log in cash-flow order: raises (sells, mortgages) then spends
+  // (un-mortgages, builds).
+  const mortgageRaises = mortgageEvents.filter((e) => e.kind === "mortgage");
+  const mortgageSpends = mortgageEvents.filter((e) => e.kind === "unmortgage");
+  const events = [
+    ...sellEvents,
+    ...mortgageRaises,
+    ...mortgageSpends,
+    ...buildEvents,
+  ];
+
+  const players = state.players.map((p, i) =>
+    i === playerIdx ? { ...p, cash: p.cash + totalNet } : p,
+  );
+  let turns = state.turns;
+  for (const ev of events) turns = appendEventToActiveTurn(turns, ev);
+  const after: GameState = {
+    ...state,
+    houses,
+    mortgaged: finalMortgaged,
+    players,
+    turns,
+  };
+
+  if (inRaiseCash) {
+    const resume = state.turn.raiseCash ?? "after-landing";
+    return { ok: true, state: settleOrRaise(after, resume), newEvents: events };
+  }
+  return { ok: true, state: after, newEvents: events };
 }
 
 function applyMortgage(
