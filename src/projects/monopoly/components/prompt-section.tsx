@@ -16,15 +16,12 @@ interface Props {
 
 /** Contextual single-action prompt that lives between the board and the
  *  event log. Visible only to the local player and only when something
- *  needs their input. Three rendering paths so far:
+ *  needs their input. Rendering paths so far:
  *
- *  - Buy decision: phase = `buy-decision` and it's the local player's turn.
- *    Shows the property tag, price, and cash before → after with explicit
- *    Buy / Pass buttons.
- *  - Pre-roll pause: turn is paused at the local player's pre-roll, e.g.
- *    because their armed `beforeRoll` flag just fired. Shows a "Roll" CTA
- *    that fires `resume`.
- *  - Post-roll pause: same but at post-roll. Shows an "End turn" CTA.
+ *  - Trade building / pending: shown to everyone (the proposal is synced).
+ *  - Must-raise-cash: the current debtor mortgages back to ≥ 0.
+ *  - Managing: the manager's open intermission (a thin placeholder for now).
+ *  - Buy decision: the active player buys or passes a landed-on property.
  *
  *  When none of the above is true, the section renders nothing and the log
  *  flows directly under the board. Spectators never see this section —
@@ -32,10 +29,9 @@ interface Props {
 export function PromptSection({ state }: Props) {
   const myPlayerId = useMonopolyStore((s) => s.myPlayerId);
   const submit = useMonopolyStore((s) => s.submit);
-  const mortgageStaged = useMonopolyStore((s) => s.mortgageStaged);
-  const openMortgagePanel = useMonopolyStore((s) => s.openMortgagePanel);
+  const cancelManage = useMonopolyStore((s) => s.cancelManage);
 
-  const { phase, paused, pendingBuy } = state.turn;
+  const { phase, pendingBuy } = state.turn;
 
   // Trade building / pending is shown to EVERYONE — including a seatless
   // spectator — because the proposal lives in synced state and the footer
@@ -55,14 +51,21 @@ export function PromptSection({ state }: Props) {
     return <MortgagePanel state={state} playerId={myPlayerId} />;
   }
 
+  // Manage intermission for the queued manager (may be off-turn). Thin
+  // placeholder bar until the real board two-zone tap + summary panel lands;
+  // Done abandons the intermission, Commit is a no-op stub for now.
+  if (phase === "managing" && state.turn.managerId === myPlayerId) {
+    return (
+      <ManagePlaceholder
+        onDone={() => {
+          cancelManage();
+        }}
+      />
+    );
+  }
+
   // Everything below is the active player's own decision.
   if (state.turn.playerId !== myPlayerId) return null;
-
-  // Voluntary mortgage mode: the panel stays open until the player commits
-  // or cancels, even between roll/end-of-turn moments.
-  if (mortgageStaged !== null) {
-    return <MortgagePanel state={state} playerId={myPlayerId} />;
-  }
 
   if (phase === "buy-decision" && pendingBuy !== undefined) {
     return (
@@ -80,32 +83,6 @@ export function PromptSection({ state }: Props) {
     );
   }
 
-  if (paused && phase === "pre-roll") {
-    return (
-      <PausePrompt
-        label="Paused before your roll"
-        action="Roll"
-        onResume={() => {
-          submit({ kind: "resume", playerId: myPlayerId });
-        }}
-        onMortgage={() => { openMortgagePanel(); }}
-      />
-    );
-  }
-
-  if (paused && phase === "post-roll") {
-    return (
-      <PausePrompt
-        label="Paused before your end of turn"
-        action="End turn"
-        onResume={() => {
-          submit({ kind: "resume", playerId: myPlayerId });
-        }}
-        onMortgage={() => { openMortgagePanel(); }}
-      />
-    );
-  }
-
   return null;
 }
 
@@ -117,17 +94,11 @@ const SECTION_STYLE: CSSProperties = {
   boxShadow: "inset 0 1px 0 var(--mono-frame)",
 };
 
-function PausePrompt({
-  label,
-  action,
-  onResume,
-  onMortgage,
-}: {
-  label: string;
-  action: string;
-  onResume: () => void;
-  onMortgage: () => void;
-}) {
+/** Thin placeholder for the manage intermission. The real panel (board
+ *  two-zone tap to build / mortgage, plus a running summary) is a later step;
+ *  for now this is a labelled bar with Done (abandon) and a disabled Commit
+ *  stub so the phase has a working exit and doesn't crash. */
+function ManagePlaceholder({ onDone }: { onDone: () => void }) {
   return (
     <div className="relative z-10 flex shrink-0" style={SECTION_STYLE}>
       <div
@@ -138,15 +109,18 @@ function PausePrompt({
           className="inline-flex min-w-0 items-center gap-2"
           style={{ color: "var(--mono-orange)" }}
         >
-          <PauseGlyph />
-          <span className="truncate">{label}</span>
+          <span className="truncate">Manage your properties</span>
         </span>
       </div>
-      <PromptButton label="Mortgage" onClick={onMortgage} />
-      <PromptButton label={action} onClick={onResume} variant="primary" />
+      <PromptButton label="Done" onClick={onDone} />
+      <PromptButton label="Commit" onClick={NOOP} disabled variant="primary" />
     </div>
   );
 }
+
+const NOOP = (): void => {
+  // Commit is a deliberate no-op until the real manage panel lands.
+};
 
 function BuyPrompt({
   state,
@@ -267,18 +241,4 @@ function SpaceTag({ position }: { position: number }): ReactNode {
     return <span className="truncate font-semibold">{space.name}</span>;
   }
   return null;
-}
-
-function PauseGlyph(): ReactNode {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      className="h-3.5 w-3.5"
-      aria-hidden="true"
-      style={{ color: "currentColor" }}
-    >
-      <rect x="4" y="3" width="3" height="10" rx="0.5" fill="currentColor" />
-      <rect x="9" y="3" width="3" height="10" rx="0.5" fill="currentColor" />
-    </svg>
-  );
 }

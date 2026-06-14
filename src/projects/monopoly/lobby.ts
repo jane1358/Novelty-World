@@ -2,7 +2,6 @@ import type { PlayerProfile } from "@/shared/lib/profile";
 import { PLAYER_COLORS, PLAYER_ICONS } from "./data";
 import { createRng } from "./engine";
 import type {
-  ArmedPauses,
   GameState,
   Player,
   PlayerColor,
@@ -31,28 +30,16 @@ export const DEFAULT_PREFERENCES: PlayerPreferences = {
   autoBuyCashFraction: 1,
 };
 
-export const NO_ARMED_PAUSES: ArmedPauses = {
-  beforeRoll: false,
-  beforeEnd: false,
-};
-
 /** Bot display names, handed out in order. Falls back to `Bot N` once the
  *  pool is exhausted (only reachable past 7 bots, which the 8-seat cap nearly
  *  rules out). */
 const BOT_NAMES = ["Alex", "Sam", "Jordan", "Riley", "Casey", "Morgan", "Drew"];
 
-/** Dense per-player records keyed by id — every seated player has an entry,
- *  the invariant the engine relies on (see `enterPreRoll`). */
+/** Dense per-player records keyed by id — every seated player has an entry. */
 function densePreferences(
   players: readonly Player[],
 ): Record<string, PlayerPreferences> {
   return Object.fromEntries(players.map((p) => [p.id, DEFAULT_PREFERENCES]));
-}
-
-function denseArmedPauses(
-  players: readonly Player[],
-): Record<string, ArmedPauses> {
-  return Object.fromEntries(players.map((p) => [p.id, NO_ARMED_PAUSES]));
 }
 
 /** A player sitting at GO with full cash and no jail/bankruptcy state — the
@@ -137,10 +124,9 @@ export function createLobby(host: PlayerProfile, rngSeed: string): GameState {
     houses: {},
     jailFreeCards: {},
     turns: [{ turn: 1, playerId: player.id, events: [] }],
-    turn: { playerId: player.id, phase: "pre-roll", doublesStreak: 0, paused: false },
+    turn: { playerId: player.id, phase: "pre-roll", doublesStreak: 0 },
     preferences: densePreferences(players),
-    armedPauses: denseArmedPauses(players),
-    tradeQueue: [],
+    boundaryQueue: [],
     rngSeed,
     rngState: createRng(rngSeed).getState(),
   };
@@ -154,7 +140,6 @@ function seat(state: GameState, player: Player): GameState {
     ...state,
     players,
     preferences: { ...state.preferences, [player.id]: DEFAULT_PREFERENCES },
-    armedPauses: { ...state.armedPauses, [player.id]: NO_ARMED_PAUSES },
   };
 }
 
@@ -221,14 +206,12 @@ export function removePlayer(state: GameState, playerId: string): LobbyResult {
   }
   const players = state.players.filter((p) => p.id !== playerId);
   const preferences = { ...state.preferences };
-  const armedPauses = { ...state.armedPauses };
   delete preferences[playerId];
-  delete armedPauses[playerId];
   const turn =
     state.turn.playerId === playerId && players.length > 0
       ? { ...state.turn, playerId: players[0].id }
       : state.turn;
-  return { ok: true, state: { ...state, players, preferences, armedPauses, turn } };
+  return { ok: true, state: { ...state, players, preferences, turn } };
 }
 
 function updatePlayer(
@@ -316,7 +299,6 @@ export function startGame(state: GameState): LobbyResult {
     playerId: first.id,
     phase: "pre-roll",
     doublesStreak: 0,
-    paused: false,
   };
   const turns: TurnGroup[] = [{ turn: 1, playerId: first.id, events: [] }];
   return {
@@ -327,7 +309,6 @@ export function startGame(state: GameState): LobbyResult {
       turn,
       turns,
       preferences: densePreferences(state.players),
-      armedPauses: denseArmedPauses(state.players),
     },
   };
 }

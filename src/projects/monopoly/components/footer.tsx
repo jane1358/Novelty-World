@@ -10,9 +10,12 @@ interface Props {
 export function Footer({ state }: Props) {
   // A trade panel needs the vertical room the log occupies (cash steppers for
   // every player, card rows, the movement summary), so the log is hidden while
-  // a trade is being built or voted on.
-  const tradeOpen =
-    state.turn.phase === "trade-building" || state.turn.phase === "trade-pending";
+  // a trade is being built or voted on. The manage intermission reuses the same
+  // space (board two-zone tap + summary), so it hides the log too.
+  const intermissionOpen =
+    state.turn.phase === "trade-building" ||
+    state.turn.phase === "trade-pending" ||
+    state.turn.phase === "managing";
   return (
     <div
       className="relative z-10 flex shrink-0 flex-col"
@@ -24,7 +27,7 @@ export function Footer({ state }: Props) {
       }}
     >
       <PromptSection state={state} />
-      {!tradeOpen && <EventLog state={state} />}
+      {!intermissionOpen && <EventLog state={state} />}
       <ActionBar state={state} />
     </div>
   );

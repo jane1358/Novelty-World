@@ -19,11 +19,10 @@ This is Monopoly for players who know the game cold. They don't need explanation
 
 **Auto-play is a spectrum, set by the player:**
 - Default: pause only at real decision points.
-- Opt-in pauses: a player can request a pause **before their roll** (to mortgage) or **after their roll** (to buy or send to auction).
 - Threshold policies (later): "auto-buy until cash < $X", "stay in jail while late-game", etc. The engine should not preclude these; per-player preferences live in state.
-- **Trades happen at a turn boundary, not mid-turn.** Any player can arm "I want to trade" (the action-bar Trade checkbox) at any time; the game pauses at the next unpaused **pre-roll** — the single point that is both "right after a turn ends" and "right before the next begins" — and opens that player's trade builder. Several armed players form a FIFO queue, each resolved in turn before the roll. See "Trades" below. (This supersedes an earlier "interrupt the active turn mid-move" idea — the boundary model is simpler and deterministic.)
+- **Trades and property management happen at a turn boundary, not mid-turn.** A player arms "I want to trade" or "I want to manage" (the action-bar Trade / Manage toggles) at any time; the game pauses at the next **pre-roll** — the single point that is both "right after a turn ends" and "right before the next begins" — and opens that player's trade builder or manage intermission. Armed requests form one FIFO `boundaryQueue` (`{ playerId, kind: "trade" | "manage" }`), each resolved in turn before the roll. This is the official "act between turns" window for trading, building/selling, and mortgaging alike. See "Trades" and "Managing properties" below. (Supersedes an earlier mid-move-interrupt idea — the boundary model is simpler and deterministic. The earlier per-turn "armed pause" checkboxes are gone — arming a Trade/Manage queue slot now does that job.)
 
-**UI consequence:** no "press to roll" button by default. No "you landed on Boardwalk, pay $50 rent — click to continue." The screen updates, the event log scrolls, the turn advances. Buttons exist only for actual decisions (and for explicitly requesting a pause).
+**UI consequence:** no "press to roll" button by default. No "you landed on Boardwalk, pay $50 rent — click to continue." The screen updates, the event log scrolls, the turn advances. Buttons exist only for actual decisions (and for arming a boundary action).
 
 ## Engine model: hybrid, state-authoritative
 
@@ -35,7 +34,7 @@ State is the single source of truth (one Supabase row per game). Events are fold
 // External decisions only — humans, bots, future RL agent.
 apply(state, intent, rng): { ok: true, state, newEvents } | { ok: false, reason }
 
-// Mechanical transitions — runs until the next decision point or opt-in pause.
+// Mechanical transitions — runs until the next decision point.
 autoStep(state, rng): { state, newEvents }
 ```
 
@@ -46,11 +45,10 @@ The authoritative route applies **one unit per call**: an `apply` for an externa
 **Intents (external API, small surface):**
 - `buy`, `decline-buy` (declining sends to auction)
 - `bid`, `pass-bid` (during auction)
-- `build`, `sell-building`
-- `mortgage`, `unmortgage`
-- `request-trade` (toggle the trade queue), `update-trade-draft` (proposer edits the live draft), `cancel-trade`, `propose-trade`, `accept-trade`, `decline-trade` (`counter-trade` is a documented TODO, not wired)
+- `manage` (one atomic build/sell + mortgage/un-mortgage commit; see "Managing properties")
+- `mortgage` (forced raise-cash only — the bot / `must-raise-cash` path; voluntary mortgaging goes through `manage`)
+- `toggle-queue` (arm/disarm this player's `boundaryQueue` slot for `"trade"` or `"manage"`), `update-trade-draft` (proposer edits the live draft), `cancel-trade`, `propose-trade`, `accept-trade`, `decline-trade`, `cancel-manage` (manager abandons their intermission) (`counter-trade` is a documented TODO, not wired)
 - `pay-to-leave-jail`, `use-jail-card`
-- `set-armed-pause` (anyone flags their own pre-roll / post-roll pause), `resume`
 - `end-turn`
 
 **Mechanics (internal to `autoStep`, never an intent):**
@@ -79,12 +77,13 @@ interface TurnState {
     | "jail-decision"        // active player in jail, deciding pay/card/roll
     | "trade-building"       // a queued player is assembling a proposal
     | "trade-pending"        // a proposal is awaiting approval votes
+    | "managing"             // a queued player's build/sell/mortgage intermission
     | "game-over";
   doublesStreak: number;     // 0-3
-  paused: boolean;           // active player has requested a pause point
   pendingBuy?: number;       // position of property awaiting buy decision
   raiseCash?: "after-landing" | "pre-roll";  // where to resume after must-raise-cash
   auction?: AuctionState;
+  managerId?: string;        // present during "managing" — the queued manager (may be off-turn)
   tradeDraft?: TradeDraft;   // present during trade-building
   pendingTrade?: PendingTrade;  // present during trade-pending
 }
@@ -93,13 +92,13 @@ interface GameState {
   ...existing fields,
   status: "lobby" | "active" | "finished";  // lifecycle (see "Lobby")
   turn: TurnState;
-  tradeQueue: readonly string[];  // FIFO of players who armed "I want to trade"
+  boundaryQueue: readonly { playerId: string; kind: "trade" | "manage" }[];  // FIFO of armed between-turns actions
   preferences: Readonly<Record<string, PlayerPreferences>>;
   rngSeed: string;           // for deterministic replay + RL training
 }
 ```
 
-`autoStep` only progresses when `turn.phase` allows it and `turn.paused === false`. It exits the moment it lands on a real decision phase. At an unpaused `pre-roll` it first checks `tradeQueue` and opens a `trade-building` phase instead of rolling if anyone is queued.
+`autoStep` only progresses when `turn.phase === "pre-roll"`. It exits the moment it lands on a real decision phase. At a `pre-roll` it first drains `boundaryQueue` — opening a `trade-building` or `managing` phase for the head requester instead of rolling if anyone is queued.
 
 ### Debt — one path, may go negative (`must-raise-cash`)
 
@@ -119,6 +118,16 @@ Permissive by design: a **proposer (who need not be a party)** reassigns any **o
 - `propose-trade` validates (moves something, ≥2 named parties, cash balances, and every resulting debtor could recover) and flips to `trade-pending` with an `approvals` map over the **named** parties (the proposer auto-approves iff named). **All approve → execute; any decline cancels.**
 - **Mortgaged properties transfer still-mortgaged**, and the receiver owes the bank **10% interest** on each (official rule), charged through the `must-raise-cash` path above.
 - **Counters are not built** — decline and re-propose. The `TradeTerms` model + `update-trade-draft` are shaped so a counter can be added later (see the `counter-trade` TODO on `Intent`).
+
+### Managing properties (build / sell / mortgage)
+
+A queued `manage` request opens a **`managing`** intermission at the pre-roll boundary for `turn.managerId` (who may be off-turn, exactly like a trade proposer). The player stages changes **locally** (client-side, like mortgage staging — *not* synced like a trade draft) and commits them as **one atomic `manage` intent**, or abandons via `cancel-manage`; either returns to the active player's pre-roll, re-checking the queue.
+
+- **One commit carries both** a `build` target (`position -> 0-5`, where 5 is a hotel) and `mortgage` flags (`position -> bool`). The engine applies it **raise-first / spend-second, all-or-nothing**, so a single commit can sell a property's houses *then* mortgage the bare lot, or mortgage one property to fund building another. It can never leave the board uneven or half-applied even if the bank shifted underneath.
+- **The build planner is pure, in `development.ts`** (`planDevelopment`). It enforces the real rules: even-build across a color set, the full-unmortgaged-monopoly requirement, finite bank supply (**32 houses / 12 hotels**, derived from the board — no stored counter), the hotel-breaks-down-*through*-four-houses rule, and the official house-shortage **liquidation escape** (a hotel that can't be broken down evenly is sold straight to a bare lot). It returns an ordered, supply-safe step list + net cash, choosing the **cheapest** legal schedule (an exhaustive memoized search over color-group order; liquidation only when genuinely forced). Per-tier `build` / `sell-building` and `mortgage` / `unmortgage` events are emitted so the log replays the transaction.
+- **`must-raise-cash` reuses the same `manage` reducer** (forced branch): the current debtor (`firstNegativePlayer`, possibly off-turn) raises by selling buildings and/or mortgaging — no builds, no un-mortgages — and `settleOrRaise` resumes play once they're back to ≥ 0. `maxRaisableCash` counts building sale value so a debtor with only built property settles instead of busting.
+- **Board UI (in progress):** the manage panel uses the board rows as its surface — tapping a property's **color strip** cycles its build level, tapping the **row body** toggles its mortgage — with a summary bar showing the net cash and any shortage-forced liquidation. The log is hidden during `managing`, as for trades.
+- **TODO (building auction):** the official rule auctions scarce houses/hotels to the highest bidder when demand exceeds supply; we approximate with the arm-order FIFO for now. Wire the real auction when the property-auction sub-game lands (they share machinery).
 
 ### RNG: always injected, never `Math.random()`
 

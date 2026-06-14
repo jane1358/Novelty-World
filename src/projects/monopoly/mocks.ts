@@ -1,10 +1,6 @@
 import type { PlayerProfile } from "@/shared/lib/profile";
 import { createRng } from "./engine";
-import {
-  DEFAULT_PREFERENCES,
-  NO_ARMED_PAUSES,
-  STARTING_CASH,
-} from "./lobby";
+import { DEFAULT_PREFERENCES, STARTING_CASH } from "./lobby";
 import type { GameState, Player, PlayerCount, TurnGroup } from "./types";
 
 // Slot 0 (Kyle) is the human seat; the rest are bots. Mirrors freshGame, where
@@ -66,15 +62,11 @@ export function freshGame(
       playerId: firstPlayer.id,
       phase: "pre-roll",
       doublesStreak: 0,
-      paused: false,
     },
     preferences: Object.fromEntries(
       players.map((p) => [p.id, DEFAULT_PREFERENCES]),
     ),
-    armedPauses: Object.fromEntries(
-      players.map((p) => [p.id, NO_ARMED_PAUSES]),
-    ),
-    tradeQueue: [],
+    boundaryQueue: [],
     rngSeed,
     rngState: createRng(rngSeed).getState(),
   };
@@ -158,15 +150,11 @@ export const MOCK_STATE: GameState = {
     playerId: "p2",
     phase: "pre-roll",
     doublesStreak: 0,
-    paused: false,
   },
   preferences: Object.fromEntries(
     PLAYERS.map((p) => [p.id, DEFAULT_PREFERENCES]),
   ),
-  armedPauses: Object.fromEntries(
-    PLAYERS.map((p) => [p.id, NO_ARMED_PAUSES]),
-  ),
-  tradeQueue: [],
+  boundaryQueue: [],
   rngSeed: "mock-seed",
   rngState: createRng("mock-seed").getState(),
 };

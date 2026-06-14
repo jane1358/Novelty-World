@@ -42,7 +42,6 @@ describe("createLobby", () => {
       position: 0,
     });
     expect(state.preferences[host.id]).toBeDefined();
-    expect(state.armedPauses[host.id]).toBeDefined();
   });
 });
 
@@ -114,7 +113,6 @@ describe("removePlayer", () => {
     const state = ok(removePlayer(withBot, "bot-1"));
     expect(state.players).toHaveLength(1);
     expect(state.preferences["bot-1"]).toBeUndefined();
-    expect(state.armedPauses["bot-1"]).toBeUndefined();
   });
 
   it("rejects an unknown player", () => {

@@ -218,6 +218,7 @@ export type TurnPhase =
   | "jail-decision"
   | "trade-building"
   | "trade-pending"
+  | "managing"
   | "game-over";
 
 /** Where play resumes once every player is back to non-negative cash and the
@@ -273,10 +274,11 @@ export interface TurnState {
   /** Consecutive doubles rolled this turn (0-2). A third doubles emits a
    *  `go-to-jail` event with reason "three-doubles" and ends the turn. */
   doublesStreak: number;
-  /** Active player has requested a pause at this phase. `autoStep` will
-   *  not advance while true; the player keeps issuing intents until they
-   *  emit `resume`. */
-  paused: boolean;
+  /** Present iff `phase === "managing"`: the queued player whose manage
+   *  intermission is open. They may be off-turn (the boundary queue resolves
+   *  before the active player rolls), so this is the manager's id, not
+   *  necessarily `playerId`. */
+  managerId?: string;
   /** Position of an unowned ownable square the active player just landed
    *  on, awaiting a buy / decline-buy decision. */
   pendingBuy?: number;
@@ -305,18 +307,6 @@ export interface PlayerPreferences {
   autoBuyCashFraction: number;
 }
 
-/** One-shot pause flags a player can arm to interrupt the auto-pacer at
- *  their next pre-roll (to trade / build / mortgage before rolling) or
- *  post-roll (to do the same before ending the turn). Each flag is
- *  consumed as soon as the engine reaches the matching phase for that
- *  player — auto-cleared at the moment of pause. Players can also clear
- *  it manually before it fires by unchecking the action-bar checkbox.
- *  Not "preferences" because they're transient: arm → trigger → clear. */
-export interface ArmedPauses {
-  beforeRoll: boolean;
-  beforeEnd: boolean;
-}
-
 /** External decisions submitted to the engine. Mechanical actions (roll,
  *  move, pay rent, draw card) are NOT intents — they live inside
  *  `autoStep`. See `monopoly/CLAUDE.md` "Intents vs mechanics — the line". */
@@ -333,22 +323,27 @@ export type Intent =
    *  uneven, half-mortgaged, or partially applied even if the bank shifted under
    *  it. This ordering is what lets one commit sell a property's houses and then
    *  mortgage the bare lot, or mortgage one property to fund building another.
-   *  Building/un-mortgaging require the active player's own paused turn (or a
-   *  manage intermission); selling/mortgaging are also allowed for the current
-   *  debtor during `must-raise-cash`. Emits per-tier `build` / `sell-building`
-   *  and `mortgage` / `unmortgage` events. */
+   *  The voluntary path requires the player's own open manage intermission
+   *  (`phase === "managing"` with them as `managerId`); selling/mortgaging are
+   *  also allowed for the current debtor during `must-raise-cash`. Emits
+   *  per-tier `build` / `sell-building` and `mortgage` / `unmortgage` events. */
   | {
       kind: "manage";
       playerId: string;
       build: Readonly<Record<number, number>>;
       mortgage: Readonly<Record<number, boolean>>;
     }
+  /** Mortgage a single property to raise cash. Only valid in `must-raise-cash`
+   *  (the forced debtor / bot path); voluntary mortgaging goes through `manage`. */
   | { kind: "mortgage"; playerId: string; position: number }
-  | { kind: "unmortgage"; playerId: string; position: number }
-  /** Toggle membership in the FIFO trade queue — "I want to trade". Anyone
-   *  may arm it for themselves at any time; the next unpaused pre-roll opens
-   *  the head player's trade-building phase. */
-  | { kind: "request-trade"; playerId: string }
+  /** Toggle membership in the FIFO boundary queue for a kind — "I want to
+   *  trade" or "I want to manage". Anyone may arm it for themselves at any
+   *  time; the next unpaused pre-roll opens the head entry's intermission
+   *  (`trade-building` or `managing`). */
+  | { kind: "toggle-queue"; playerId: string; queue: "trade" | "manage" }
+  /** The manager abandons their open manage intermission with nothing
+   *  committed, returning to pre-roll (the next autoStep re-checks the queue). */
+  | { kind: "cancel-manage"; playerId: string }
   /** Proposer replaces the live draft wholesale (the client computes the next
    *  terms and sends a full snapshot — keeps the intent surface small and the
    *  draft trivially broadcastable). Only legal in `trade-building` for the
@@ -365,19 +360,6 @@ export type Intent =
   // TradeTerms model + update-trade-draft are shaped to support it later.
   | { kind: "pay-to-leave-jail"; playerId: string }
   | { kind: "use-jail-card"; playerId: string }
-  | { kind: "pause"; playerId: string; when: "pre-roll" | "post-roll" }
-  | {
-      /** Arm or disarm a one-shot pause for this player at the named
-       *  phase. Anyone can submit for themselves — it doesn't need to
-       *  be the active turn. The flag is consumed (and the box clears
-       *  in the UI) the next time the engine reaches that phase for
-       *  this player. See `ArmedPauses`. */
-      kind: "set-armed-pause";
-      playerId: string;
-      when: "before-roll" | "before-end";
-      armed: boolean;
-    }
-  | { kind: "resume"; playerId: string }
   | { kind: "end-turn"; playerId: string };
 
 /** Result of applying an external intent to the state. On success the
@@ -423,14 +405,12 @@ export interface GameState {
   turn: TurnState;
   /** Per-player automation policy, keyed by player id. */
   preferences: Readonly<Record<string, PlayerPreferences>>;
-  /** Per-player armed one-shot pause flags, keyed by player id. Dense:
-   *  every player has an entry, even if both flags are false. */
-  armedPauses: Readonly<Record<string, ArmedPauses>>;
-  /** Players who have armed "I want to trade", in request order (FIFO). The
-   *  next unpaused pre-roll consumes the head and opens their trade-building
-   *  phase ("just before the next roll"). Further armed players wait their turn
-   *  after each trade resolves. */
-  tradeQueue: readonly string[];
+  /** Boundary intermissions players have armed, in request order (FIFO). Each
+   *  entry is a player wanting to trade or manage between turns. The next
+   *  unpaused pre-roll consumes the head and opens its intermission
+   *  (`trade-building` or `managing`) "just before the next roll". Further armed
+   *  entries wait their turn after each resolves. */
+  boundaryQueue: readonly { playerId: string; kind: "trade" | "manage" }[];
   /** Immutable identifier for the game's RNG stream. Set once when the
    *  game starts; used to derive the initial `rngState` and useful as a
    *  human-readable handle when debugging. */

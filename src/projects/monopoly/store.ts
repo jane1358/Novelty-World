@@ -63,12 +63,6 @@ interface MonopolyActions {
   /** Lobby: flip the connected lobby into play (≥2 players, ≥1 human). */
   startGame: () => void;
 
-  /** Open the mortgage staging panel (voluntary entry from a paused turn).
-   *  No-op if the panel is already open. Forced entries (must-raise-cash
-   *  phase) show the panel implicitly — toggleMortgageStage initializes
-   *  staged from null on the first click, so no explicit open is required. */
-  openMortgagePanel: () => void;
-
   /** Toggle the staged mortgage flag for a position. Cycles between "no
    *  change" and "stage flip" — clicking once stages the opposite of the
    *  current mortgaged state, clicking again reverts to no change. Rejects
@@ -80,19 +74,23 @@ interface MonopolyActions {
    *  of paying a debt. */
   closeMortgagePanel: () => void;
 
-  /** Commit staged mortgage / unmortgage changes by submitting one intent
-   *  per staged flip. Mortgages run first so any cash needed for a same-
-   *  batch unmortgage is in hand by the time the unmortgage submits.
-   *  Engine auto-settles a must-raise-cash debt mid-batch if a mortgage
-   *  brings cash up to the threshold; remaining staged ops still try to
-   *  apply against the post-settle state. Clears the staged map at the end
-   *  regardless of per-intent outcomes — UI re-derives from authoritative
-   *  state on the next render. */
+  /** Commit staged mortgages by submitting one `mortgage` intent per staged
+   *  flip. Only reachable in the `must-raise-cash` phase (the forced settler /
+   *  debtor path) — voluntary mortgaging goes through `manage`. The engine
+   *  auto-settles the debt mid-batch once a mortgage brings cash back to ≥ 0;
+   *  remaining staged ops still try to apply against the post-settle state.
+   *  Clears the staged map at the end regardless of per-intent outcomes — UI
+   *  re-derives from authoritative state on the next render. */
   commitMortgageStaging: () => void;
 
-  /** Toggle "I want to trade" for the local player — arms/disarms a spot in
-   *  the FIFO trade queue. Fires at the next unpaused pre-roll. */
-  requestTrade: () => void;
+  /** Toggle a boundary intermission for the local player — arms/disarms a spot
+   *  in the FIFO boundary queue for the given kind ("trade" or "manage"). Fires
+   *  at the next unpaused pre-roll. */
+  toggleQueue: (queue: "trade" | "manage") => void;
+
+  /** Abandon the local player's open manage intermission, returning to the
+   *  pre-roll boundary. */
+  cancelManage: () => void;
 
   /** Trade-building (proposer only): cycle a property's staged owner through
    *  the players and back to no-change, submitting the updated draft. The
@@ -332,11 +330,6 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
       turnMsStorage.set(TURN_MS_KEY, clamped);
     },
 
-    openMortgagePanel: () => {
-      if (get().mortgageStaged !== null) return;
-      set({ mortgageStaged: {} });
-    },
-
     toggleMortgageStage: (position) => {
       const { state, myPlayerId, mortgageStaged } = get();
       if (!myPlayerId) return;
@@ -365,26 +358,28 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
         set({ mortgageStaged: null });
         return;
       }
-      // Mortgages first, then un-mortgages, so any cash raised is in hand
-      // before an un-mortgage in the same batch tries to spend it. Batched
-      // into one runIntents call so online it lands as a single atomic write.
+      // Only mortgages are submitted — this path runs solely in must-raise-cash,
+      // where un-mortgaging (a net spend) is illegal. Batched into one
+      // runIntents call so online it lands as a single atomic write.
       const intents: Intent[] = [];
       for (const [posStr, target] of Object.entries(staged)) {
         if (target !== true) continue;
         intents.push({ kind: "mortgage", playerId: myPlayerId, position: Number(posStr) });
       }
-      for (const [posStr, target] of Object.entries(staged)) {
-        if (target !== false) continue;
-        intents.push({ kind: "unmortgage", playerId: myPlayerId, position: Number(posStr) });
-      }
       if (intents.length > 0) runIntents(intents);
       set({ mortgageStaged: null });
     },
 
-    requestTrade: () => {
+    toggleQueue: (queue) => {
       const { myPlayerId } = get();
       if (!myPlayerId) return;
-      runIntents([{ kind: "request-trade", playerId: myPlayerId }]);
+      runIntents([{ kind: "toggle-queue", playerId: myPlayerId, queue }]);
+    },
+
+    cancelManage: () => {
+      const { myPlayerId } = get();
+      if (!myPlayerId) return;
+      runIntents([{ kind: "cancel-manage", playerId: myPlayerId }]);
     },
 
     cycleTradeProperty: (position) => {

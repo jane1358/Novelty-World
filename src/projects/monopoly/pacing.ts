@@ -54,7 +54,6 @@ export type DriveOp = { kind: "step" } | { kind: "intent"; intent: Intent };
  *  this returns null for them. Mirrors the old in-store `pacerOp`. */
 function turnOp(state: GameState, myPlayerId: string | null): DriveOp | null {
   if (state.status !== "active") return null;
-  if (state.turn.paused) return null;
   const { phase, playerId } = state.turn;
 
   if (phase === "pre-roll") {

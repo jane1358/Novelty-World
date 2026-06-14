@@ -105,11 +105,14 @@ describe("autoStep", () => {
     expect(lastTurn.events).toContainEqual(event);
   });
 
-  it("does not advance while turn.paused is true", () => {
-    const state = freshGame("test-paused");
-    const paused = { ...state, turn: { ...state.turn, paused: true } };
-    const { state: next, newEvents } = autoStep(paused);
-    expect(next).toBe(paused);
+  it("does not advance during an open intermission phase", () => {
+    const state = freshGame("test-managing");
+    const managing = {
+      ...state,
+      turn: { ...state.turn, phase: "managing" as const, managerId: "p2" },
+    };
+    const { state: next, newEvents } = autoStep(managing);
+    expect(next).toBe(managing);
     expect(newEvents).toHaveLength(0);
   });
 
@@ -228,8 +231,13 @@ describe("apply", () => {
 describe("apply manage", () => {
   const ORANGES = { 16: "p1", 18: "p1", 19: "p1" };
 
-  function pausedPreRoll(state: GameState): GameState {
-    return { ...state, turn: { ...state.turn, paused: true } };
+  // Put the manager (default p1) into their open manage intermission. The
+  // manager may be off-turn; here p1 is also the active player by default.
+  function managing(state: GameState, managerId = "p1"): GameState {
+    return {
+      ...state,
+      turn: { ...state.turn, phase: "managing", managerId },
+    };
   }
 
   function mustRaiseCash(
@@ -242,7 +250,6 @@ describe("apply manage", () => {
       turn: {
         ...state.turn,
         phase: "must-raise-cash",
-        paused: false,
         raiseCash: "after-landing",
       },
     };
@@ -252,8 +259,8 @@ describe("apply manage", () => {
     state.players.find((p) => p.id === id)?.cash;
 
   describe("building", () => {
-    it("builds an even row on the active player's paused turn", () => {
-      let state = pausedPreRoll(withOwnership(freshGame("mg-build"), ORANGES));
+    it("builds an even row in the manager's intermission", () => {
+      let state = managing(withOwnership(freshGame("mg-build"), ORANGES));
       state = setCash(state, "p1", 1500);
       const result = apply(state, {
         kind: "manage",
@@ -266,10 +273,13 @@ describe("apply manage", () => {
       expect(result.state.houses).toMatchObject({ 16: 1, 18: 1, 19: 1 });
       expect(cashOf(result.state, "p1")).toBe(1200);
       expect(result.newEvents.filter((e) => e.kind === "build")).toHaveLength(3);
+      // A voluntary commit closes the intermission and returns to pre-roll.
+      expect(result.state.turn.phase).toBe("pre-roll");
+      expect(result.state.turn.managerId).toBeUndefined();
     });
 
-    it("rejects managing when the turn isn't paused", () => {
-      const state = withOwnership(freshGame("mg-unpaused"), ORANGES);
+    it("rejects managing outside the managing phase", () => {
+      const state = withOwnership(freshGame("mg-unmanaging"), ORANGES);
       const result = apply(state, {
         kind: "manage",
         playerId: "p1",
@@ -279,8 +289,8 @@ describe("apply manage", () => {
       expect(result.ok).toBe(false);
     });
 
-    it("rejects managing on someone else's turn", () => {
-      const state = pausedPreRoll(withOwnership(freshGame("mg-off"), ORANGES));
+    it("rejects a manage from someone who isn't the manager", () => {
+      const state = managing(withOwnership(freshGame("mg-off"), ORANGES), "p1");
       const result = apply(state, {
         kind: "manage",
         playerId: "p2",
@@ -290,8 +300,31 @@ describe("apply manage", () => {
       expect(result.ok).toBe(false);
     });
 
+    it("lets an off-turn manager build during their intermission", () => {
+      // p1 is the active turn owner; p2 holds the oranges and is the manager.
+      let state = withOwnership(freshGame("mg-offturn-build"), {
+        16: "p2",
+        18: "p2",
+        19: "p2",
+      });
+      state = managing(state, "p2");
+      state = setCash(state, "p2", 1500);
+      const result = apply(state, {
+        kind: "manage",
+        playerId: "p2",
+        build: { 16: 1, 18: 1, 19: 1 },
+        mortgage: {},
+      });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.state.houses).toMatchObject({ 16: 1, 18: 1, 19: 1 });
+      // Returns to the active player's pre-roll boundary, not p2's.
+      expect(result.state.turn.phase).toBe("pre-roll");
+      expect(result.state.turn.playerId).toBe("p1");
+    });
+
     it("rejects a build the player can't afford", () => {
-      let state = pausedPreRoll(withOwnership(freshGame("mg-poor"), ORANGES));
+      let state = managing(withOwnership(freshGame("mg-poor"), ORANGES));
       state = setCash(state, "p1", 100);
       const result = apply(state, {
         kind: "manage",
@@ -303,7 +336,7 @@ describe("apply manage", () => {
     });
 
     it("rejects a no-op manage with nothing staged", () => {
-      const state = pausedPreRoll(withOwnership(freshGame("mg-noop"), ORANGES));
+      const state = managing(withOwnership(freshGame("mg-noop"), ORANGES));
       const result = apply(state, {
         kind: "manage",
         playerId: "p1",
@@ -316,7 +349,7 @@ describe("apply manage", () => {
 
   describe("mortgaging", () => {
     it("mortgages a property for half its price", () => {
-      let state = pausedPreRoll(
+      let state = managing(
         withOwnership(freshGame("mg-mort"), { 5: "p1" }),
       ); // Reading Railroad ($200)
       state = setCash(state, "p1", 1000);
@@ -333,7 +366,7 @@ describe("apply manage", () => {
     });
 
     it("unmortgages for the mortgage value plus 10% interest", () => {
-      let state = pausedPreRoll(withOwnership(freshGame("mg-unmort"), { 5: "p1" }));
+      let state = managing(withOwnership(freshGame("mg-unmort"), { 5: "p1" }));
       state = { ...state, mortgaged: { 5: true } };
       state = setCash(state, "p1", 1000);
       const result = apply(state, {
@@ -350,7 +383,7 @@ describe("apply manage", () => {
     });
 
     it("refuses to mortgage a property that still has buildings", () => {
-      let state = pausedPreRoll(withOwnership(freshGame("mg-built"), ORANGES));
+      let state = managing(withOwnership(freshGame("mg-built"), ORANGES));
       state = { ...state, houses: { 16: 1, 18: 1, 19: 1 } };
       const result = apply(state, {
         kind: "manage",
@@ -364,7 +397,7 @@ describe("apply manage", () => {
 
   describe("combined build + mortgage in one commit", () => {
     it("sells a set's houses then mortgages the bare lots", () => {
-      let state = pausedPreRoll(withOwnership(freshGame("mg-sell-mort"), ORANGES));
+      let state = managing(withOwnership(freshGame("mg-sell-mort"), ORANGES));
       state = { ...state, houses: { 16: 2, 18: 2, 19: 2 } };
       state = setCash(state, "p1", 1500);
       const result = apply(state, {
@@ -387,7 +420,7 @@ describe("apply manage", () => {
     });
 
     it("mortgages one property to fund building another set", () => {
-      let state = pausedPreRoll(
+      let state = managing(
         withOwnership(freshGame("mg-fund"), { ...ORANGES, 5: "p1" }),
       );
       state = setCash(state, "p1", 250); // can't afford $300 of houses alone
@@ -406,7 +439,7 @@ describe("apply manage", () => {
     });
 
     it("unmortgages a set member so the set becomes buildable in the same commit", () => {
-      let state = pausedPreRoll(withOwnership(freshGame("mg-unmort-build"), ORANGES));
+      let state = managing(withOwnership(freshGame("mg-unmort-build"), ORANGES));
       state = { ...state, mortgaged: { 19: true } };
       state = setCash(state, "p1", 1500);
       const result = apply(state, {
@@ -424,7 +457,7 @@ describe("apply manage", () => {
     });
 
     it("rejects building a set that stays mortgaged", () => {
-      let state = pausedPreRoll(withOwnership(freshGame("mg-still-mort"), ORANGES));
+      let state = managing(withOwnership(freshGame("mg-still-mort"), ORANGES));
       state = { ...state, mortgaged: { 19: true } };
       state = setCash(state, "p1", 1500);
       const result = apply(state, {
@@ -694,217 +727,6 @@ describe("apply decline-buy", () => {
   });
 });
 
-describe("apply set-armed-pause", () => {
-  it("arms a pause for any player (need not be the active player)", () => {
-    const state = freshGame("test-arm-other");
-    expect(state.turn.playerId).toBe("p1");
-    const result = apply(state, {
-      kind: "set-armed-pause",
-      playerId: "p3",
-      when: "before-roll",
-      armed: true,
-    });
-    if (!result.ok) throw new Error(`expected ok, got ${result.reason}`);
-    expect(result.state.armedPauses.p3.beforeRoll).toBe(true);
-    expect(result.state.armedPauses.p3.beforeEnd).toBe(false);
-    // No side effects on other players.
-    expect(result.state.armedPauses.p1.beforeRoll).toBe(false);
-  });
-
-  it("disarms when armed=false", () => {
-    const armed: GameState = {
-      ...freshGame("test-disarm"),
-    };
-    const armedState: GameState = {
-      ...armed,
-      armedPauses: {
-        ...armed.armedPauses,
-        p1: { beforeRoll: true, beforeEnd: false },
-      },
-    };
-    const result = apply(armedState, {
-      kind: "set-armed-pause",
-      playerId: "p1",
-      when: "before-roll",
-      armed: false,
-    });
-    if (!result.ok) throw new Error(`expected ok, got ${result.reason}`);
-    expect(result.state.armedPauses.p1.beforeRoll).toBe(false);
-  });
-
-  it("is a no-op when the requested value matches the current flag", () => {
-    const state = freshGame("test-arm-noop");
-    const result = apply(state, {
-      kind: "set-armed-pause",
-      playerId: "p1",
-      when: "before-end",
-      armed: false,
-    });
-    if (!result.ok) throw new Error(`expected ok, got ${result.reason}`);
-    // Object identity preserved on no-op — keeps the host's persistence
-    // diff clean instead of churning the row.
-    expect(result.state).toBe(state);
-  });
-
-  it("rejects unknown players", () => {
-    const state = freshGame("test-arm-unknown");
-    const result = apply(state, {
-      kind: "set-armed-pause",
-      playerId: "nope",
-      when: "before-roll",
-      armed: true,
-    });
-    expect(result.ok).toBe(false);
-  });
-});
-
-describe("armed pause consumption", () => {
-  it("fires beforeRoll at end-turn entry, pauses the new turn, and clears the flag", () => {
-    const start = freshGame("test-consume-pre");
-    // Position p1 so the first roll deterministically lands on Income Tax —
-    // non-ownable → autoStep settles at post-roll so we can issue end-turn.
-    const { total } = predictRoll(start.rngState);
-    const placed = placeActivePlayerAt(start, (4 - total + 40) % 40);
-    const rolled = autoStep(placed).state;
-    expect(rolled.turn.phase).toBe("post-roll");
-
-    // p2 has armed a pre-roll pause before their next turn.
-    const armed: GameState = {
-      ...rolled,
-      armedPauses: {
-        ...rolled.armedPauses,
-        p2: { beforeRoll: true, beforeEnd: false },
-      },
-    };
-    const ended = apply(armed, { kind: "end-turn", playerId: "p1" });
-    if (!ended.ok) throw new Error(`expected ok, got ${ended.reason}`);
-    expect(ended.state.turn.playerId).toBe("p2");
-    expect(ended.state.turn.phase).toBe("pre-roll");
-    expect(ended.state.turn.paused).toBe(true);
-    expect(ended.state.armedPauses.p2.beforeRoll).toBe(false);
-  });
-
-  it("leaves the new turn unpaused when no beforeRoll is armed", () => {
-    const start = freshGame("test-no-pre");
-    const { total } = predictRoll(start.rngState);
-    const placed = placeActivePlayerAt(start, (4 - total + 40) % 40);
-    const rolled = autoStep(placed).state;
-    const ended = apply(rolled, { kind: "end-turn", playerId: "p1" });
-    if (!ended.ok) throw new Error(`expected ok, got ${ended.reason}`);
-    expect(ended.state.turn.paused).toBe(false);
-  });
-
-  it("fires beforeEnd when autoStep settles into post-roll on a non-buy landing", () => {
-    const start = freshGame("test-consume-end-autostep");
-    const { total } = predictRoll(start.rngState);
-    // Land on Income Tax: non-ownable, so autoStep goes to post-roll.
-    const placed = placeActivePlayerAt(start, (4 - total + 40) % 40);
-    const armed: GameState = {
-      ...placed,
-      armedPauses: {
-        ...placed.armedPauses,
-        p1: { beforeRoll: false, beforeEnd: true },
-      },
-    };
-    const { state: next } = autoStep(armed);
-    expect(next.turn.phase).toBe("post-roll");
-    expect(next.turn.paused).toBe(true);
-    expect(next.armedPauses.p1.beforeEnd).toBe(false);
-  });
-
-  it("does NOT fire beforeEnd at the buy-decision branch — only at post-roll", () => {
-    const start = freshGame("test-consume-end-buy-defer");
-    const { total } = predictRoll(start.rngState);
-    // Land on Mediterranean Avenue (unowned property) → buy-decision.
-    const placed = placeActivePlayerAt(start, (1 - total + 40) % 40);
-    const armed: GameState = {
-      ...placed,
-      armedPauses: {
-        ...placed.armedPauses,
-        p1: { beforeRoll: false, beforeEnd: true },
-      },
-    };
-    const { state: next } = autoStep(armed);
-    expect(next.turn.phase).toBe("buy-decision");
-    expect(next.turn.paused).toBe(false);
-    // Flag survives — it gets consumed when buy / decline-buy transitions
-    // into post-roll, not when the buy-decision phase is entered.
-    expect(next.armedPauses.p1.beforeEnd).toBe(true);
-  });
-
-  it("fires beforeEnd when applyBuy transitions through to post-roll", () => {
-    const state = freshGame("test-consume-end-buy");
-    const playerId = state.turn.playerId;
-    const ready: GameState = {
-      ...state,
-      turn: { ...state.turn, phase: "buy-decision", pendingBuy: 1 },
-      armedPauses: {
-        ...state.armedPauses,
-        [playerId]: { beforeRoll: false, beforeEnd: true },
-      },
-    };
-    const result = apply(ready, { kind: "buy", playerId });
-    if (!result.ok) throw new Error(`expected ok, got ${result.reason}`);
-    expect(result.state.turn.phase).toBe("post-roll");
-    expect(result.state.turn.paused).toBe(true);
-    expect(result.state.armedPauses[playerId].beforeEnd).toBe(false);
-  });
-
-  it("fires beforeEnd when applyDeclineBuy transitions to post-roll", () => {
-    const state = freshGame("test-consume-end-decline");
-    const playerId = state.turn.playerId;
-    const ready: GameState = {
-      ...state,
-      turn: { ...state.turn, phase: "buy-decision", pendingBuy: 1 },
-      armedPauses: {
-        ...state.armedPauses,
-        [playerId]: { beforeRoll: false, beforeEnd: true },
-      },
-    };
-    const result = apply(ready, { kind: "decline-buy", playerId });
-    if (!result.ok) throw new Error(`expected ok, got ${result.reason}`);
-    expect(result.state.turn.phase).toBe("post-roll");
-    expect(result.state.turn.paused).toBe(true);
-    expect(result.state.armedPauses[playerId].beforeEnd).toBe(false);
-  });
-});
-
-describe("apply resume", () => {
-  it("unpauses an active turn", () => {
-    const state = freshGame("test-resume");
-    const paused: GameState = {
-      ...state,
-      turn: { ...state.turn, paused: true },
-    };
-    const result = apply(paused, {
-      kind: "resume",
-      playerId: state.turn.playerId,
-    });
-    if (!result.ok) throw new Error(`expected ok, got ${result.reason}`);
-    expect(result.state.turn.paused).toBe(false);
-    expect(result.newEvents).toEqual([]);
-  });
-
-  it("rejects when the turn is not paused", () => {
-    const state = freshGame("test-resume-not-paused");
-    const result = apply(state, {
-      kind: "resume",
-      playerId: state.turn.playerId,
-    });
-    expect(result.ok).toBe(false);
-  });
-
-  it("rejects when submitted by a non-active player", () => {
-    const state = freshGame("test-resume-wrong-player");
-    const paused: GameState = {
-      ...state,
-      turn: { ...state.turn, paused: true },
-    };
-    const result = apply(paused, { kind: "resume", playerId: "p2" });
-    expect(result.ok).toBe(false);
-  });
-});
-
 // All rent tests target squares at position ≥ 12 so the active player
 // (starting at position 0) never wraps the board on the first roll —
 // avoids pass-GO bonuses muddying the cash assertions.
@@ -1130,171 +952,22 @@ describe("end-turn skips bankrupt players", () => {
   });
 });
 
-// Park the active player at post-roll (no rent triggered) and arm a paused
-// state so mortgage / unmortgage validation accepts them. Used as the
-// starting point for the voluntary mortgage tests below.
-function pausedPostRoll(seed: string): GameState {
-  const start = freshGame(seed);
-  // Land on Income Tax (non-ownable) so autoStep stops cleanly at post-roll
-  // with no rent / buy detours.
-  const { state: placed } = setupLandingOn(start, 4);
-  const rolled = autoStep(placed).state;
-  if (rolled.turn.phase !== "post-roll") {
-    throw new Error(`expected post-roll, got ${rolled.turn.phase}`);
-  }
-  return { ...rolled, turn: { ...rolled.turn, paused: true } };
-}
-
-describe("apply mortgage", () => {
-  it("credits the mortgage value to cash and flips the mortgaged flag", () => {
-    const base = pausedPostRoll("test-mortgage-basic");
-    // Mediterranean Avenue (pos 1, price $60) -> mortgage value $30.
-    const state = withOwnership(base, { 1: "p1" });
-    const before = state.players.find((p) => p.id === "p1")?.cash ?? 0;
-
-    const result = apply(state, { kind: "mortgage", playerId: "p1", position: 1 });
-    if (!result.ok) throw new Error(`expected ok, got ${result.reason}`);
-
-    expect(result.state.mortgaged[1]).toBe(true);
-    const after = result.state.players.find((p) => p.id === "p1");
-    expect(after?.cash).toBe(before + 30);
-
-    const event = result.newEvents.find((e) => e.kind === "mortgage");
-    if (!event) throw new Error("expected a mortgage event");
-    expect(event.position).toBe(1);
-    expect(event.received).toBe(30);
-  });
-
-  it("rejects mortgaging a square the player doesn't own", () => {
-    const base = pausedPostRoll("test-mortgage-not-owner");
-    const state = withOwnership(base, { 1: "p2" });
-    const result = apply(state, { kind: "mortgage", playerId: "p1", position: 1 });
+describe("apply mortgage (forced raise-cash only)", () => {
+  it("rejects a standalone mortgage outside the must-raise-cash phase", () => {
+    // Voluntary mortgaging is via `manage` now; the single-property `mortgage`
+    // intent is valid only while settling a debt. A plain pre-roll is rejected.
+    const start = withOwnership(freshGame("mort-outside"), { 1: "p1" });
+    const result = apply(start, { kind: "mortgage", playerId: "p1", position: 1 });
     expect(result.ok).toBe(false);
   });
 
-  it("rejects mortgaging a square that's already mortgaged", () => {
-    const base = pausedPostRoll("test-mortgage-already");
-    const state: GameState = {
-      ...withOwnership(base, { 1: "p1" }),
-      mortgaged: { 1: true },
-    };
-    const result = apply(state, { kind: "mortgage", playerId: "p1", position: 1 });
-    expect(result.ok).toBe(false);
-  });
-
-  it("rejects mortgaging a property with buildings on it", () => {
-    const base = pausedPostRoll("test-mortgage-houses");
-    const state: GameState = {
-      ...withOwnership(base, { 1: "p1" }),
-      houses: { 1: 1 },
-    };
-    const result = apply(state, { kind: "mortgage", playerId: "p1", position: 1 });
-    expect(result.ok).toBe(false);
-  });
-
-  it("rejects mortgaging during pre-roll without a pause armed", () => {
-    const start = freshGame("test-mortgage-no-pause");
-    const state = withOwnership(start, { 1: "p1" });
-    const result = apply(state, { kind: "mortgage", playerId: "p1", position: 1 });
-    expect(result.ok).toBe(false);
-  });
-
-  it("allows mortgaging during a paused pre-roll", () => {
-    const start = freshGame("test-mortgage-preroll-pause");
-    const state: GameState = {
-      ...withOwnership(start, { 1: "p1" }),
-      turn: { ...start.turn, paused: true },
-    };
-    const result = apply(state, { kind: "mortgage", playerId: "p1", position: 1 });
-    expect(result.ok).toBe(true);
-  });
-
-  it("rejects mortgaging on someone else's turn", () => {
-    // Build the state directly so the seed-driven autoStep can't introduce
-    // unrelated phase noise (doubles, landings, etc.).
-    const start = freshGame("test-mortgage-wrong-turn");
-    const state: GameState = {
+  it("rejects a mortgage during the managing phase", () => {
+    const start = withOwnership(freshGame("mort-managing"), { 1: "p1" });
+    const managing: GameState = {
       ...start,
-      ownership: { 1: "p2" },
-      turn: { ...start.turn, phase: "post-roll", paused: true },
+      turn: { ...start.turn, phase: "managing", managerId: "p1" },
     };
-    const result = apply(state, { kind: "mortgage", playerId: "p2", position: 1 });
-    expect(result.ok).toBe(false);
-  });
-});
-
-describe("apply unmortgage", () => {
-  it("debits the un-mortgage cost from cash and clears the mortgaged flag", () => {
-    const base = pausedPostRoll("test-unmortgage-basic");
-    // Mediterranean (price $60) -> mortgage $30 -> unmortgage $30 * 1.1 = $33.
-    const state: GameState = {
-      ...withOwnership(base, { 1: "p1" }),
-      mortgaged: { 1: true },
-    };
-    const before = state.players.find((p) => p.id === "p1")?.cash ?? 0;
-
-    const result = apply(state, {
-      kind: "unmortgage",
-      playerId: "p1",
-      position: 1,
-    });
-    if (!result.ok) throw new Error(`expected ok, got ${result.reason}`);
-
-    expect(result.state.mortgaged[1]).toBeUndefined();
-    const after = result.state.players.find((p) => p.id === "p1");
-    expect(after?.cash).toBe(before - 33);
-
-    const event = result.newEvents.find((e) => e.kind === "unmortgage");
-    if (!event) throw new Error("expected an unmortgage event");
-    expect(event.cost).toBe(33);
-  });
-
-  it("rejects un-mortgaging a square that isn't mortgaged", () => {
-    const base = pausedPostRoll("test-unmortgage-not-flagged");
-    const state = withOwnership(base, { 1: "p1" });
-    const result = apply(state, {
-      kind: "unmortgage",
-      playerId: "p1",
-      position: 1,
-    });
-    expect(result.ok).toBe(false);
-  });
-
-  it("rejects un-mortgaging without enough cash", () => {
-    const base = pausedPostRoll("test-unmortgage-poor");
-    let state: GameState = {
-      ...withOwnership(base, { 1: "p1" }),
-      mortgaged: { 1: true },
-    };
-    state = setCash(state, "p1", 5); // cost is $33
-    const result = apply(state, {
-      kind: "unmortgage",
-      playerId: "p1",
-      position: 1,
-    });
-    expect(result.ok).toBe(false);
-  });
-
-  it("rejects un-mortgaging during the must-raise-cash phase", () => {
-    // Force a must-raise-cash entry: land p1 on Boardwalk (rent $50 base for
-    // p2 owner), with $0 cash but a mortgageable property (Mediterranean
-    // unowned-by-p1; give them p1 ownership of Reading Railroad so they
-    // have something to mortgage).
-    const start = freshGame("test-unmortgage-blocked");
-    const { state: placed } = setupLandingOn(start, 39);
-    let state: GameState = withOwnership(placed, { 39: "p2", 5: "p1", 1: "p1" });
-    state = { ...state, mortgaged: { 1: true } };
-    state = setCash(state, "p1", 0);
-    const rolled = autoStep(state).state;
-    expect(rolled.turn.phase).toBe("must-raise-cash");
-
-    // p1 owns mortgaged Mediterranean. Trying to UN-mortgage during raise-
-    // cash should be rejected.
-    const result = apply(rolled, {
-      kind: "unmortgage",
-      playerId: "p1",
-      position: 1,
-    });
+    const result = apply(managing, { kind: "mortgage", playerId: "p1", position: 1 });
     expect(result.ok).toBe(false);
   });
 });
@@ -1435,33 +1108,96 @@ function inTradeBuilding(state: GameState, proposerId: string): GameState {
   };
 }
 
-describe("trade requests", () => {
-  it("toggles the trade queue per player, preserving request order", () => {
-    const start = freshGame("trade-queue");
-    const a = apply(start, { kind: "request-trade", playerId: "p3" });
+describe("boundary queue", () => {
+  it("toggles the queue per player+kind, preserving request order", () => {
+    const start = freshGame("queue-toggle");
+    const a = apply(start, { kind: "toggle-queue", playerId: "p3", queue: "trade" });
     if (!a.ok) throw new Error(a.reason);
-    expect(a.state.tradeQueue).toEqual(["p3"]);
+    expect(a.state.boundaryQueue).toEqual([{ playerId: "p3", kind: "trade" }]);
 
-    const b = apply(a.state, { kind: "request-trade", playerId: "p2" });
+    const b = apply(a.state, { kind: "toggle-queue", playerId: "p2", queue: "manage" });
     if (!b.ok) throw new Error(b.reason);
-    expect(b.state.tradeQueue).toEqual(["p3", "p2"]);
+    expect(b.state.boundaryQueue).toEqual([
+      { playerId: "p3", kind: "trade" },
+      { playerId: "p2", kind: "manage" },
+    ]);
 
-    // Toggling p3 off leaves p2 queued.
-    const c = apply(b.state, { kind: "request-trade", playerId: "p3" });
+    // A player can be queued for both kinds at once — they're distinct entries.
+    const c = apply(b.state, { kind: "toggle-queue", playerId: "p3", queue: "manage" });
     if (!c.ok) throw new Error(c.reason);
-    expect(c.state.tradeQueue).toEqual(["p2"]);
+    expect(c.state.boundaryQueue).toEqual([
+      { playerId: "p3", kind: "trade" },
+      { playerId: "p2", kind: "manage" },
+      { playerId: "p3", kind: "manage" },
+    ]);
+
+    // Toggling p3's trade entry off leaves the other two untouched.
+    const d = apply(c.state, { kind: "toggle-queue", playerId: "p3", queue: "trade" });
+    if (!d.ok) throw new Error(d.reason);
+    expect(d.state.boundaryQueue).toEqual([
+      { playerId: "p2", kind: "manage" },
+      { playerId: "p3", kind: "manage" },
+    ]);
   });
 
-  it("opens the head requester's build at the next pre-roll instead of rolling", () => {
-    const start = freshGame("trade-open");
-    const queued: GameState = { ...start, tradeQueue: ["p3"] };
+  it("opens a queued trade build at the next pre-roll instead of rolling", () => {
+    const start = freshGame("queue-trade-open");
+    const queued: GameState = {
+      ...start,
+      boundaryQueue: [{ playerId: "p3", kind: "trade" }],
+    };
     const { state: next, newEvents } = autoStep(queued);
     expect(next.turn.phase).toBe("trade-building");
     expect(next.turn.tradeDraft?.proposerId).toBe("p3");
-    // Active turn owner is unchanged — the trade just interrupts before p1 rolls.
+    // Active turn owner is unchanged — it just interrupts before p1 rolls.
     expect(next.turn.playerId).toBe("p1");
-    expect(next.tradeQueue).toEqual([]);
+    expect(next.boundaryQueue).toEqual([]);
     expect(newEvents).toHaveLength(0);
+  });
+
+  it("opens a queued manage intermission at the next pre-roll, even off-turn", () => {
+    const start = freshGame("queue-manage-open");
+    // p1 is the active turn owner; p3 (off-turn) is queued to manage.
+    const queued: GameState = {
+      ...start,
+      boundaryQueue: [{ playerId: "p3", kind: "manage" }],
+    };
+    const { state: next, newEvents } = autoStep(queued);
+    expect(next.turn.phase).toBe("managing");
+    expect(next.turn.managerId).toBe("p3");
+    // The active turn owner is unchanged — p3 just manages before p1 rolls.
+    expect(next.turn.playerId).toBe("p1");
+    expect(next.boundaryQueue).toEqual([]);
+    expect(newEvents).toHaveLength(0);
+  });
+
+  it("returns to pre-roll and re-checks the queue on cancel-manage", () => {
+    const start = freshGame("queue-cancel-manage");
+    const managing: GameState = {
+      ...start,
+      turn: { ...start.turn, phase: "managing", managerId: "p3" },
+    };
+    const result = apply(managing, { kind: "cancel-manage", playerId: "p3" });
+    if (!result.ok) throw new Error(result.reason);
+    expect(result.state.turn.phase).toBe("pre-roll");
+    expect(result.state.turn.managerId).toBeUndefined();
+    expect(result.state.turn.playerId).toBe("p1");
+  });
+
+  it("rejects cancel-manage from a non-manager", () => {
+    const start = freshGame("queue-cancel-wrong");
+    const managing: GameState = {
+      ...start,
+      turn: { ...start.turn, phase: "managing", managerId: "p3" },
+    };
+    const result = apply(managing, { kind: "cancel-manage", playerId: "p2" });
+    expect(result.ok).toBe(false);
+  });
+
+  it("rejects cancel-manage outside the managing phase", () => {
+    const start = freshGame("queue-cancel-phase");
+    const result = apply(start, { kind: "cancel-manage", playerId: "p1" });
+    expect(result.ok).toBe(false);
   });
 });
 

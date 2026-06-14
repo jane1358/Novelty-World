@@ -1,119 +1,80 @@
 "use client";
 
-import { ArrowRightLeft, Dices, Flag } from "lucide-react";
+import { ArrowRightLeft, Wrench } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 import { useMonopolyStore } from "../store";
-import type { ArmedPauses, GameState } from "../types";
+import type { GameState } from "../types";
 
 interface Props {
   state: GameState;
 }
 
-const NO_ARMED_PAUSES: ArmedPauses = { beforeRoll: false, beforeEnd: false };
-
-/** Bottom row of the footer. Three persistent controls the local player
- *  uses to bend the auto-pacer to their will. Each column is the same
- *  width and represents its intent with an icon so the bar stays legible
- *  on a 375px viewport.
+/** Bottom row of the footer. Two persistent toggles the local player uses to
+ *  arm a between-turns intermission. Each column is the same width and
+ *  represents its intent with an icon so the bar stays legible on a 360px
+ *  viewport.
  *
- *  1. Trade — a one-shot "I want to trade" toggle. Arming it queues the
- *     player; the game pauses at the next pre-roll ("just before the next
- *     roll") and opens their trade builder. Reads as a checkbox like the
- *     two pauses beside it because it's the same arm-and-fire shape.
+ *  1. Trade — "I want to trade" toggle. Arming it queues the player; the game
+ *     pauses at the next pre-roll ("just before the next roll") and opens their
+ *     trade builder.
  *
- *  2. Pause before roll — armed one-shot pause that fires at the local
- *     player's next pre-roll. Lets them act before the dice fly.
- *     Auto-clears the moment it fires.
+ *  2. Manage — "I want to build / mortgage" toggle. Same boundary, same FIFO
+ *     queue; arming it opens their manage intermission instead.
  *
- *  3. Pause before end of turn — same idea, but the pause fires at the
- *     local player's next post-roll, before the engine auto-end-turns.
- *
- *  The bar never gets hijacked by the buy-decision UI — that lives in
- *  the prompt section above the log instead. */
+ *  Both read as checkboxes because they share the arm-and-fire shape. The bar
+ *  never gets hijacked by the buy-decision UI — that lives in the prompt
+ *  section above the log instead. */
 export function ActionBar({ state }: Props) {
   const myPlayerId = useMonopolyStore((s) => s.myPlayerId);
-  const submit = useMonopolyStore((s) => s.submit);
-  const requestTrade = useMonopolyStore((s) => s.requestTrade);
-
-  const armed = myPlayerId
-    ? (state.armedPauses[myPlayerId] ?? NO_ARMED_PAUSES)
-    : NO_ARMED_PAUSES;
-
-  const setArmed = (when: "before-roll" | "before-end", value: boolean) => {
-    if (!myPlayerId) return;
-    submit({ kind: "set-armed-pause", playerId: myPlayerId, when, armed: value });
-  };
+  const toggleQueue = useMonopolyStore((s) => s.toggleQueue);
 
   const interactive = myPlayerId !== null;
-  const tradeArmed = myPlayerId !== null && state.tradeQueue.includes(myPlayerId);
+  const queued = (kind: "trade" | "manage"): boolean =>
+    myPlayerId !== null &&
+    state.boundaryQueue.some(
+      (e) => e.playerId === myPlayerId && e.kind === kind,
+    );
 
   return (
     <div className="flex">
       <ActionCell
-        variant="checkbox"
         icon={<ArrowRightLeft className="h-5 w-5" aria-hidden="true" />}
         label="Trade"
         ariaLabel="Trade at the next turn boundary"
-        checked={tradeArmed}
+        checked={queued("trade")}
         disabled={!interactive}
         onToggle={() => {
-          requestTrade();
+          toggleQueue("trade");
         }}
       />
       <ActionCell
-        variant="checkbox"
-        // Checkbox glyph + Dices reads as "armed to pause before the dice
-        // roll" — the visible check state anchors the toggle semantic so a
-        // glance is enough to see it's a pause-arming control, not a roll
-        // action.
-        icon={<Dices className="h-5 w-5" aria-hidden="true" />}
-        label="Roll"
-        ariaLabel="Pause before roll"
-        checked={armed.beforeRoll}
+        icon={<Wrench className="h-5 w-5" aria-hidden="true" />}
+        label="Manage"
+        ariaLabel="Manage properties at the next turn boundary"
+        checked={queued("manage")}
         disabled={!interactive}
-        onToggle={(next) => {
-          setArmed("before-roll", next);
-        }}
-      />
-      <ActionCell
-        variant="checkbox"
-        icon={<Flag className="h-5 w-5" aria-hidden="true" />}
-        label="End"
-        ariaLabel="Pause before end of turn"
-        checked={armed.beforeEnd}
-        disabled={!interactive}
-        onToggle={(next) => {
-          setArmed("before-end", next);
+        onToggle={() => {
+          toggleQueue("manage");
         }}
       />
     </div>
   );
 }
 
-type CellProps =
-  | {
-      variant: "button";
-      icon: ReactNode;
-      label: string;
-      disabled: boolean;
-    }
-  | {
-      variant: "checkbox";
-      icon: ReactNode;
-      label: string;
-      ariaLabel: string;
-      checked: boolean;
-      disabled: boolean;
-      onToggle: (next: boolean) => void;
-    };
+interface CellProps {
+  icon: ReactNode;
+  label: string;
+  ariaLabel: string;
+  checked: boolean;
+  disabled: boolean;
+  onToggle: (next: boolean) => void;
+}
 
-// Single layout primitive for every action-bar slot so the three cells
-// stay the same width and height. Vertical stack: icon row (checkbox
-// glyph + intent icon for toggles, just the intent icon for buttons) on
-// top, short label below. Variant selects whether the cell behaves like
-// a one-shot button (Trade) or a toggle (the two pause checkboxes).
+// Single layout primitive for every action-bar slot so the cells stay the
+// same width and height. Vertical stack: icon row (checkbox glyph + intent
+// icon) on top, short label below. Each cell is an arm/disarm toggle.
 function ActionCell(props: CellProps) {
-  const checked = props.variant === "checkbox" ? props.checked : false;
+  const { checked } = props;
   const accent = checked ? "var(--mono-orange)" : "var(--mono-ink)";
 
   const style: CSSProperties = {
@@ -123,36 +84,6 @@ function ActionCell(props: CellProps) {
   };
   const className =
     "flex flex-1 flex-col items-center justify-center gap-1 px-2 py-2 disabled:opacity-40";
-
-  const body = (
-    <>
-      <span className="inline-flex items-center gap-1.5">
-        {props.variant === "checkbox" && (
-          <CheckboxGlyph checked={checked} accent={accent} />
-        )}
-        {props.icon}
-      </span>
-      <span
-        className="font-semibold uppercase tracking-wider"
-        style={{ fontSize: "0.65rem", lineHeight: 1 }}
-      >
-        {props.label}
-      </span>
-    </>
-  );
-
-  if (props.variant === "button") {
-    return (
-      <button
-        type="button"
-        disabled={props.disabled}
-        className={className}
-        style={style}
-      >
-        {body}
-      </button>
-    );
-  }
 
   return (
     <button
@@ -167,7 +98,16 @@ function ActionCell(props: CellProps) {
       className={className}
       style={style}
     >
-      {body}
+      <span className="inline-flex items-center gap-1.5">
+        <CheckboxGlyph checked={checked} accent={accent} />
+        {props.icon}
+      </span>
+      <span
+        className="font-semibold uppercase tracking-wider"
+        style={{ fontSize: "0.65rem", lineHeight: 1 }}
+      >
+        {props.label}
+      </span>
     </button>
   );
 }

@@ -12,7 +12,6 @@ import {
   unmortgageCostAt,
 } from "./logic";
 import type {
-  ArmedPauses,
   ApplyResult,
   CardSource,
   GameEvent,
@@ -85,21 +84,19 @@ export function createRng(seedOrState: string | number): Rng {
 /** Apply a single external intent. On success the caller should then run
  *  `autoStep` to drain mechanics until the next decision point.
  *
- *  Wired so far: `buy`, `decline-buy`, `set-armed-pause`, `resume`,
- *  `end-turn`. Richer intents (build, trade, …) are rejected until they're
- *  implemented. The surface deliberately stays small per
- *  `monopoly/CLAUDE.md`. No RNG argument — these are deterministic; engine
- *  functions that need randomness read it out of `state.rngState` themselves. */
+ *  Wired so far: `buy`, `decline-buy`, `manage`, `mortgage`, the trade
+ *  sub-game, `toggle-queue`, `cancel-manage`, `end-turn`. Richer intents
+ *  (auction, jail, …) are rejected until they're implemented. The surface
+ *  deliberately stays small per `monopoly/CLAUDE.md`. No RNG argument — these
+ *  are deterministic; engine functions that need randomness read it out of
+ *  `state.rngState` themselves. */
 export function apply(state: GameState, intent: Intent): ApplyResult {
   if (intent.kind === "buy") return applyBuy(state, intent);
   if (intent.kind === "decline-buy") return applyDeclineBuy(state, intent);
-  if (intent.kind === "set-armed-pause") {
-    return applySetArmedPause(state, intent);
-  }
   if (intent.kind === "manage") return applyManage(state, intent);
   if (intent.kind === "mortgage") return applyMortgage(state, intent);
-  if (intent.kind === "unmortgage") return applyUnmortgage(state, intent);
-  if (intent.kind === "request-trade") return applyRequestTrade(state, intent);
+  if (intent.kind === "toggle-queue") return applyToggleQueue(state, intent);
+  if (intent.kind === "cancel-manage") return applyCancelManage(state, intent);
   if (intent.kind === "update-trade-draft") {
     return applyUpdateTradeDraft(state, intent);
   }
@@ -107,63 +104,34 @@ export function apply(state: GameState, intent: Intent): ApplyResult {
   if (intent.kind === "propose-trade") return applyProposeTrade(state, intent);
   if (intent.kind === "accept-trade") return applyAcceptTrade(state, intent);
   if (intent.kind === "decline-trade") return applyDeclineTrade(state, intent);
-  if (intent.kind === "resume") return applyResume(state, intent);
   if (intent.kind === "end-turn") return applyEndTurn(state, intent);
   return { ok: false, reason: `intent ${intent.kind} not yet implemented` };
 }
 
-/** Compute the next turn block when control passes to `nextPlayerId` at
- *  pre-roll, consuming a `beforeRoll` armed pause if one is set. Caller
- *  merges the returned values into the new state.
- *
- *  Centralized so every path into pre-roll (end-turn today; future
- *  three-doubles bust-out, jail-release, etc.) honors armed pauses
- *  identically. */
-function enterPreRoll(
-  armedPausesIn: GameState["armedPauses"],
-  nextPlayerId: string,
-): { turn: TurnState; armedPauses: GameState["armedPauses"] } {
-  // `armedPauses` is dense by invariant: every seated player has an entry
-  // (freshGame and the lobby ops seed it). Routes that mutate the record
-  // (applySetArmedPause) only touch known players. So a direct lookup is
-  // safe — no optional chaining required.
-  const paused = armedPausesIn[nextPlayerId].beforeRoll;
-  const turn: TurnState = {
+/** The next turn block when control passes to `nextPlayerId` at a fresh
+ *  pre-roll. Centralized so every path into pre-roll (end-turn today; future
+ *  three-doubles bust-out, jail-release, etc.) builds it identically. */
+function enterPreRoll(nextPlayerId: string): TurnState {
+  return {
     playerId: nextPlayerId,
     phase: "pre-roll",
     doublesStreak: 0,
-    paused,
   };
-  const armedPauses = paused
-    ? clearArmedFlag(armedPausesIn, nextPlayerId, "beforeRoll")
-    : armedPausesIn;
-  return { turn, armedPauses };
 }
 
-/** Compute the next turn block for the active player landing at post-roll,
- *  consuming a `beforeEnd` armed pause if one is set. Also clears any
- *  `pendingBuy` from a just-resolved buy-decision so the post-roll state
+/** The next turn block for the active player landing at post-roll. Also clears
+ *  any `pendingBuy` from a just-resolved buy-decision so the post-roll state
  *  doesn't carry stale data.
  *
- *  Centralized so every path into post-roll (`autoStep` after a no-op
- *  landing, `applyBuy`, `applyDeclineBuy`, future rent/tax/card paths)
- *  honors armed pauses identically. */
-function enterPostRoll(
-  state: GameState,
-): { turn: TurnState; armedPauses: GameState["armedPauses"] } {
-  // See enterPreRoll: dense-record invariant lets us drop the optional chain.
-  const paused = state.armedPauses[state.turn.playerId].beforeEnd;
-  const turn: TurnState = {
+ *  Centralized so every path into post-roll (`autoStep` after a no-op landing,
+ *  `applyBuy`, `applyDeclineBuy`, future rent/tax/card paths) is identical. */
+function enterPostRoll(state: GameState): TurnState {
+  return {
     ...state.turn,
     phase: "post-roll",
-    paused,
     pendingBuy: undefined,
     raiseCash: undefined,
   };
-  const armedPauses = paused
-    ? clearArmedFlag(state.armedPauses, state.turn.playerId, "beforeEnd")
-    : state.armedPauses;
-  return { turn, armedPauses };
 }
 
 /** Decide where the active player goes once a landing is fully resolved.
@@ -176,39 +144,22 @@ function enterPostRoll(
 function afterLanding(state: GameState): GameState {
   const streak = state.turn.doublesStreak;
   if (streak === 1 || streak === 2) {
-    // Rolled doubles: same player rolls again. Keep the streak and honor an
-    // armed before-roll pause exactly as a fresh turn would.
-    const paused = state.armedPauses[state.turn.playerId].beforeRoll;
+    // Rolled doubles: same player rolls again. Keep the streak.
     const turn: TurnState = {
       ...state.turn,
       phase: "pre-roll",
-      paused,
       pendingBuy: undefined,
     };
-    const armedPauses = paused
-      ? clearArmedFlag(state.armedPauses, state.turn.playerId, "beforeRoll")
-      : state.armedPauses;
-    return { ...state, turn, armedPauses };
+    return { ...state, turn };
   }
-  const { turn, armedPauses } = enterPostRoll(state);
-  return { ...state, turn, armedPauses };
-}
-
-function clearArmedFlag(
-  armedPauses: GameState["armedPauses"],
-  playerId: string,
-  flag: keyof ArmedPauses,
-): GameState["armedPauses"] {
-  const cur = armedPauses[playerId];
-  return { ...armedPauses, [playerId]: { ...cur, [flag]: false } };
+  return { ...state, turn: enterPostRoll(state) };
 }
 
 /** Hand control to the next non-bankrupt player in seating order: open a
- *  new TurnGroup for them and route through `enterPreRoll` so any armed
- *  pause fires identically to the end-turn path. Used by `applyEndTurn`
- *  and by `autoStep` when a player busts mid-turn. Assumes at least one
- *  non-bankrupt player exists — the winner check in `goBankrupt` flips the
- *  phase to `game-over` before this can be reached otherwise. */
+ *  new TurnGroup for them and route through `enterPreRoll`. Used by
+ *  `applyEndTurn` and by `autoStep` when a player busts mid-turn. Assumes at
+ *  least one non-bankrupt player exists — the winner check in `goBankrupt`
+ *  flips the phase to `game-over` before this can be reached otherwise. */
 function advanceToNextPlayer(
   state: GameState,
   currentPlayerId: string,
@@ -224,12 +175,10 @@ function advanceToNextPlayer(
       playerId: candidate.id,
       events: [],
     };
-    const { turn, armedPauses } = enterPreRoll(state.armedPauses, candidate.id);
     return {
       ...state,
       turns: [...state.turns, nextTurnGroup],
-      turn,
-      armedPauses,
+      turn: enterPreRoll(candidate.id),
     };
   }
   return state;
@@ -288,7 +237,6 @@ function settleOrRaise(state: GameState, resume: RaiseCashResume): GameState {
       turn: {
         ...state.turn,
         phase: "must-raise-cash",
-        paused: false,
         raiseCash: resume,
         pendingBuy: undefined,
         tradeDraft: undefined,
@@ -306,7 +254,7 @@ function settleOrRaise(state: GameState, resume: RaiseCashResume): GameState {
     turn: {
       ...cleared.turn,
       phase: "pre-roll",
-      paused: false,
+      managerId: undefined,
       pendingBuy: undefined,
       tradeDraft: undefined,
       pendingTrade: undefined,
@@ -428,7 +376,7 @@ function goBankrupt(
       ...next,
       status: "finished",
       turns,
-      turn: { ...next.turn, phase: "game-over", paused: false },
+      turn: { ...next.turn, phase: "game-over" },
     };
   }
 
@@ -499,18 +447,6 @@ function applyDeclineBuy(
   return { ok: true, state: afterLanding(state), newEvents: [] };
 }
 
-/** Phases that allow voluntary mortgage / unmortgage actions on the active
- *  player's own turn — gated by `paused` for the rolling phases so a
- *  player can't sneak a mortgage between the auto-pacer's roll and rent
- *  steps. `must-raise-cash` is a separate, forced entry point that only
- *  accepts mortgage (not unmortgage) — see applyMortgage / applyUnmortgage. */
-function canActOnAssets(state: GameState): boolean {
-  const { phase, paused } = state.turn;
-  if (phase === "pre-roll" && paused) return true;
-  if (phase === "post-roll" && paused) return true;
-  return false;
-}
-
 /** Apply a "manage my properties" commit — the atomic unified output of the
  *  manage intermission, carrying both a build target and mortgage flags. The
  *  engine validates and applies the whole thing at once, in cash-flow order
@@ -522,8 +458,11 @@ function canActOnAssets(state: GameState): boolean {
  *  property to fund building another.
  *
  *  Two entry contexts share the reducer:
- *  - Voluntary: the active player on their own paused turn (or a manage
- *    intermission — added later). Any net cash they can afford.
+ *  - Voluntary: the manager during their own open manage intermission
+ *    (`phase === "managing"`, `intent.playerId === managerId`). The manager may
+ *    be off-turn (the queue resolves before the active player rolls). Any net
+ *    cash they can afford. On success, returns to pre-roll re-checking the
+ *    queue (mirrors the trade exit).
  *  - Forced: the current debtor during `must-raise-cash`. Raising only — no
  *    builds, no un-mortgages — then re-runs `settleOrRaise` so play resumes
  *    once they're back to ≥ 0. */
@@ -539,11 +478,11 @@ function applyManage(
       return { ok: false, reason: "not the current debtor" };
     }
   } else {
-    if (intent.playerId !== state.turn.playerId) {
-      return { ok: false, reason: "not your turn" };
-    }
-    if (!canActOnAssets(state)) {
+    if (state.turn.phase !== "managing") {
       return { ok: false, reason: `cannot manage in phase ${state.turn.phase}` };
+    }
+    if (intent.playerId !== state.turn.managerId) {
+      return { ok: false, reason: "not the manager" };
     }
   }
 
@@ -669,30 +608,25 @@ function applyManage(
     const resume = state.turn.raiseCash ?? "after-landing";
     return { ok: true, state: settleOrRaise(after, resume), newEvents: events };
   }
-  return { ok: true, state: after, newEvents: events };
+  // Voluntary commit: close the intermission and return to the boundary, where
+  // the next autoStep re-checks the queue (mirrors the trade exit).
+  return { ok: true, state: returnToPreRoll(after), newEvents: events };
 }
 
+/** Mortgage a single property — the forced-debtor / bot raise-cash path only.
+ *  Voluntary mortgaging goes through `manage`; this is the lone single-property
+ *  entry point left, valid only while settling a debt in `must-raise-cash`. */
 function applyMortgage(
   state: GameState,
   intent: Extract<Intent, { kind: "mortgage" }>,
 ): ApplyResult {
-  const inRaiseCash = state.turn.phase === "must-raise-cash";
-  if (inRaiseCash) {
-    // The forced settler is whoever is currently in the red, which need not be
-    // the active player (a trade can put an off-turn player there).
-    if (intent.playerId !== firstNegativePlayer(state)) {
-      return { ok: false, reason: "not the current debtor" };
-    }
-  } else {
-    if (intent.playerId !== state.turn.playerId) {
-      return { ok: false, reason: "not your turn" };
-    }
-    if (!canActOnAssets(state)) {
-      return {
-        ok: false,
-        reason: `cannot mortgage in phase ${state.turn.phase}`,
-      };
-    }
+  if (state.turn.phase !== "must-raise-cash") {
+    return { ok: false, reason: `cannot mortgage in phase ${state.turn.phase}` };
+  }
+  // The forced settler is whoever is currently in the red, which need not be
+  // the active player (a trade can put an off-turn player there).
+  if (intent.playerId !== firstNegativePlayer(state)) {
+    return { ok: false, reason: "not the current debtor" };
   }
   if (state.ownership[intent.position] !== intent.playerId) {
     return { ok: false, reason: "you don't own that square" };
@@ -721,107 +655,14 @@ function applyMortgage(
   const turns = appendEventToActiveTurn(state.turns, mortgageEvent);
   const afterMortgage: GameState = { ...state, players, mortgaged, turns };
 
-  // In the forced phase, re-evaluate after every mortgage: once this debtor
-  // (and everyone else) is back to ≥ 0, `settleOrRaise` resumes play; if
-  // someone is still negative it stays in must-raise-cash for the next debtor.
-  if (inRaiseCash) {
-    const resume = state.turn.raiseCash ?? "after-landing";
-    return {
-      ok: true,
-      state: settleOrRaise(afterMortgage, resume),
-      newEvents: [mortgageEvent],
-    };
-  }
-
-  return { ok: true, state: afterMortgage, newEvents: [mortgageEvent] };
-}
-
-function applyUnmortgage(
-  state: GameState,
-  intent: Extract<Intent, { kind: "unmortgage" }>,
-): ApplyResult {
-  if (intent.playerId !== state.turn.playerId) {
-    return { ok: false, reason: "not your turn" };
-  }
-  if (!canActOnAssets(state)) {
-    return {
-      ok: false,
-      reason: `cannot unmortgage in phase ${state.turn.phase}`,
-    };
-  }
-  if (state.ownership[intent.position] !== intent.playerId) {
-    return { ok: false, reason: "you don't own that square" };
-  }
-  if (!state.mortgaged[intent.position]) {
-    return { ok: false, reason: "not mortgaged" };
-  }
-  const cost = unmortgageCostAt(intent.position);
-  if (cost === null) {
-    return { ok: false, reason: "not an ownable space" };
-  }
-  const payerIdx = state.players.findIndex((p) => p.id === intent.playerId);
-  const payer = state.players[payerIdx];
-  if (payer.cash < cost) {
-    return { ok: false, reason: "insufficient cash" };
-  }
-  const players = state.players.map((p, i) =>
-    i === payerIdx ? { ...p, cash: p.cash - cost } : p,
-  );
-  const mortgaged: Record<number, boolean> = {};
-  for (const [posStr, flag] of Object.entries(state.mortgaged)) {
-    if (Number(posStr) === intent.position) continue;
-    mortgaged[Number(posStr)] = flag;
-  }
-  const unmortgageEvent: GameEvent = {
-    kind: "unmortgage",
-    position: intent.position,
-    cost,
-  };
-  const turns = appendEventToActiveTurn(state.turns, unmortgageEvent);
+  // Re-evaluate after every mortgage: once this debtor (and everyone else) is
+  // back to ≥ 0, `settleOrRaise` resumes play; if someone is still negative it
+  // stays in must-raise-cash for the next debtor.
+  const resume = state.turn.raiseCash ?? "after-landing";
   return {
     ok: true,
-    state: { ...state, players, mortgaged, turns },
-    newEvents: [unmortgageEvent],
-  };
-}
-
-function applySetArmedPause(
-  state: GameState,
-  intent: Extract<Intent, { kind: "set-armed-pause" }>,
-): ApplyResult {
-  if (!state.players.some((p) => p.id === intent.playerId)) {
-    return { ok: false, reason: "unknown player" };
-  }
-  const cur = state.armedPauses[intent.playerId];
-  const key: keyof ArmedPauses =
-    intent.when === "before-roll" ? "beforeRoll" : "beforeEnd";
-  if (cur[key] === intent.armed) {
-    // Idempotent: the checkbox UI may resubmit the value it already holds
-    // (e.g. on a re-render driven by a remote state push). Accept without
-    // emitting a change so the diff stays clean.
-    return { ok: true, state, newEvents: [] };
-  }
-  const updated: ArmedPauses = { ...cur, [key]: intent.armed };
-  const armedPauses = { ...state.armedPauses, [intent.playerId]: updated };
-  return { ok: true, state: { ...state, armedPauses }, newEvents: [] };
-}
-
-function applyResume(
-  state: GameState,
-  intent: Extract<Intent, { kind: "resume" }>,
-): ApplyResult {
-  // Only the active player can resume their own turn — the pause belongs
-  // to the active turn, not to whoever armed it.
-  if (intent.playerId !== state.turn.playerId) {
-    return { ok: false, reason: "not your turn" };
-  }
-  if (!state.turn.paused) {
-    return { ok: false, reason: "turn is not paused" };
-  }
-  return {
-    ok: true,
-    state: { ...state, turn: { ...state.turn, paused: false } },
-    newEvents: [],
+    state: settleOrRaise(afterMortgage, resume),
+    newEvents: [mortgageEvent],
   };
 }
 
@@ -985,9 +826,11 @@ function validateTradeProposal(
   return null;
 }
 
-/** Discard any in-flight trade and return the active player to a clean
- *  pre-roll. Used by cancel / decline and as the resume target after a trade
- *  settles — the next autoStep re-checks the trade queue from here. */
+/** Discard any in-flight trade / manage intermission and return the active
+ *  player to a clean pre-roll. Used by cancel / decline and as the resume
+ *  target after a trade or manage commit — the next autoStep re-checks the
+ *  boundary queue from here. Rebuilding the turn fresh drops `managerId`,
+ *  `tradeDraft`, `pendingTrade`, and `pendingBuy`. */
 function returnToPreRoll(state: GameState): GameState {
   return {
     ...state,
@@ -995,47 +838,77 @@ function returnToPreRoll(state: GameState): GameState {
       playerId: state.turn.playerId,
       phase: "pre-roll",
       doublesStreak: state.turn.doublesStreak,
-      paused: false,
     },
   };
 }
 
-/** If a trade is armed, dequeue the first still-eligible requester and open
- *  their (empty) trade-building draft. Returns null when nobody valid is
- *  queued, so the caller proceeds to roll. */
-function tryEnterTradeBuilding(state: GameState): GameState | null {
-  if (state.tradeQueue.length === 0) return null;
-  const idx = state.tradeQueue.findIndex((id) => isActivePlayer(state, id));
+/** If anyone has armed a boundary intermission, dequeue the first still-eligible
+ *  entry and open it: `trade` opens an empty trade-building draft, `manage` sets
+ *  the managing phase for that player. Returns null when nobody valid is queued,
+ *  so the caller proceeds to roll. */
+function tryEnterBoundary(state: GameState): GameState | null {
+  if (state.boundaryQueue.length === 0) return null;
+  const idx = state.boundaryQueue.findIndex((entry) =>
+    isActivePlayer(state, entry.playerId),
+  );
   if (idx === -1) return null;
-  const proposerId = state.tradeQueue[idx];
-  const tradeQueue = [
-    ...state.tradeQueue.slice(0, idx),
-    ...state.tradeQueue.slice(idx + 1),
+  const entry = state.boundaryQueue[idx];
+  const boundaryQueue = [
+    ...state.boundaryQueue.slice(0, idx),
+    ...state.boundaryQueue.slice(idx + 1),
   ];
+  if (entry.kind === "trade") {
+    return {
+      ...state,
+      boundaryQueue,
+      turn: {
+        ...state.turn,
+        phase: "trade-building",
+        tradeDraft: {
+          proposerId: entry.playerId,
+          propertyTo: {},
+          gojfTo: {},
+          cashDelta: {},
+        },
+      },
+    };
+  }
   return {
     ...state,
-    tradeQueue,
-    turn: {
-      ...state.turn,
-      phase: "trade-building",
-      paused: false,
-      tradeDraft: { proposerId, propertyTo: {}, gojfTo: {}, cashDelta: {} },
-    },
+    boundaryQueue,
+    turn: { ...state.turn, phase: "managing", managerId: entry.playerId },
   };
 }
 
-function applyRequestTrade(
+function applyToggleQueue(
   state: GameState,
-  intent: Extract<Intent, { kind: "request-trade" }>,
+  intent: Extract<Intent, { kind: "toggle-queue" }>,
 ): ApplyResult {
   if (!isActivePlayer(state, intent.playerId)) {
     return { ok: false, reason: "unknown player" };
   }
-  const inQueue = state.tradeQueue.includes(intent.playerId);
-  const tradeQueue = inQueue
-    ? state.tradeQueue.filter((id) => id !== intent.playerId)
-    : [...state.tradeQueue, intent.playerId];
-  return { ok: true, state: { ...state, tradeQueue }, newEvents: [] };
+  const inQueue = state.boundaryQueue.some(
+    (e) => e.playerId === intent.playerId && e.kind === intent.queue,
+  );
+  const boundaryQueue = inQueue
+    ? state.boundaryQueue.filter(
+        (e) => !(e.playerId === intent.playerId && e.kind === intent.queue),
+      )
+    : [...state.boundaryQueue, { playerId: intent.playerId, kind: intent.queue }];
+  return { ok: true, state: { ...state, boundaryQueue }, newEvents: [] };
+}
+
+function applyCancelManage(
+  state: GameState,
+  intent: Extract<Intent, { kind: "cancel-manage" }>,
+): ApplyResult {
+  if (state.turn.phase !== "managing") {
+    return { ok: false, reason: "no manage intermission open" };
+  }
+  if (intent.playerId !== state.turn.managerId) {
+    return { ok: false, reason: "not the manager" };
+  }
+  return { ok: true, state: returnToPreRoll(state), newEvents: [] };
 }
 
 function applyUpdateTradeDraft(
@@ -1196,8 +1069,8 @@ function applyDeclineTrade(
 }
 
 /** Run mechanical transitions (dice, movement, rent, card draws, …) until
- *  the state hits a phase that requires a decision or has `turn.paused`
- *  set. No-op when the state is already at a decision point.
+ *  the state hits a phase that requires a decision. No-op when the state is
+ *  already at a decision phase (the gate is purely `phase !== "pre-roll"`).
  *
  *  Current scope: rolls 2d6 in `pre-roll`, moves the active player, pays
  *  rent if the landed square is owned by someone else (busting the active
@@ -1211,16 +1084,16 @@ function applyDeclineTrade(
 export function autoStep(
   state: GameState,
 ): { state: GameState; newEvents: readonly GameEvent[] } {
-  if (state.turn.phase !== "pre-roll" || state.turn.paused) {
+  if (state.turn.phase !== "pre-roll") {
     return { state, newEvents: [] };
   }
-  // "Just before the next roll": if anyone has armed a trade, open the head
-  // requester's trade-building phase instead of rolling. This is the single
-  // boundary the Trade checkbox pauses at — equally "right after a turn ends"
-  // and "right before the next begins". The build resolves back to pre-roll,
-  // where the next autoStep re-checks the queue for further requesters.
-  const building = tryEnterTradeBuilding(state);
-  if (building) return { state: building, newEvents: [] };
+  // "Just before the next roll": if anyone has armed a boundary intermission,
+  // open the head entry's phase (trade-building or managing) instead of rolling.
+  // This is the single boundary the Trade / Manage toggles pause at — equally
+  // "right after a turn ends" and "right before the next begins". Each resolves
+  // back to pre-roll, where the next autoStep re-checks the queue.
+  const boundary = tryEnterBoundary(state);
+  if (boundary) return { state: boundary, newEvents: [] };
 
   const rng = createRng(state.rngState);
   const playerIdx = state.players.findIndex(

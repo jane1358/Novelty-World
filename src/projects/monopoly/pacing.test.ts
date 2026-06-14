@@ -69,9 +69,10 @@ describe("driveOp — human-turn sync barrier", () => {
     expect(driveOp(otherHumanActive, false, "p1")).toBeNull();
   });
 
-  it("is idle for a finished game and a paused turn", () => {
+  it("is idle for a finished game and a non-driveable intermission phase", () => {
     expect(driveOp({ ...base, status: "finished" }, true, "p1")).toBeNull();
-    expect(driveOp(withTurn(base, { paused: true }), true, "p1")).toBeNull();
+    // A managing intermission isn't a mechanical beat — nobody drives it.
+    expect(driveOp(withTurn(base, { phase: "managing", managerId: "p2" }), true, "p1")).toBeNull();
   });
 });
 
