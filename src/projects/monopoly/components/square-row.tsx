@@ -4,9 +4,10 @@ import type { CSSProperties, ReactNode } from "react";
 import { Diamond, Dice5, Droplets, Package, Train, Zap } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 import { SPACES } from "../data";
-import { firstNegativePlayer } from "../engine";
+import { colorAt, developmentLevel, groupPositions } from "../development";
 import { laneOffset } from "../lanes";
-import { rentAt, type RentDisplay } from "../logic";
+import { hasMonopoly, rentAt, type RentDisplay } from "../logic";
+import { manageActorId } from "../manage";
 import { useMonopolyStore } from "../store";
 import { useTokenAnim } from "../token-anim-store";
 import { PLAYER_COLOR_VAR, PROPERTY_COLOR_VAR } from "../theme";
@@ -61,53 +62,73 @@ export function SquareRow({ position }: Props) {
     : tokens;
   const rent = useMonopolyStore(useShallow((s) => rentAt(s.state, position)));
 
-  // The board doubles as the interaction surface for two modes:
-  //  - Mortgage staging (voluntary while paused, or forced must-raise-cash):
-  //    squares the actor owns become tap targets that stage a mortgage flip.
+  // The board doubles as the interaction surface for three staging modes:
+  //  - Manage (the queued manager's intermission, or the forced debtor in
+  //    must-raise-cash): two independent tap zones — the color strip cycles the
+  //    build level, the row body toggles the mortgage flag.
   //  - Trade building: the proposer taps any owned, building-free square to
   //    cycle its recipient through the players and back to no-change.
-  // `stagedFlip` (mortgage) and `tradeStaged` both light the orange ring so
-  // the staged set reads at a glance on the board itself.
-  const stagedFlip = useMonopolyStore(
-    (s) => s.mortgageStaged?.[position] ?? null,
+  // Staged build levels and a staged mortgage both light the orange ring so the
+  // staged set reads at a glance on the board itself.
+  const stagedBuild = useMonopolyStore(
+    (s) => s.manageStaged?.build[position] ?? null,
+  );
+  const stagedMortgage = useMonopolyStore(
+    (s) => s.manageStaged?.mortgage[position] ?? null,
   );
   const tradeStaged = useMonopolyStore((s) => {
     const draft = s.state.turn.tradeDraft;
     if (s.state.turn.phase !== "trade-building" || !draft) return false;
     return position in draft.propertyTo;
   });
-  const clickable = useMonopolyStore((s) => {
+  // Trade building: the whole row is one button cycling the recipient.
+  const tradeClickable = useMonopolyStore((s) => {
     const me = s.myPlayerId;
-    if (!me) return false;
-    const { phase, playerId, tradeDraft } = s.state.turn;
-
-    // Trade building: only the proposer, only owned + building-free squares.
-    if (phase === "trade-building") {
-      if (tradeDraft?.proposerId !== me) return false;
-      return position in s.state.ownership && !s.state.houses[position];
+    if (!me || s.state.turn.phase !== "trade-building") return false;
+    if (s.state.turn.tradeDraft?.proposerId !== me) return false;
+    return position in s.state.ownership && !s.state.houses[position];
+  });
+  // Manage: the local player must be the actor (manager, or the forced debtor)
+  // and own this square. The strip is buildable only on a full, unmortgaged
+  // monopoly; the body toggles the mortgage on any owned square. The store
+  // re-checks legality on tap, so these gates only decide whether the zones are
+  // interactive (and styled as such).
+  const buildClickable = useMonopolyStore((s) => {
+    const me = s.myPlayerId;
+    if (!me || manageActorId(s.state) !== me) return false;
+    const color = colorAt(position);
+    if (color === null || s.state.ownership[position] !== me) return false;
+    if (!hasMonopoly(s.state, color, me)) return false;
+    // Forced raise-cash can only sell down — gated to built squares.
+    if (s.state.turn.phase === "must-raise-cash") {
+      return developmentLevel(s.state, position) > 0;
     }
-
-    const inMortgageMode = s.mortgageStaged !== null || phase === "must-raise-cash";
-    if (!inMortgageMode) return false;
-    // Voluntary staging is the active player's own turn; the forced settler is
-    // whoever is in the red (may be off-turn after a trade).
-    if (phase === "must-raise-cash") {
-      if (firstNegativePlayer(s.state) !== me) return false;
-    } else if (playerId !== me) {
+    // Voluntary: buildable only on an unmortgaged set (counting staged flips).
+    const staged = s.manageStaged;
+    return !groupPositions(color).some((pos) =>
+      staged && pos in staged.mortgage
+        ? staged.mortgage[pos]
+        : s.state.mortgaged[pos] === true,
+    );
+  });
+  const mortgageClickable = useMonopolyStore((s) => {
+    const me = s.myPlayerId;
+    if (!me || manageActorId(s.state) !== me) return false;
+    if (s.state.ownership[position] !== me) return false;
+    // During forced raise-cash, un-mortgaging is illegal, so an already
+    // mortgaged square isn't a tap target.
+    if (s.state.turn.phase === "must-raise-cash" && s.state.mortgaged[position]) {
       return false;
     }
-    if (s.state.ownership[position] !== me) return false;
-    if (s.state.houses[position]) return false;
-    // During forced raise-cash, mortgaged squares aren't toggleable — the
-    // engine refuses un-mortgages in this phase.
-    if (phase === "must-raise-cash" && s.state.mortgaged[position]) return false;
-    return true;
+    // Mortgaging needs the lot building-free; selling its buildings to 0 in the
+    // same commit (staged level 0) re-enables it.
+    const stagedLevel = s.manageStaged?.build[position] ?? developmentLevel(s.state, position);
+    const alreadyMortgaged = s.state.mortgaged[position] === true;
+    return alreadyMortgaged || stagedLevel === 0;
   });
-  const toggleMortgageStage = useMonopolyStore((s) => s.toggleMortgageStage);
+  const cycleBuild = useMonopolyStore((s) => s.cycleBuild);
+  const toggleMortgage = useMonopolyStore((s) => s.toggleMortgage);
   const cycleTradeProperty = useMonopolyStore((s) => s.cycleTradeProperty);
-  const isTradeBuilding = useMonopolyStore(
-    (s) => s.state.turn.phase === "trade-building",
-  );
 
   // Two zones: a left identity panel (property color full-bleed, or card bg
   // for non-properties) and a right context panel tinted with the owner's
@@ -130,12 +151,21 @@ export function SquareRow({ position }: Props) {
     ? `color-mix(in srgb, ${PLAYER_COLOR_VAR[ownerColor]} 28%, var(--mono-card))`
     : "var(--mono-card)";
 
+  // Displayed development / mortgage reflect any STAGED change so the player
+  // previews their manage target on the board itself; the committed value still
+  // shows when nothing is staged for this square.
+  const displayHouses = stagedBuild ?? houses;
+  const displayMortgaged = stagedMortgage ?? mortgaged;
+  const buildIsStaged = stagedBuild !== null && stagedBuild !== houses;
+  const mortgageIsStaged = stagedMortgage !== null && stagedMortgage !== mortgaged;
+
   // Inline stage indicator: an orange ring around the row when this square is
-  // staged — a mortgage flip or a trade reassignment — so the staged set reads
-  // at a glance on the board itself (the panel shows it too, but the board is
-  // the spatial map). 2px inset ring overlay rather than a border to avoid
-  // shifting the row's content edges.
-  const stageOverlay: ReactNode = (stagedFlip !== null || tradeStaged) && (
+  // staged — a build change, a mortgage flip, or a trade reassignment — so the
+  // staged set reads at a glance on the board itself (the panel shows it too,
+  // but the board is the spatial map). 2px inset ring overlay rather than a
+  // border to avoid shifting the row's content edges.
+  const isStaged = buildIsStaged || mortgageIsStaged || tradeStaged;
+  const stageOverlay: ReactNode = isStaged && (
     <div
       className="pointer-events-none absolute inset-0"
       style={{
@@ -145,38 +175,91 @@ export function SquareRow({ position }: Props) {
     />
   );
 
+  const strip = (
+    <>
+      {isProperty ? (
+        <Development houses={displayHouses} staged={buildIsStaged} />
+      ) : (
+        <SpaceIcon space={space} />
+      )}
+      {displayMortgaged && <MortgageMarker strokeWidth={2} />}
+    </>
+  );
+
+  const body = (
+    <>
+      <NameCell space={space} mortgaged={displayMortgaged} />
+      <TokenStrip tokens={visibleTokens} order={order} pitch={pitch} />
+      <CostCell space={space} mortgaged={displayMortgaged} rent={rent} />
+    </>
+  );
+
+  // Manage mode splits the row into two independent tap zones: the color strip
+  // cycles the build level, the body toggles the mortgage. A row can't be one
+  // button wrapping another, so each zone is its own sibling button.
+  if (buildClickable || mortgageClickable) {
+    return (
+      <div
+        className="relative flex h-11 shrink-0 overflow-hidden"
+        style={{ color: "var(--mono-ink)" }}
+      >
+        <Zone
+          as={buildClickable ? "button" : "div"}
+          onClick={
+            buildClickable
+              ? () => {
+                  cycleBuild(position);
+                }
+              : undefined
+          }
+          className="relative flex shrink-0 items-center justify-center"
+          style={leftStyle}
+        >
+          {strip}
+        </Zone>
+        <Zone
+          as={mortgageClickable ? "button" : "div"}
+          onClick={
+            mortgageClickable
+              ? () => {
+                  toggleMortgage(position);
+                }
+              : undefined
+          }
+          className="flex min-w-0 flex-1 items-center overflow-hidden px-2 text-left"
+          style={{ background: contextTint, boxShadow: dividerShadow }}
+        >
+          {body}
+        </Zone>
+        {stageOverlay}
+      </div>
+    );
+  }
+
   const content = (
     <>
       <div
         className="relative flex shrink-0 items-center justify-center"
         style={leftStyle}
       >
-        {isProperty ? (
-          <Development houses={houses} />
-        ) : (
-          <SpaceIcon space={space} />
-        )}
-        {mortgaged && <MortgageMarker strokeWidth={2} />}
+        {strip}
       </div>
       <div
         className="flex min-w-0 flex-1 items-center overflow-hidden px-2"
         style={{ background: contextTint, boxShadow: dividerShadow }}
       >
-        <NameCell space={space} mortgaged={mortgaged} />
-        <TokenStrip tokens={visibleTokens} order={order} pitch={pitch} />
-        <CostCell space={space} mortgaged={mortgaged} rent={rent} />
+        {body}
       </div>
       {stageOverlay}
     </>
   );
 
-  if (clickable) {
+  if (tradeClickable) {
     return (
       <button
         type="button"
         onClick={() => {
-          if (isTradeBuilding) cycleTradeProperty(position);
-          else toggleMortgageStage(position);
+          cycleTradeProperty(position);
         }}
         className="relative flex h-11 w-full shrink-0 overflow-hidden text-left"
         style={{ color: "var(--mono-ink)", cursor: "pointer" }}
@@ -196,8 +279,53 @@ export function SquareRow({ position }: Props) {
   );
 }
 
-function Development({ houses }: { houses: number }) {
+/** A tap zone that renders as a `<button>` when interactive and a plain `<div>`
+ *  otherwise — so the build strip and mortgage body can each independently be a
+ *  control or inert without nesting buttons. */
+function Zone({
+  as,
+  onClick,
+  className,
+  style,
+  children,
+}: {
+  as: "button" | "div";
+  onClick?: () => void;
+  className: string;
+  style: CSSProperties;
+  children: ReactNode;
+}) {
+  if (as === "button") {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={className}
+        style={{ ...style, cursor: "pointer" }}
+      >
+        {children}
+      </button>
+    );
+  }
+  return (
+    <div className={className} style={style}>
+      {children}
+    </div>
+  );
+}
+
+function Development({
+  houses,
+  staged = false,
+}: {
+  houses: number;
+  /** Render the buildings in the orange staged hue (a pending manage target)
+   *  rather than their committed colors. */
+  staged?: boolean;
+}) {
   if (houses === 0) return null;
+  const hotelColor = staged ? "var(--mono-orange)" : "var(--mono-red)";
+  const houseColor = staged ? "var(--mono-orange)" : "var(--mono-green)";
   if (houses === 5) {
     return (
       <div className="flex w-full items-center justify-center">
@@ -206,7 +334,7 @@ function Development({ houses }: { houses: number }) {
           style={{
             width: "36px",
             height: "24px",
-            backgroundColor: "var(--mono-red)",
+            backgroundColor: hotelColor,
           }}
         />
       </div>
@@ -225,7 +353,7 @@ function Development({ houses }: { houses: number }) {
               style={{
                 width: "12px",
                 height: "24px",
-                backgroundColor: "var(--mono-green)",
+                backgroundColor: houseColor,
               }}
             />
           )}

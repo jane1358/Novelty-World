@@ -7,7 +7,7 @@ import { ownablePrice } from "../logic";
 import { useMonopolyStore } from "../store";
 import { PROPERTY_COLOR_VAR } from "../theme";
 import type { GameState } from "../types";
-import { MortgagePanel } from "./mortgage-panel";
+import { ManagePanel } from "./manage-panel";
 import { TradePanel } from "./trade-panel";
 
 interface Props {
@@ -19,8 +19,9 @@ interface Props {
  *  needs their input. Rendering paths so far:
  *
  *  - Trade building / pending: shown to everyone (the proposal is synced).
- *  - Must-raise-cash: the current debtor mortgages back to ≥ 0.
- *  - Managing: the manager's open intermission (a thin placeholder for now).
+ *  - Must-raise-cash: the current debtor sells / mortgages back to ≥ 0 via the
+ *    same manage panel + board staging as a voluntary intermission.
+ *  - Managing: the manager's open intermission (board two-zone tap + summary).
  *  - Buy decision: the active player buys or passes a landed-on property.
  *
  *  When none of the above is true, the section renders nothing and the log
@@ -29,7 +30,6 @@ interface Props {
 export function PromptSection({ state }: Props) {
   const myPlayerId = useMonopolyStore((s) => s.myPlayerId);
   const submit = useMonopolyStore((s) => s.submit);
-  const cancelManage = useMonopolyStore((s) => s.cancelManage);
 
   const { phase, pendingBuy } = state.turn;
 
@@ -43,25 +43,19 @@ export function PromptSection({ state }: Props) {
 
   if (!myPlayerId) return null;
 
-  // Must-raise-cash forces the panel open for the current debtor (whoever is
-  // in the red — possibly off-turn after a trade), who can't dismiss it, only
-  // mortgage back to ≥ 0.
+  // Must-raise-cash forces the manage panel open for the current debtor
+  // (whoever is in the red — possibly off-turn after a trade), who can't dismiss
+  // it, only sell buildings and / or mortgage back to ≥ 0. Same panel + board
+  // two-zone staging as the voluntary intermission, constrained to raising.
   if (phase === "must-raise-cash") {
     if (firstNegativePlayer(state) !== myPlayerId) return null;
-    return <MortgagePanel state={state} playerId={myPlayerId} />;
+    return <ManagePanel state={state} playerId={myPlayerId} />;
   }
 
-  // Manage intermission for the queued manager (may be off-turn). Thin
-  // placeholder bar until the real board two-zone tap + summary panel lands;
-  // Done abandons the intermission, Commit is a no-op stub for now.
+  // Manage intermission for the queued manager (may be off-turn): the board
+  // rows are the controls, this panel is the summary + commit / cancel.
   if (phase === "managing" && state.turn.managerId === myPlayerId) {
-    return (
-      <ManagePlaceholder
-        onDone={() => {
-          cancelManage();
-        }}
-      />
-    );
+    return <ManagePanel state={state} playerId={myPlayerId} />;
   }
 
   // Everything below is the active player's own decision.
@@ -92,34 +86,6 @@ const SECTION_STYLE: CSSProperties = {
   // Top divider only — the EventLog directly below has its own inset top
   // line, so we don't double up on the boundary.
   boxShadow: "inset 0 1px 0 var(--mono-frame)",
-};
-
-/** Thin placeholder for the manage intermission. The real panel (board
- *  two-zone tap to build / mortgage, plus a running summary) is a later step;
- *  for now this is a labelled bar with Done (abandon) and a disabled Commit
- *  stub so the phase has a working exit and doesn't crash. */
-function ManagePlaceholder({ onDone }: { onDone: () => void }) {
-  return (
-    <div className="relative z-10 flex shrink-0" style={SECTION_STYLE}>
-      <div
-        className="flex min-w-0 flex-1 items-center px-3 py-3 font-semibold uppercase tracking-wide"
-        style={{ fontSize: "clamp(0.75rem, 2.2vmin, 1rem)", minHeight: "56px" }}
-      >
-        <span
-          className="inline-flex min-w-0 items-center gap-2"
-          style={{ color: "var(--mono-orange)" }}
-        >
-          <span className="truncate">Manage your properties</span>
-        </span>
-      </div>
-      <PromptButton label="Done" onClick={onDone} />
-      <PromptButton label="Commit" onClick={NOOP} disabled variant="primary" />
-    </div>
-  );
-}
-
-const NOOP = (): void => {
-  // Commit is a deliberate no-op until the real manage panel lands.
 };
 
 function BuyPrompt({

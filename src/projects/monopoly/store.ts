@@ -3,6 +3,13 @@
 import { create } from "zustand";
 import type { PlayerProfile } from "@/shared/lib/profile";
 import { getProjectStorage } from "@/shared/lib/storage/project-storage";
+import {
+  colorAt,
+  developmentLevel,
+  groupPositions,
+} from "./development";
+import { hasMonopoly } from "./logic";
+import { manageActorId, type ManageStaged } from "./manage";
 import { freshGame } from "./mocks";
 import {
   DEFAULT_TURN_MS,
@@ -21,13 +28,6 @@ import type {
   PlayerColor,
   PlayerIcon,
 } from "./types";
-
-/** Staged mortgage toggles the user has clicked but not yet committed.
- *  Maps position -> target mortgaged-flag. Entries that match the current
- *  authoritative `state.mortgaged[pos]` are removed (no-op) by
- *  `toggleMortgageStage`, so a stale "no change" key never leaks through to
- *  the commit step. Per-client UI state — never synced. */
-export type MortgageStaged = Readonly<Record<number, boolean>>;
 
 // Per-client playback pacing (buffer + playback head) lives at the bottom of
 // this file; the turn budget it spends, and the persistence of that local
@@ -63,25 +63,34 @@ interface MonopolyActions {
   /** Lobby: flip the connected lobby into play (≥2 players, ≥1 human). */
   startGame: () => void;
 
-  /** Toggle the staged mortgage flag for a position. Cycles between "no
-   *  change" and "stage flip" — clicking once stages the opposite of the
-   *  current mortgaged state, clicking again reverts to no change. Rejects
-   *  positions the local player doesn't own. */
-  toggleMortgageStage: (position: number) => void;
+  /** Manage staging: advance a property's staged build level through the cycle
+   *  0 → 1 → 2 → 3 → 4 → hotel(5) → 0. Only acts when the local player is the
+   *  manage actor (the queued manager, or the debtor in must-raise-cash) and the
+   *  property is buildable — a full, unmortgaged monopoly they own. In the forced
+   *  must-raise-cash branch only DECREASES are allowed (sell down to raise cash),
+   *  wrapping back to the live level rather than building up. Prunes the entry
+   *  when it lands back on the live level. */
+  cycleBuild: (position: number) => void;
 
-  /** Close the voluntary mortgage panel, discarding any staged changes.
-   *  No-op while in the must-raise-cash phase — the player can't back out
-   *  of paying a debt. */
-  closeMortgagePanel: () => void;
+  /** Manage staging: toggle a property's staged mortgaged flag, for a property
+   *  the manage actor owns. Skips a property that still has buildings staged or
+   *  live (mortgaging requires it building-free — the engine validates finally,
+   *  but the toggle is offered only on a bare lot). Prunes the entry when it
+   *  lands back on the live mortgaged flag. */
+  toggleMortgage: (position: number) => void;
 
-  /** Commit staged mortgages by submitting one `mortgage` intent per staged
-   *  flip. Only reachable in the `must-raise-cash` phase (the forced settler /
-   *  debtor path) — voluntary mortgaging goes through `manage`. The engine
-   *  auto-settles the debt mid-batch once a mortgage brings cash back to ≥ 0;
-   *  remaining staged ops still try to apply against the post-settle state.
-   *  Clears the staged map at the end regardless of per-intent outcomes — UI
-   *  re-derives from authoritative state on the next render. */
-  commitMortgageStaging: () => void;
+  /** Close the voluntary manage panel, discarding any staged changes. No-op
+   *  while in must-raise-cash — the debtor can't back out of settling. (The
+   *  open `managing` intermission is abandoned via `cancelManage`, which fires
+   *  the engine intent; this just clears local staging.) */
+  closeManagePanel: () => void;
+
+  /** Commit the staged manage intermission as one atomic `manage` intent,
+   *  carrying only the build levels and mortgage flags that DIFFER from the live
+   *  state. The engine applies it raise-first / spend-second, all-or-nothing.
+   *  Clears staging after submitting; the UI re-derives from authoritative
+   *  state on the next render. */
+  commitManage: () => void;
 
   /** Toggle a boundary intermission for the local player — arms/disarms a spot
    *  in the FIFO boundary queue for the given kind ("trade" or "manage"). Fires
@@ -198,11 +207,12 @@ export type MonopolyStore = {
    *  show a "Connecting…" placeholder instead of briefly flashing the stale
    *  default game while the row loads. False while parked. */
   connecting: boolean;
-  /** Staged mortgage toggles awaiting commit. `null` when the panel is
-   *  closed (voluntary mode). Always treated as `{}` for rendering when
-   *  the turn is in `must-raise-cash` so the panel is implicitly open.
-   *  Cleared on disconnect. */
-  mortgageStaged: MortgageStaged | null;
+  /** Staged manage changes awaiting commit — build levels and mortgage flags
+   *  the actor has toggled but not yet committed. `null` when the panel is
+   *  closed. The `managing` and `must-raise-cash` phases treat a `null` as an
+   *  empty staging so the panel is implicitly open. Per-client UI state, never
+   *  synced; cleared on disconnect and on entering / leaving the phase. */
+  manageStaged: ManageStaged | null;
 } & MonopolyActions;
 
 // Module-scoped because Realtime channels aren't serializable into zustand
@@ -284,7 +294,7 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
     profile: null,
     syncError: null,
     connecting: false,
-    mortgageStaged: null,
+    manageStaged: null,
 
     setMyPlayer: (playerId) => { set({ myPlayerId: playerId }); },
 
@@ -330,44 +340,99 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
       turnMsStorage.set(TURN_MS_KEY, clamped);
     },
 
-    toggleMortgageStage: (position) => {
-      const { state, myPlayerId, mortgageStaged } = get();
+    cycleBuild: (position) => {
+      const { state, myPlayerId, manageStaged } = get();
       if (!myPlayerId) return;
+      // Only the manage actor (manager or forced debtor) and only when that's
+      // the local player.
+      if (manageActorId(state) !== myPlayerId) return;
+
+      const color = colorAt(position);
+      if (color === null) return;
       if (state.ownership[position] !== myPlayerId) return;
-      const current = mortgageStaged ?? {};
-      const currentlyMortgaged = state.mortgaged[position] === true;
-      const next: Record<number, boolean> = { ...current };
-      if (position in next) {
-        delete next[position];
+      if (!hasMonopoly(state, color, myPlayerId)) return;
+
+      const staged = manageStaged ?? { build: {}, mortgage: {} };
+      // The set must be unmortgaged to build on it — counting staged mortgage
+      // flips, so unmortgaging in the same commit unlocks the build.
+      const mortgagedInSet = groupPositions(color).some((pos) =>
+        pos in staged.mortgage ? staged.mortgage[pos] : state.mortgaged[pos] === true,
+      );
+      const forced = state.turn.phase === "must-raise-cash";
+      // Building up requires the set fully unmortgaged; selling down never does.
+      const live = developmentLevel(state, position);
+      const current = staged.build[position] ?? live;
+
+      let nextLevel: number;
+      if (forced) {
+        // Forced raise-cash: only sell down. Decrement, wrapping 0 → live so the
+        // player can cycle past and re-select. Never builds up.
+        nextLevel = current <= 0 ? live : current - 1;
       } else {
-        next[position] = !currentlyMortgaged;
+        if (mortgagedInSet && current >= live) {
+          // Can't build up on a mortgaged set; allow only the wrap back down.
+          return;
+        }
+        nextLevel = current >= 5 ? 0 : current + 1;
       }
-      set({ mortgageStaged: next });
+
+      const build: Record<number, number> = { ...staged.build };
+      if (nextLevel === live) delete build[position];
+      else build[position] = nextLevel;
+      set({ manageStaged: { build, mortgage: staged.mortgage } });
     },
 
-    closeMortgagePanel: () => {
-      // Forced (must-raise-cash) entry: no Cancel — the player must pay.
+    toggleMortgage: (position) => {
+      const { state, myPlayerId, manageStaged } = get();
+      if (!myPlayerId) return;
+      if (manageActorId(state) !== myPlayerId) return;
+      if (state.ownership[position] !== myPlayerId) return;
+
+      const staged = manageStaged ?? { build: {}, mortgage: {} };
+      const stagedLevel = staged.build[position] ?? developmentLevel(state, position);
+      const currentlyMortgaged = state.mortgaged[position] === true;
+
+      const mortgage: Record<number, boolean> = { ...staged.mortgage };
+      // Cycle between "no change" and "flip": a first tap stages the opposite of
+      // the live flag; a second reverts.
+      const resultMortgaged = position in mortgage ? currentlyMortgaged : !currentlyMortgaged;
+      // Mortgaging requires the lot building-free. Selling buildings to 0 in the
+      // same commit clears that (staged level 0), so only block staging a
+      // mortgage while the lot still has buildings staged.
+      if (resultMortgaged && stagedLevel > 0) return;
+
+      if (position in mortgage) delete mortgage[position];
+      else mortgage[position] = !currentlyMortgaged;
+      set({ manageStaged: { build: staged.build, mortgage } });
+    },
+
+    closeManagePanel: () => {
+      // Forced (must-raise-cash) entry: no Cancel — the debtor must settle.
       if (get().state.turn.phase === "must-raise-cash") return;
-      set({ mortgageStaged: null });
+      set({ manageStaged: null });
     },
 
-    commitMortgageStaging: () => {
-      const { mortgageStaged, myPlayerId } = get();
-      const staged = mortgageStaged ?? {};
+    commitManage: () => {
+      const { state, manageStaged, myPlayerId } = get();
       if (!myPlayerId) {
-        set({ mortgageStaged: null });
+        set({ manageStaged: null });
         return;
       }
-      // Only mortgages are submitted — this path runs solely in must-raise-cash,
-      // where un-mortgaging (a net spend) is illegal. Batched into one
-      // runIntents call so online it lands as a single atomic write.
-      const intents: Intent[] = [];
-      for (const [posStr, target] of Object.entries(staged)) {
-        if (target !== true) continue;
-        intents.push({ kind: "mortgage", playerId: myPlayerId, position: Number(posStr) });
+      const staged = manageStaged ?? { build: {}, mortgage: {} };
+      // Carry only the entries that DIFFER from the live state — the engine
+      // applies the whole map raise-first / spend-second, all-or-nothing.
+      const build: Record<number, number> = {};
+      for (const [posStr, level] of Object.entries(staged.build)) {
+        const pos = Number(posStr);
+        if (level !== developmentLevel(state, pos)) build[pos] = level;
       }
-      if (intents.length > 0) runIntents(intents);
-      set({ mortgageStaged: null });
+      const mortgage: Record<number, boolean> = {};
+      for (const [posStr, flag] of Object.entries(staged.mortgage)) {
+        const pos = Number(posStr);
+        if (flag !== (state.mortgaged[pos] === true)) mortgage[pos] = flag;
+      }
+      runIntents([{ kind: "manage", playerId: myPlayerId, build, mortgage }]);
+      set({ manageStaged: null });
     },
 
     toggleQueue: (queue) => {
@@ -378,6 +443,10 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
 
     cancelManage: () => {
       const { myPlayerId } = get();
+      // Clear local staging alongside abandoning the intermission — the engine
+      // intent returns to pre-roll, and the panel re-derives from authoritative
+      // state on the next render.
+      set({ manageStaged: null });
       if (!myPlayerId) return;
       runIntents([{ kind: "cancel-manage", playerId: myPlayerId }]);
     },
@@ -574,7 +643,7 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
         myPlayerId: null,
         syncError: null,
         connecting: false,
-        mortgageStaged: null,
+        manageStaged: null,
       });
     },
   };
@@ -630,12 +699,18 @@ if (typeof window !== "undefined") {
         const dwell = paceTransition(store.state, next.state, store.turnMs).durationMs;
         const { profile } = store;
         const seated = profile ? isMember(next.state, profile) : false;
+        const myId = seated && profile ? profile.id : null;
+        // Drop manage staging the moment this client stops being the manage actor
+        // (the intermission ended, or a new one opened for someone else), so a
+        // stale target never bleeds into a later session.
+        const stillActor = myId !== null && manageActorId(next.state) === myId;
         drivenFrom = null;
         useMonopolyStore.setState({
           state: next.state,
           version: next.version,
           buffer: rest,
-          myPlayerId: seated && profile ? profile.id : null,
+          myPlayerId: myId,
+          ...(stillActor ? {} : { manageStaged: null }),
         });
         dwellTimer = setTimeout(onDwellEnd, dwell);
         return;
