@@ -2,11 +2,11 @@
 
 import { KeyRound, Minus, Plus } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
-import { SPACES } from "../data";
-import { tradeParticipants } from "../engine";
+import { projectTrade, tradeParticipants } from "../engine";
 import { useMonopolyStore } from "../store";
-import { PLAYER_COLOR_VAR, PROPERTY_COLOR_VAR } from "../theme";
+import { PLAYER_COLOR_VAR } from "../theme";
 import type { CardSource, GameState, Player, TradeTerms } from "../types";
+import { HoldingsGrid, SLOT_GROUPS } from "./holdings-grid";
 
 interface Props {
   state: GameState;
@@ -48,13 +48,20 @@ export function TradePanel({ state }: Props) {
   const canEdit = !isPending && isProposer;
 
   const cashSum = Object.values(terms.cashDelta).reduce((a, b) => a + b, 0);
-  const balanced = cashSum === 0;
   const movesSomething =
     Object.keys(terms.propertyTo).length > 0 ||
     Object.keys(terms.gojfTo).length > 0 ||
     Object.values(terms.cashDelta).some((v) => v !== 0);
   const partyCount = tradeParticipants(state, terms).size;
-  const canPropose = movesSomething && balanced && partyCount >= 2;
+  // Why the trade can't be proposed yet — surfaced on the Propose button itself
+  // so we don't need a separate balance/validity row.
+  let proposeIssue: string | null = null;
+  if (!movesSomething) proposeIssue = "Nothing to trade";
+  else if (partyCount < 2) proposeIssue = "Needs 2 players";
+  else if (cashSum !== 0) {
+    proposeIssue = `Off by $${Math.abs(cashSum).toLocaleString("en-US")}`;
+  }
+  const canPropose = proposeIssue === null;
 
   const approvals = isPending ? (turn.pendingTrade?.approvals ?? {}) : null;
   const myApproval = approvals && myPlayerId !== null ? approvals[myPlayerId] : undefined;
@@ -76,42 +83,45 @@ export function TradePanel({ state }: Props) {
           proposerName={proposer?.name ?? "Someone"}
         />
 
-        <MovementSummary terms={terms} byId={byId} />
+        <TradeHoldings state={state} terms={terms} />
 
-        {heldCards.length > 0 && (
-          <div className="flex flex-col gap-1">
-            {heldCards.map((src) => (
-              <CardRow
-                key={src}
-                source={src}
-                state={state}
-                terms={terms}
-                byId={byId}
-                canEdit={canEdit}
-                onCycle={() => {
-                  cycleTradeGojf(src);
-                }}
-              />
-            ))}
-          </div>
+        {/* The cash steppers and card-cycle rows are the proposer's *input*
+            surface; everyone else reads the outcome from TradeHoldings above. */}
+        {canEdit && (
+          <>
+            {heldCards.length > 0 && (
+              <div className="flex flex-col gap-1">
+                {heldCards.map((src) => (
+                  <CardRow
+                    key={src}
+                    source={src}
+                    state={state}
+                    terms={terms}
+                    byId={byId}
+                    onCycle={() => {
+                      cycleTradeGojf(src);
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+
+            <div className="flex flex-col gap-1">
+              {state.players
+                .filter((p) => !p.bankrupt)
+                .map((p) => (
+                  <CashRow
+                    key={p.id}
+                    player={p}
+                    amount={terms.cashDelta[p.id] ?? 0}
+                    onBump={(step) => {
+                      bumpTradeCash(p.id, step);
+                    }}
+                  />
+                ))}
+            </div>
+          </>
         )}
-
-        <div className="flex flex-col gap-1">
-          {state.players
-            .filter((p) => !p.bankrupt)
-            .map((p) => (
-              <CashRow
-                key={p.id}
-                player={p}
-                amount={terms.cashDelta[p.id] ?? 0}
-                canEdit={canEdit}
-                onBump={(step) => {
-                  bumpTradeCash(p.id, step);
-                }}
-              />
-            ))}
-          <BalanceLine balanced={balanced} off={Math.abs(cashSum)} />
-        </div>
 
         {isPending && approvals && (
           <ApprovalStatus approvals={approvals} byId={byId} />
@@ -128,7 +138,7 @@ export function TradePanel({ state }: Props) {
               }}
             />
             <PanelButton
-              label="Propose"
+              label={proposeIssue ?? "Propose"}
               variant="primary"
               disabled={!canPropose}
               onClick={() => {
@@ -193,65 +203,101 @@ function Heading({
   );
 }
 
-// "who ends up with what" — property and card movements as compact chips.
-function MovementSummary({
-  terms,
-  byId,
-}: {
-  terms: TradeTerms;
-  byId: ReadonlyMap<string, Player>;
-}) {
-  const chips: ReactNode[] = [];
-  for (const [posStr, ownerId] of Object.entries(terms.propertyTo)) {
-    const owner = byId.get(ownerId);
-    if (!owner) continue;
-    chips.push(
-      <span key={`p-${posStr}`} className="inline-flex items-center gap-1">
-        <SpaceName position={Number(posStr)} />
-        <span style={{ opacity: 0.4 }}>→</span>
-        <PlayerTag player={owner} />
-      </span>,
+/** The trade's result in the header's own grammar: the named parties as rows,
+ *  the sets the trade touches as columns, rendered against the *projected*
+ *  (post-trade) ownership. The persistent header above is the "before"; this is
+ *  the "after", so players read the outcome — who completes a set, who breaks
+ *  one — by diffing the two in a layout they already know. Each party's meta
+ *  cell shows their resulting balance when their cash changes, and breaks out
+ *  the 10% bank interest a receiver owes on a still-mortgaged property. */
+function TradeHoldings({ state, terms }: { state: GameState; terms: TradeTerms }) {
+  const projection = projectTrade(state, terms);
+  const movedPositions = new Set(
+    Object.keys(terms.propertyTo).map((pos) => Number(pos)),
+  );
+  const cardsMoved = Object.keys(terms.gojfTo).length > 0;
+
+  const affectedGroups = SLOT_GROUPS.filter((group) => {
+    if (group.key === "gojf") return cardsMoved;
+    return group.slots.some(
+      (slot) => slot.kind !== "gojf" && movedPositions.has(slot.position),
     );
-  }
-  for (const [src, holderId] of Object.entries(terms.gojfTo)) {
-    const holder = holderId ? (byId.get(holderId) ?? null) : null;
-    if (!holder) continue;
-    chips.push(
-      <span key={`g-${src}`} className="inline-flex items-center gap-1">
-        <CardTag source={src as CardSource} />
-        <span style={{ opacity: 0.4 }}>→</span>
-        <PlayerTag player={holder} />
-      </span>,
-    );
-  }
-  if (chips.length === 0) {
+  });
+
+  const partyIds = tradeParticipants(state, terms);
+  const parties = state.players.filter((p) => partyIds.has(p.id));
+
+  if (parties.length === 0) {
     return (
       <span style={{ opacity: 0.5 }}>No properties or cards moved yet.</span>
     );
   }
-  return <div className="flex flex-wrap gap-x-3 gap-y-1">{chips}</div>;
+
+  return (
+    <HoldingsGrid
+      players={parties}
+      groups={affectedGroups}
+      ownership={projection.ownership}
+      mortgaged={state.mortgaged}
+      jailFreeCards={projection.jailFreeCards}
+      changed={movedPositions}
+      metaMinWidth="5rem"
+      renderMeta={(player) => {
+        const after = projection.cashById[player.id] ?? player.cash;
+        const fee = projection.feesById[player.id] ?? 0;
+        const cashChanged = (terms.cashDelta[player.id] ?? 0) !== 0 || fee > 0;
+        return (
+          <>
+            <span className="truncate text-sm font-semibold">{player.name}</span>
+            {cashChanged && (
+              <span
+                className="font-mono text-xs"
+                style={{
+                  color: after < 0 ? "var(--mono-red)" : "var(--mono-ink)",
+                }}
+              >
+                ${after.toLocaleString("en-US")}
+              </span>
+            )}
+            {fee > 0 && (
+              <span
+                className="font-mono text-[0.65rem]"
+                style={{ color: "var(--mono-red)" }}
+              >
+                −${fee.toLocaleString("en-US")} interest
+              </span>
+            )}
+          </>
+        );
+      }}
+    />
+  );
 }
 
+// Proposer-only: tap to cycle which player holds a Get-Out-of-Jail-Free card.
 function CardRow({
   source,
   state,
   terms,
   byId,
-  canEdit,
   onCycle,
 }: {
   source: CardSource;
   state: GameState;
   terms: TradeTerms;
   byId: ReadonlyMap<string, Player>;
-  canEdit: boolean;
   onCycle: () => void;
 }) {
   const base = state.jailFreeCards[source];
   const holderId = terms.gojfTo[source] ?? base;
   const holder = holderId ? (byId.get(holderId) ?? null) : null;
-  const body = (
-    <>
+  return (
+    <button
+      type="button"
+      onClick={onCycle}
+      className="flex items-center justify-between rounded px-2 py-1 text-left"
+      style={{ ...ROW_STYLE, cursor: "pointer" }}
+    >
       <span className="inline-flex items-center gap-1.5">
         <KeyRound className="h-3.5 w-3.5" style={{ color: "var(--mono-orange)" }} />
         <span className="font-medium">
@@ -262,36 +308,18 @@ function CardRow({
         <span style={{ opacity: 0.4 }}>→</span>
         {holder ? <PlayerTag player={holder} /> : <span>—</span>}
       </span>
-    </>
-  );
-  if (!canEdit) {
-    return (
-      <div className="flex items-center justify-between rounded px-2 py-1" style={ROW_STYLE}>
-        {body}
-      </div>
-    );
-  }
-  return (
-    <button
-      type="button"
-      onClick={onCycle}
-      className="flex items-center justify-between rounded px-2 py-1 text-left"
-      style={{ ...ROW_STYLE, cursor: "pointer" }}
-    >
-      {body}
     </button>
   );
 }
 
+// Proposer-only: step a player's net cash delta for the trade up or down.
 function CashRow({
   player,
   amount,
-  canEdit,
   onBump,
 }: {
   player: Player;
   amount: number;
-  canEdit: boolean;
   onBump: (step: number) => void;
 }) {
   const color =
@@ -308,47 +336,30 @@ function CashRow({
     <div className="flex items-center justify-between rounded px-2 py-1" style={ROW_STYLE}>
       <PlayerTag player={player} />
       <div className="flex items-center gap-2">
-        {canEdit && (
-          <StepButton
-            ariaLabel={`Less cash for ${player.name}`}
-            onClick={() => {
-              onBump(-CASH_STEP);
-            }}
-          >
-            <Minus className="h-3.5 w-3.5" />
-          </StepButton>
-        )}
+        <StepButton
+          ariaLabel={`Less cash for ${player.name}`}
+          onClick={() => {
+            onBump(-CASH_STEP);
+          }}
+        >
+          <Minus className="h-3.5 w-3.5" />
+        </StepButton>
         <span
           className="w-16 text-right font-semibold tabular-nums"
           style={{ color }}
         >
           {text}
         </span>
-        {canEdit && (
-          <StepButton
-            ariaLabel={`More cash for ${player.name}`}
-            onClick={() => {
-              onBump(CASH_STEP);
-            }}
-          >
-            <Plus className="h-3.5 w-3.5" />
-          </StepButton>
-        )}
+        <StepButton
+          ariaLabel={`More cash for ${player.name}`}
+          onClick={() => {
+            onBump(CASH_STEP);
+          }}
+        >
+          <Plus className="h-3.5 w-3.5" />
+        </StepButton>
       </div>
     </div>
-  );
-}
-
-function BalanceLine({ balanced, off }: { balanced: boolean; off: number }) {
-  return (
-    <span
-      className="px-2 text-right text-xs font-semibold tabular-nums"
-      style={{ color: balanced ? "var(--mono-green)" : "var(--mono-red)" }}
-    >
-      {balanced
-        ? "⚖ cash balanced"
-        : `off by $${off.toLocaleString("en-US")}`}
-    </span>
   );
 }
 
@@ -392,37 +403,6 @@ function PlayerTag({ player }: { player: Player }) {
         }}
       />
       <span className="truncate font-semibold">{player.name}</span>
-    </span>
-  );
-}
-
-function SpaceName({ position }: { position: number }) {
-  const space = SPACES[position];
-  if (space.kind === "property") {
-    return (
-      <span className="inline-flex min-w-0 items-center gap-1">
-        <span
-          className="inline-block h-3 w-3 shrink-0 rounded-sm"
-          style={{
-            backgroundColor: PROPERTY_COLOR_VAR[space.color],
-            boxShadow: "0 0 0 1px var(--mono-frame)",
-          }}
-        />
-        <span className="truncate font-medium">{space.name}</span>
-      </span>
-    );
-  }
-  if (space.kind === "railroad" || space.kind === "utility") {
-    return <span className="truncate font-medium">{space.name}</span>;
-  }
-  return null;
-}
-
-function CardTag({ source }: { source: CardSource }) {
-  return (
-    <span className="inline-flex items-center gap-1">
-      <KeyRound className="h-3.5 w-3.5" style={{ color: "var(--mono-orange)" }} />
-      <span className="font-medium">{source === "chance" ? "Chance" : "Chest"}</span>
     </span>
   );
 }

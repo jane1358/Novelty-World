@@ -783,8 +783,8 @@ export function tradeParticipants(
 
 /** 10% bank interest each player owes for receiving a still-mortgaged property
  *  in the trade, keyed by receiver. Empty when no mortgaged property changes
- *  hands. */
-function mortgageInterestFees(
+ *  hands. Exported so the trade panel can attribute the fee in the UI. */
+export function tradeMortgageFees(
   state: GameState,
   terms: TradeTerms,
 ): Record<string, number> {
@@ -813,12 +813,42 @@ function applyTradeTerms(state: GameState, terms: TradeTerms): GameState {
   for (const [src, newHolder] of Object.entries(terms.gojfTo)) {
     jailFreeCards[src as CardSource] = newHolder;
   }
-  const fees = mortgageInterestFees(state, terms);
+  const fees = tradeMortgageFees(state, terms);
   const players = state.players.map((p) => {
     const change = (terms.cashDelta[p.id] ?? 0) - (fees[p.id] ?? 0);
     return change === 0 ? p : { ...p, cash: p.cash + change };
   });
   return { ...state, ownership, jailFreeCards, players };
+}
+
+/** The board as it would look after a trade, surfaced for the trade panel's
+ *  after-view. Runs the same pure transform the engine executes
+ *  (`applyTradeTerms`) without mutating anything, plus the per-receiver
+ *  mortgage-interest fees broken out so the UI can attribute the cash drop. */
+export interface TradeProjection {
+  ownership: GameState["ownership"];
+  jailFreeCards: GameState["jailFreeCards"];
+  /** Each player's cash after the trade (negotiated delta minus any mortgage
+   *  interest), keyed by id. */
+  cashById: Readonly<Record<string, number>>;
+  /** 10% bank interest each receiver owes for a still-mortgaged property,
+   *  keyed by receiver. Absent / 0 for everyone else. */
+  feesById: Readonly<Record<string, number>>;
+}
+
+export function projectTrade(
+  state: GameState,
+  terms: TradeTerms,
+): TradeProjection {
+  const post = applyTradeTerms(state, terms);
+  const cashById: Record<string, number> = {};
+  for (const p of post.players) cashById[p.id] = p.cash;
+  return {
+    ownership: post.ownership,
+    jailFreeCards: post.jailFreeCards,
+    cashById,
+    feesById: tradeMortgageFees(state, terms),
+  };
 }
 
 /** Structural validity of trade terms, independent of balance: every property
