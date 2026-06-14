@@ -454,7 +454,9 @@ function PanelButton({
       className="flex flex-1 items-center justify-center px-3 py-3 font-semibold uppercase tracking-wide disabled:opacity-40"
       style={{
         backgroundColor: background,
-        color: "var(--mono-ink)",
+        // Dark ink on the bright green primary (white-on-green is too low
+        // contrast); near-white on the dark default.
+        color: variant === "primary" ? "var(--mono-frame)" : "var(--mono-ink)",
         fontSize: "clamp(0.875rem, 2.5vmin, 1.125rem)",
         minHeight: "56px",
       }}

@@ -294,6 +294,44 @@ function Chip({
   );
 }
 
+/** The header chip slot for a board position, or null if the space isn't
+ *  ownable (so has no chip). Shared so other surfaces — e.g. the auction panel —
+ *  can draw a lone chip in the exact grammar players already read in the header,
+ *  letting the eye match an auctioned lot to its set at a glance. */
+export function chipSlotAt(
+  position: number,
+): Exclude<ChipSlot, { kind: "gojf" }> | null {
+  const space = SPACES[position];
+  if (space.kind === "property") {
+    return { kind: "property", position, color: space.color };
+  }
+  if (space.kind === "railroad") return { kind: "railroad", position };
+  if (space.kind === "utility") {
+    return {
+      kind: "utility",
+      position,
+      icon: space.name === "Electric Company" ? Zap : Droplets,
+    };
+  }
+  return null;
+}
+
+/** A single owned chip for an arbitrary ownable position, drawn with the same
+ *  look as the header grid. Renders nothing for a non-ownable space. */
+export function PositionChip({
+  position,
+  mortgaged,
+}: {
+  position: number;
+  mortgaged: boolean;
+}) {
+  const slot = chipSlotAt(position);
+  if (!slot) return null;
+  return (
+    <Chip slot={slot} owned mortgaged={mortgaged} visible emphasized={false} />
+  );
+}
+
 function GojfIcon() {
   return (
     <div className="relative flex h-4 w-4 shrink-0 items-center justify-center">
