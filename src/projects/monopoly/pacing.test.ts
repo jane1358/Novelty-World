@@ -3,8 +3,10 @@ import { freshGame } from "./mocks";
 import {
   DEFAULT_TURN_MS,
   driveOp,
+  glideAnimMs,
   ingestSnapshot,
   paceTransition,
+  slideAnimMs,
   type Snapshot,
 } from "./pacing";
 import type { GameState, Player } from "./types";
@@ -137,6 +139,33 @@ describe("paceTransition", () => {
     const handoff = paceTransition(base, withTurn(base, { playerId: "p2" }), DEFAULT_TURN_MS);
     const move = paceTransition(base, mapPlayer(base, "p1", { position: 6 }), DEFAULT_TURN_MS);
     expect(handoff.durationMs + move.durationMs).toBe(DEFAULT_TURN_MS);
+  });
+});
+
+describe("in-phase animation scaling", () => {
+  // A short hop where the tuned duration (not the budget cap) is the binding
+  // term at DEFAULT_TURN_MS, so motion is free to scale with turnMs.
+  const SHORT_PX = 200;
+  const SHORT_ROWS = 2;
+
+  it("doubles glide motion when turnMs doubles", () => {
+    const atDefault = glideAnimMs(DEFAULT_TURN_MS, SHORT_PX);
+    expect(glideAnimMs(DEFAULT_TURN_MS * 2, SHORT_PX)).toBeCloseTo(atDefault * 2);
+  });
+
+  it("doubles slide motion when turnMs doubles", () => {
+    const atDefault = slideAnimMs(DEFAULT_TURN_MS, SHORT_ROWS);
+    expect(slideAnimMs(DEFAULT_TURN_MS * 2, SHORT_ROWS)).toBeCloseTo(atDefault * 2);
+  });
+
+  it("keeps motion within its phase budget so a hold always remains", () => {
+    // Far beyond any real board distance: the cap, not the tuned duration, binds.
+    expect(glideAnimMs(DEFAULT_TURN_MS, 100_000)).toBeLessThan(
+      DEFAULT_TURN_MS * 0.35,
+    );
+    expect(slideAnimMs(DEFAULT_TURN_MS, 100_000)).toBeLessThan(
+      DEFAULT_TURN_MS * 0.65,
+    );
   });
 });
 

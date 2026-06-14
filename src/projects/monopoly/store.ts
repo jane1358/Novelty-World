@@ -2,7 +2,6 @@
 
 import { create } from "zustand";
 import type { PlayerProfile } from "@/shared/lib/profile";
-import { getProjectStorage } from "@/shared/lib/storage/project-storage";
 import {
   colorAt,
   developmentLevel,
@@ -31,10 +30,8 @@ import type {
 } from "./types";
 
 // Per-client playback pacing (buffer + playback head) lives at the bottom of
-// this file; the turn budget it spends, and the persistence of that local
-// preference, are in `pacing.ts` and `turnMsStorage` below.
-const turnMsStorage = getProjectStorage("monopoly");
-const TURN_MS_KEY = "turnMs";
+// this file; the turn budget it spends is `turnMs`, defaulting to
+// `DEFAULT_TURN_MS` from `pacing.ts`.
 
 interface MonopolyActions {
   /** Set this client's player id (assigned during lobby join). */
@@ -412,12 +409,17 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
       versionedOp((fromVersion) => ({ type: "dev", command, fromVersion }));
     },
 
+    // TODO: nothing in the UI calls this yet, so every client stays at
+    // `DEFAULT_TURN_MS`. The per-client machinery is kept on purpose — the
+    // pacer already spends each viewer's own `turnMs`, so distinct speeds will
+    // work the moment a speed control calls this. Persistence was deliberately
+    // dropped: a stored value would silently override `DEFAULT_TURN_MS` on load
+    // with no way to clear it. Re-add it alongside that future UI.
     setTurnMs: (turnMs) => {
       // Keep the pace watchable: floor so a turn never blinks past, cap so a
       // slow setting can't strand a viewer indefinitely behind the buffer.
       const clamped = Math.max(400, Math.min(8000, Math.round(turnMs)));
       set({ turnMs: clamped });
-      turnMsStorage.set(TURN_MS_KEY, clamped);
     },
 
     cycleBuild: (position) => {
@@ -751,11 +753,6 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
 // Guarded on `window` so importing this module under SSR or test runners (no
 // DOM, no timers wanted) is a no-op.
 if (typeof window !== "undefined") {
-  // Hydrate the local pace preference before the first frame so the very first
-  // turn already plays at the chosen speed.
-  const storedTurnMs = turnMsStorage.get<number>(TURN_MS_KEY);
-  if (storedTurnMs !== null) useMonopolyStore.getState().setTurnMs(storedTurnMs);
-
   let dwellTimer: ReturnType<typeof setTimeout> | null = null;
   // The head version this client last drove from, so a redundant pump (the
   // store fires subscribers synchronously on its own writes) can't double-fire

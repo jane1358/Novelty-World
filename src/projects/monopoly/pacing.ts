@@ -6,7 +6,7 @@ import type { GameState, Intent } from "./types";
  *  player, slide their token, hold on the landing — plays out over roughly
  *  this long. Per-client local preference (see the store's `turnMs`); this is
  *  the fallback when none is set. */
-export const DEFAULT_TURN_MS = 2000;
+export const DEFAULT_TURN_MS = 3000;
 
 /** How a turn's time budget splits between its two visible phases. The glide
  *  phase (camera re-anchors on the new active player, then an orient hold) gets
@@ -20,12 +20,19 @@ const GLIDE_FRACTION = 0.35;
 const SLIDE_FRACTION = 0.65;
 
 // Distance scaling for the in-phase animations. The camera glide and token
-// slide each run distance-proportionally but are capped *below* their phase
+// slide each run distance-proportionally and are capped *below* their phase
 // budget so a hold always remains afterward — the orient hold after a glide,
 // the longer landing hold after a slide. The base/step values (ms per px, ms
-// per row) carry over the board's hand-tuned feel; the cap keeps them inside
-// whatever `TURN_MS` the viewer picked, so a slow pace just lengthens the
-// holds rather than the motion.
+// per row) are the board's hand-tuned feel at `MOTION_REFERENCE_MS`; both the
+// tuned duration and the cap scale linearly with the viewer's `turnMs`, so a
+// slower pace stretches the motion and its trailing hold together (the whole
+// turn slows down) rather than darting at a fixed speed into a longer wait.
+//
+// The reference is fixed (not `DEFAULT_TURN_MS`) on purpose: the default pace
+// is a separate, tunable knob, and tying the scale to it would re-anchor "1×"
+// to whatever the default is — so changing the default would only lengthen the
+// holds and leave the motion speed put, the exact plateau this scaling removes.
+const MOTION_REFERENCE_MS = 2000;
 const GLIDE_ANIM_BASE_MS = 180;
 const GLIDE_ANIM_PER_PX = 0.35;
 const GLIDE_ANIM_CAP = 0.7; // ≤70% of the glide budget; ≥30% stays orient hold
@@ -75,8 +82,12 @@ function turnOp(state: GameState, myPlayerId: string | null): DriveOp | null {
   if (
     phase === "buy-decision" ||
     phase === "must-raise-cash" ||
-    phase === "trade-pending"
+    phase === "trade-pending" ||
+    phase === "auction"
   ) {
+    // These phases can wait on an OFF-turn seat (the current bidder, a debtor
+    // after a trade, a vote), so iterate every bot rather than only the active
+    // one. `botIntent` returns null unless this bot is the one being waited on.
     for (const p of state.players) {
       if (!p.isBot) continue;
       const intent = botIntent(state, p.id);
@@ -152,25 +163,29 @@ export function paceTransition(
   return { phase: "settle", durationMs: 0 };
 }
 
-/** How long the camera glide runs within a `glide` transition — distance
- *  scaled, but always shorter than the glide phase's budget so an orient hold
- *  remains after the camera settles. */
+/** How long the camera glide runs within a `glide` transition — scaled by both
+ *  distance and the viewer's `turnMs` (tuned at `MOTION_REFERENCE_MS`), but
+ *  always shorter than the glide phase's budget so an orient hold remains after
+ *  the camera settles. */
 export function glideAnimMs(turnMs: number, distancePx: number): number {
+  const scale = turnMs / MOTION_REFERENCE_MS;
   const budget = turnMs * GLIDE_FRACTION;
   return Math.min(
     budget * GLIDE_ANIM_CAP,
-    GLIDE_ANIM_BASE_MS + distancePx * GLIDE_ANIM_PER_PX,
+    (GLIDE_ANIM_BASE_MS + distancePx * GLIDE_ANIM_PER_PX) * scale,
   );
 }
 
-/** How long the token slide runs within a `slide` transition — distance scaled
- *  (by board rows), but always shorter than the slide phase's budget so the
- *  longer landing hold remains after the token lands. */
+/** How long the token slide runs within a `slide` transition — scaled by both
+ *  distance (board rows) and the viewer's `turnMs` (tuned at
+ *  `MOTION_REFERENCE_MS`), but always shorter than the slide phase's budget so
+ *  the longer landing hold remains after the token lands. */
 export function slideAnimMs(turnMs: number, rows: number): number {
+  const scale = turnMs / MOTION_REFERENCE_MS;
   const budget = turnMs * SLIDE_FRACTION;
   return Math.min(
     budget * SLIDE_ANIM_CAP,
-    SLIDE_ANIM_BASE_MS + Math.abs(rows) * SLIDE_ANIM_PER_ROW_MS,
+    (SLIDE_ANIM_BASE_MS + Math.abs(rows) * SLIDE_ANIM_PER_ROW_MS) * scale,
   );
 }
 
