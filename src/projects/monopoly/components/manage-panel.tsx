@@ -140,7 +140,7 @@ function Header({
   }
   return (
     <span className="truncate font-semibold uppercase tracking-wide">
-      Manage — strip builds, body mortgages
+      Manage
     </span>
   );
 }
