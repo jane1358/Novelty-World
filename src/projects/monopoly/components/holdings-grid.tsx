@@ -12,6 +12,19 @@ type ChipSlot =
   | { kind: "utility"; position: number; icon: LucideIcon }
   | { kind: "gojf"; source: "chance" | "communityChest" };
 
+/** A slot that maps to a board position — every `ChipSlot` except GOJF, which
+ *  is a held card with no square. The unit a `Chip` actually renders. */
+type BoardChipSlot = Exclude<ChipSlot, { kind: "gojf" }>;
+
+/** Per-chip appearance, resolved by each `ChipSet` caller for its own meaning of
+ *  "filled": owned-by-this-row (header) vs is-the-auctioned-lot (auction). */
+interface ChipState {
+  owned: boolean;
+  mortgaged: boolean;
+  visible: boolean;
+  emphasized: boolean;
+}
+
 const COLOR_ORDER: readonly PropertyColor[] = [
   "brown",
   "light-blue",
@@ -172,23 +185,16 @@ export function HoldingsGrid({
                 isOwnedBy(slot, player.id, ownership, jailFreeCards),
               );
               return (
-                <div key={group.key} className="flex">
-                  {group.slots.map((slot) => {
-                    // GOJF is filtered out by the early-return above; this
-                    // group is guaranteed to contain only board-position slots.
-                    if (slot.kind === "gojf") return null;
-                    return (
-                      <Chip
-                        key={slotKey(slot)}
-                        slot={slot}
-                        owned={isOwnedBy(slot, player.id, ownership, jailFreeCards)}
-                        mortgaged={mortgaged[slot.position] ?? false}
-                        visible={setRelevant}
-                        emphasized={changed?.has(slot.position) ?? false}
-                      />
-                    );
+                <ChipSet
+                  key={group.key}
+                  slots={group.slots}
+                  chipState={(slot) => ({
+                    owned: isOwnedBy(slot, player.id, ownership, jailFreeCards),
+                    mortgaged: mortgaged[slot.position] ?? false,
+                    visible: setRelevant,
+                    emphasized: changed?.has(slot.position) ?? false,
                   })}
-                </div>
+                />
               );
             })}
           </div>
@@ -232,7 +238,7 @@ function Chip({
   visible,
   emphasized,
 }: {
-  slot: Exclude<ChipSlot, { kind: "gojf" }>;
+  slot: BoardChipSlot;
   owned: boolean;
   mortgaged: boolean;
   visible: boolean;
@@ -294,41 +300,37 @@ function Chip({
   );
 }
 
-/** The header chip slot for a board position, or null if the space isn't
- *  ownable (so has no chip). Shared so other surfaces — e.g. the auction panel —
- *  can draw a lone chip in the exact grammar players already read in the header,
- *  letting the eye match an auctioned lot to its set at a glance. */
-export function chipSlotAt(
-  position: number,
-): Exclude<ChipSlot, { kind: "gojf" }> | null {
-  const space = SPACES[position];
-  if (space.kind === "property") {
-    return { kind: "property", position, color: space.color };
-  }
-  if (space.kind === "railroad") return { kind: "railroad", position };
-  if (space.kind === "utility") {
-    return {
-      kind: "utility",
-      position,
-      icon: space.name === "Electric Company" ? Zap : Droplets,
-    };
-  }
-  return null;
-}
-
-/** A single owned chip for an arbitrary ownable position, drawn with the same
- *  look as the header grid. Renders nothing for a non-ownable space. */
-export function PositionChip({
-  position,
-  mortgaged,
+/** One set rendered as a flush strip of chips — the shared unit behind the
+ *  header row's per-set group and the auction panel's lot-in-context strip.
+ *  `ChipSet` owns the layout and iteration; each chip's appearance is resolved
+ *  per slot by `chipState`, so the same strip serves "this player's holdings in
+ *  the set" (header) and "this lot within its set" (auction). GOJF slots carry
+ *  no board square, so they're skipped — the header renders held cards through
+ *  `GojfIcon` instead. */
+export function ChipSet({
+  slots,
+  chipState,
 }: {
-  position: number;
-  mortgaged: boolean;
+  slots: readonly ChipSlot[];
+  chipState: (slot: BoardChipSlot) => ChipState;
 }) {
-  const slot = chipSlotAt(position);
-  if (!slot) return null;
   return (
-    <Chip slot={slot} owned mortgaged={mortgaged} visible emphasized={false} />
+    <div className="flex">
+      {slots.map((slot) => {
+        if (slot.kind === "gojf") return null;
+        const { owned, mortgaged, visible, emphasized } = chipState(slot);
+        return (
+          <Chip
+            key={slotKey(slot)}
+            slot={slot}
+            owned={owned}
+            mortgaged={mortgaged}
+            visible={visible}
+            emphasized={emphasized}
+          />
+        );
+      })}
+    </div>
   );
 }
 

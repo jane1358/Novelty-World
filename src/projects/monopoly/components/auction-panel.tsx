@@ -7,7 +7,7 @@ import { ownablePrice } from "../logic";
 import { useMonopolyStore } from "../store";
 import { PLAYER_COLOR_VAR } from "../theme";
 import type { GameState, Player } from "../types";
-import { PositionChip } from "./holdings-grid";
+import { ChipSet, SLOT_GROUPS } from "./holdings-grid";
 
 interface Props {
   state: GameState;
@@ -34,6 +34,16 @@ export function AuctionPanel({ state }: Props) {
   const printed = ownablePrice(auction.position);
   const nextBid = auction.highBid + BID_INCREMENT;
 
+  // The lot drawn in the header's set grammar: its whole color set, with the
+  // auctioned lot filled and its set-mates as faint outlines, so the eye reads
+  // the property by color + position-in-set ("orange, first of three"). This is
+  // identity, not ownership — the strip says nothing about who owns what.
+  const lotGroup = SLOT_GROUPS.find((group) =>
+    group.slots.some(
+      (slot) => slot.kind !== "gojf" && slot.position === auction.position,
+    ),
+  );
+
   // Every non-bankrupt player is a participant; a bankrupt estate debtor is
   // already excluded. Shown in seat order with their standing.
   const participants = state.players.filter((p) => !p.bankrupt);
@@ -52,10 +62,20 @@ export function AuctionPanel({ state }: Props) {
       <div className="flex flex-col gap-2 px-3 py-2.5">
         <div className="flex items-center justify-between gap-2">
           <span className="inline-flex min-w-0 items-center gap-1.5">
-            <PositionChip
-              position={auction.position}
-              mortgaged={state.mortgaged[auction.position] ?? false}
-            />
+            {lotGroup && (
+              <ChipSet
+                slots={lotGroup.slots}
+                chipState={(slot) => {
+                  const isLot = slot.position === auction.position;
+                  return {
+                    owned: isLot,
+                    mortgaged: isLot && (state.mortgaged[auction.position] ?? false),
+                    visible: true,
+                    emphasized: false,
+                  };
+                }}
+              />
+            )}
             <span className="truncate font-semibold uppercase tracking-wide">
               {"name" in space ? space.name : "Auction"}
             </span>
