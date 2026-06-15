@@ -338,4 +338,4 @@ src/projects/monopoly/
 - `engine.test.ts` for `apply` and `autoStep` — feed a state + intent, assert the new state and event list. Use a seeded RNG. These tests are the regression net for the rules.
 - E2E tests (Playwright) live in `e2e/`, exercise the multiplayer flow end-to-end, and assume the dev server on :3001.
 
-When fixing a rule bug, add a failing engine test first. The bug + fix should be one PR.
+When fixing a rule bug, add a failing engine test first — and **run it to prove it fails before writing the fix**. A test that was never seen red gives no confidence it exercises the bug. The bug + fix should be one PR.

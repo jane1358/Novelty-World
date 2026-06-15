@@ -1665,6 +1665,25 @@ describe("trade building", () => {
     expect(apply(unbalanced, { kind: "propose-trade", playerId: "p1" }).ok).toBe(false);
   });
 
+  it("rejects trading a bare lot out of a set that still has buildings", () => {
+    // p1 owns the whole brown set (1, 3) with one house on Mediterranean (1) —
+    // a legal even-build [1, 0] state. Baltic (3) is bare, but the official rule
+    // forbids trading ANY lot of a set while a building stands anywhere in it.
+    let start = withOwnership(freshGame("trade-set-built"), { 1: "p1", 3: "p1" });
+    start = { ...start, houses: { 1: 1 } };
+    const building = inTradeBuilding(start, "p1");
+    const terms = { propertyTo: { 3: "p2" }, gojfTo: {}, cashDelta: {} };
+
+    // Both the live draft and the proposal must refuse it.
+    expect(apply(building, { kind: "update-trade-draft", playerId: "p1", terms }).ok).toBe(false);
+
+    const withDraft: GameState = {
+      ...building,
+      turn: { ...building.turn, tradeDraft: { proposerId: "p1", ...terms } },
+    };
+    expect(apply(withDraft, { kind: "propose-trade", playerId: "p1" }).ok).toBe(false);
+  });
+
   it("returns to pre-roll on cancel", () => {
     const start = inTradeBuilding(freshGame("trade-cancel"), "p1");
     const res = apply(start, { kind: "cancel-trade", playerId: "p1" });

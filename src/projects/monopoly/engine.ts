@@ -1,7 +1,7 @@
 import { shuffleArray } from "@/shared/lib/utils";
 import { CHANCE, COMMUNITY_CHEST, deckFor, SPACES } from "./data";
 import {
-  buildingsBlockingMortgage,
+  builtLotsInGroup,
   developmentLevel,
   maxBuildingSaleValue,
   planDevelopment,
@@ -910,7 +910,7 @@ function applyManage(
       // once the build side runs (official rule — so "sell the set's houses then
       // mortgage one of them" works in one commit). Checked against the build's
       // final levels, not just this lot.
-      if (buildingsBlockingMortgage(pos, finalLevel).length > 0) {
+      if (builtLotsInGroup(pos, finalLevel).length > 0) {
         return { ok: false, reason: "sell the set's buildings before mortgaging" };
       }
       const value = mortgageValueAt(pos);
@@ -1039,7 +1039,7 @@ function applyMortgage(
   // Official rule: the whole color set must be building-free to mortgage any
   // member, not just this lot.
   const levelAt = (pos: number): number => developmentLevel(state, pos);
-  if (buildingsBlockingMortgage(intent.position, levelAt).length > 0) {
+  if (builtLotsInGroup(intent.position, levelAt).length > 0) {
     return { ok: false, reason: "must sell the set's buildings first" };
   }
   const value = mortgageValueAt(intent.position);
@@ -1201,18 +1201,24 @@ export function projectTrade(
 }
 
 /** Structural validity of trade terms, independent of balance: every property
- *  is owned (and building-free) and reassigned to a real player who isn't its
- *  current owner; every card is held and moved to a different real player;
- *  every cash party is real. Shared by the draft path (this only) and the
- *  propose path (this plus balance / participants / affordability). Returns an
- *  error reason or null. */
+ *  is owned (and its whole color set building-free) and reassigned to a real
+ *  player who isn't its current owner; every card is held and moved to a
+ *  different real player; every cash party is real. Shared by the draft path
+ *  (this only) and the propose path (this plus balance / participants /
+ *  affordability). Returns an error reason or null. */
 function validateTradeAssets(state: GameState, terms: TradeTerms): string | null {
+  const levelAt = (pos: number): number => developmentLevel(state, pos);
   for (const [posStr, newOwner] of Object.entries(terms.propertyTo)) {
     const pos = Number(posStr);
     const current = state.ownership[pos];
     if (!current) return "can't trade an unowned property";
     if (current === newOwner) return "property assigned to its current owner";
-    if (state.houses[pos]) return "can't trade a property with buildings";
+    // Official rule: no lot of a color set may be traded while a building stands
+    // anywhere in that set — sell the whole set down to bare lots first. (The
+    // even-build rule permits a built set to hold a bare lot, e.g. [1, 0].)
+    if (builtLotsInGroup(pos, levelAt).length > 0) {
+      return "sell the set's buildings before trading";
+    }
     if (!isActivePlayer(state, newOwner)) return "unknown recipient";
   }
   for (const [src, newHolder] of Object.entries(terms.gojfTo)) {

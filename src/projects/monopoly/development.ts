@@ -73,15 +73,15 @@ export function groupPositions(color: PropertyColor): readonly number[] {
   return GROUP_POSITIONS[color];
 }
 
-/** The official rule for mortgaging: a property can't be mortgaged while ANY
- *  property in its color group still carries a building — the whole set must be
- *  sold down to bare lots first. `levelAt` looks up each position's level (the
- *  live levels, or a commit's post-build final levels, so "sell the set's
- *  houses then mortgage a lot" still passes in one commit). Returns the built
- *  positions in the group (including the lot itself) that block the mortgage,
- *  empty when clear. Railroads and utilities have no color group and can't hold
- *  buildings, so they never block. */
-export function buildingsBlockingMortgage(
+/** Built lots in a position's color group — the positions (including the lot
+ *  itself) carrying a building. Empty when the whole set is bare; empty for
+ *  railroads and utilities, which have no color group and can't hold buildings.
+ *  `levelAt` looks up each position's level (the live levels, or a commit's
+ *  post-build final levels, so "sell the set's houses then act on a lot" passes
+ *  in one commit). This is the set-must-be-bare guard behind two official rules:
+ *  a lot can't be mortgaged, nor traded, while a building stands anywhere in its
+ *  set. */
+export function builtLotsInGroup(
   position: number,
   levelAt: (pos: number) => number,
 ): number[] {

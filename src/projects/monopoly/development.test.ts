@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   bankSupply,
   buildingRefundAt,
-  buildingsBlockingMortgage,
+  builtLotsInGroup,
   houseCostAt,
   maxBuildingSaleValue,
   planDevelopment,
@@ -52,25 +52,25 @@ function drainHousesTo(free: number): Record<number, number> {
   return houses;
 }
 
-describe("buildingsBlockingMortgage", () => {
+describe("builtLotsInGroup", () => {
   const live = (houses: Record<number, number>) => (pos: number) => houses[pos] ?? 0;
 
   it("is empty when the whole color set is bare", () => {
-    expect(buildingsBlockingMortgage(16, live({}))).toEqual([]);
+    expect(builtLotsInGroup(16, live({}))).toEqual([]);
   });
 
   it("flags a built set-mate even when the lot itself is bare", () => {
     // 16 is bare, 18 has a house — the set blocks mortgaging any member.
-    expect(buildingsBlockingMortgage(16, live({ 18: 1 }))).toContain(18);
+    expect(builtLotsInGroup(16, live({ 18: 1 }))).toContain(18);
   });
 
   it("includes the lot itself when it is built", () => {
-    expect(buildingsBlockingMortgage(16, live({ 16: 2 }))).toContain(16);
+    expect(builtLotsInGroup(16, live({ 16: 2 }))).toContain(16);
   });
 
   it("never blocks railroads or utilities (no color group)", () => {
-    expect(buildingsBlockingMortgage(5, live({}))).toEqual([]); // Reading RR
-    expect(buildingsBlockingMortgage(12, live({}))).toEqual([]); // Electric Co.
+    expect(builtLotsInGroup(5, live({}))).toEqual([]); // Reading RR
+    expect(builtLotsInGroup(12, live({}))).toEqual([]); // Electric Co.
   });
 });
 

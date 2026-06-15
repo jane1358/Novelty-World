@@ -1,6 +1,6 @@
 import {
   bankSupply,
-  buildingsBlockingMortgage,
+  builtLotsInGroup,
   developmentLevel,
   planDevelopment,
 } from "./development";
@@ -94,7 +94,7 @@ export function manageSummary(
   for (const [posStr, flag] of Object.entries(staged.mortgage)) {
     const pos = Number(posStr);
     if (!flag || state.mortgaged[pos] === true) continue;
-    if (buildingsBlockingMortgage(pos, finalLevel).length > 0) {
+    if (builtLotsInGroup(pos, finalLevel).length > 0) {
       return { ok: false, reason: "sell the set's buildings before mortgaging" };
     }
   }
