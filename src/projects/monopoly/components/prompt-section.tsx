@@ -4,8 +4,9 @@ import type { CSSProperties, ReactNode } from "react";
 import { SPACES } from "../data";
 import { firstNegativePlayer, JAIL_FEE } from "../engine";
 import { heldJailCard, ownablePrice } from "../logic";
+import { hasStagedChanges, manageSummary } from "../manage";
 import { useMonopolyStore } from "../store";
-import type { GameState } from "../types";
+import type { GameState, ManageStaged } from "../types";
 import { AuctionPanel } from "./auction-panel";
 import { SetContextChips } from "./holdings-grid";
 import { ManagePanel } from "./manage-panel";
@@ -34,6 +35,7 @@ export function PromptSection({ state }: Props) {
   const myPlayerId = useMonopolyStore((s) => s.myPlayerId);
   const submit = useMonopolyStore((s) => s.submit);
   const step = useMonopolyStore((s) => s.step);
+  const buyProperty = useMonopolyStore((s) => s.buyProperty);
 
   const { phase, pendingBuy } = state.turn;
 
@@ -96,11 +98,10 @@ export function PromptSection({ state }: Props) {
   if (phase === "buy-decision" && pendingBuy !== undefined) {
     return (
       <BuyPrompt
-        state={state}
         position={pendingBuy}
         playerId={myPlayerId}
         onBuy={() => {
-          submit({ kind: "buy", playerId: myPlayerId });
+          buyProperty();
         }}
         onPass={() => {
           submit({ kind: "decline-buy", playerId: myPlayerId });
@@ -120,26 +121,43 @@ const SECTION_STYLE: CSSProperties = {
   boxShadow: "inset 0 1px 0 var(--mono-frame)",
 };
 
+const EMPTY_STAGED: ManageStaged = { build: {}, mortgage: {} };
+
+/** Buy / Auction prompt for a landed-on property. When cash on hand falls short,
+ *  the buyer can stage a cash-raise directly on the board (the color strip sells
+ *  buildings, the row body mortgages — the same surface as a manage
+ *  intermission, gated to raise-only); this bar tracks the running cash through
+ *  the staged raise and the purchase, and enables Buy once the projected balance
+ *  covers the price. The staged raise lives in synced `turn.manageStaged`, so
+ *  every player watches it take shape — only the buyer drives it. */
 function BuyPrompt({
-  state,
   position,
   playerId,
   onBuy,
   onPass,
 }: {
-  state: GameState;
   position: number;
   playerId: string;
   onBuy: () => void;
   onPass: () => void;
 }) {
-  const price = ownablePrice(position);
-  if (price === null) return null;
-  const player = state.players.find((p) => p.id === playerId);
-  if (!player) return null;
+  // Read live (synced) state so the bar re-renders as the buyer stages the raise.
+  const state = useMonopolyStore((s) => s.state);
+  const staged = useMonopolyStore((s) => s.state.turn.manageStaged) ?? EMPTY_STAGED;
 
-  const cashAfter = player.cash - price;
-  const canAfford = cashAfter >= 0;
+  const price = ownablePrice(position);
+  const player = state.players.find((p) => p.id === playerId);
+  if (price === null || !player) return null;
+
+  const summary = manageSummary(state, playerId, staged);
+  const raiseNet = summary.ok ? summary.netCash : 0;
+  const hasStaged = hasStagedChanges(state, staged);
+  // cash → (after raise) → (after buy). Buy needs a legal staging that leaves a
+  // non-negative balance once the price is paid.
+  const cashRaised = player.cash + raiseNet;
+  const cashAfter = cashRaised - price;
+  const canAfford = summary.ok && cashAfter >= 0;
+  const shortfall = price - cashRaised;
 
   return (
     <div className="relative z-10 flex shrink-0" style={SECTION_STYLE}>
@@ -164,6 +182,14 @@ function BuyPrompt({
           <span style={{ opacity: 0.7 }}>
             ${player.cash.toLocaleString("en-US")}
           </span>
+          {hasStaged && (
+            <>
+              <span style={{ opacity: 0.5 }}>→</span>
+              <span style={{ color: "var(--mono-orange)", fontWeight: 600 }}>
+                ${cashRaised.toLocaleString("en-US")}
+              </span>
+            </>
+          )}
           <span style={{ opacity: 0.5 }}>→</span>
           <span
             className="font-semibold"
@@ -172,6 +198,20 @@ function BuyPrompt({
             ${cashAfter.toLocaleString("en-US")}
           </span>
         </span>
+        {!summary.ok ? (
+          <span className="truncate" style={{ color: "var(--mono-red)" }}>
+            {summary.reason}
+          </span>
+        ) : (
+          shortfall > 0 && (
+            <span
+              className="truncate tabular-nums"
+              style={{ color: "var(--mono-orange)" }}
+            >
+              Raise ${shortfall.toLocaleString("en-US")} — sell or mortgage
+            </span>
+          )
+        )}
       </div>
       <PromptButton label="Auction" onClick={onPass} />
       <PromptButton

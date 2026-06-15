@@ -417,7 +417,12 @@ export interface PlayerPreferences {
  *  move, pay rent, draw card) are NOT intents — they live inside
  *  `autoStep`. See `monopoly/CLAUDE.md` "Intents vs mechanics — the line". */
 export type Intent =
-  | { kind: "buy"; playerId: string }
+  /** Buy the landed-on property. `raise` (optional) sells buildings / mortgages
+   *  the buyer's OTHER lots first, atomically, to cover the price when cash on
+   *  hand falls short — the official "raise the money, then buy" play. It's
+   *  applied raise-first against pre-purchase holdings (which exclude the
+   *  landed-on lot), so a property can never fund its own purchase. */
+  | { kind: "buy"; playerId: string; raise?: ManageStaged }
   | { kind: "decline-buy"; playerId: string }
   /** Place a bid of `amount` — an absolute total; the client sends what the
    *  bidder saw plus one increment. The amount is always RECORDED as that
@@ -464,9 +469,10 @@ export type Intent =
   | { kind: "cancel-manage"; playerId: string }
   /** Actor replaces their live manage staging wholesale (the client computes the
    *  next staged maps and sends a full snapshot — same shape and broadcast model
-   *  as `update-trade-draft`). Only legal in `managing` for the manager, or in
-   *  `must-raise-cash` for the current debtor; staging is a preview, validated
-   *  finally at the `manage` commit. */
+   *  as `update-trade-draft`). Legal in `managing` for the manager, in
+   *  `must-raise-cash` for the current debtor, or in `buy-decision` for the
+   *  active buyer staging a cash-raise; staging is a preview, validated finally
+   *  at the `manage` or `buy` commit. */
   | { kind: "update-manage-staging"; playerId: string; staged: ManageStaged }
   /** Proposer replaces the live draft wholesale (the client computes the next
    *  terms and sends a full snapshot — keeps the intent surface small and the

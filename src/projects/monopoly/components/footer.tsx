@@ -1,3 +1,4 @@
+import { ownablePrice } from "../logic";
 import type { GameState } from "../types";
 import { ActionBar } from "./action-bar";
 import { EventLog } from "./event-log";
@@ -12,11 +13,24 @@ export function Footer({ state }: Props) {
   // every player, card rows, the movement summary), so the log is hidden while
   // a trade is being built or voted on. The manage intermission and the auction
   // panel reuse the same space, so they hide the log too.
+  //
+  // A buy-decision hides the log ONLY when the buyer is short on cash and must
+  // raise it — then the board becomes a sell / mortgage staging surface and
+  // needs the room (everyone watches it take shape). An affordable buy keeps
+  // the log: it's just the quick Buy / Auction decision, no board staging.
+  const buyer = state.players.find((p) => p.id === state.turn.playerId);
+  const buyPrice =
+    state.turn.phase === "buy-decision" && state.turn.pendingBuy !== undefined
+      ? ownablePrice(state.turn.pendingBuy)
+      : null;
+  const buyNeedsRaise =
+    buyPrice !== null && buyer !== undefined && buyer.cash < buyPrice;
   const intermissionOpen =
     state.turn.phase === "trade-building" ||
     state.turn.phase === "trade-pending" ||
     state.turn.phase === "managing" ||
-    state.turn.phase === "auction";
+    state.turn.phase === "auction" ||
+    buyNeedsRaise;
   return (
     <div
       className="relative z-10 flex shrink-0 flex-col"

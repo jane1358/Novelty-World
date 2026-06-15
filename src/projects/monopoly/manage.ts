@@ -14,14 +14,26 @@ import type { GameState, ManageStaged } from "./types";
 // their callers keep a single import site.
 export type { ManageStaged };
 
-/** Who the manage UI is acting as: the queued manager during `managing`, or the
- *  current debtor (`firstNegativePlayer`, possibly off-turn) during
- *  `must-raise-cash`. Null when neither phase is active. */
+/** Who is driving the build/sell/mortgage board surface right now: the queued
+ *  manager during `managing`, the current debtor (`firstNegativePlayer`,
+ *  possibly off-turn) during `must-raise-cash`, or the active buyer staging a
+ *  cash-raise during `buy-decision`. Null when no such phase is active. */
 export function manageActorId(state: GameState): string | null {
   const { phase, managerId } = state.turn;
   if (phase === "managing") return managerId ?? null;
   if (phase === "must-raise-cash") return firstNegativePlayer(state);
+  if (phase === "buy-decision") return state.turn.playerId;
   return null;
+}
+
+/** Raise-only mode: the actor may only sell buildings / mortgage to bring cash
+ *  IN — no builds, no un-mortgages. True for the forced `must-raise-cash`
+ *  settler and the buy-decision cash-raise; the voluntary `managing`
+ *  intermission allows the full spend side. The engine enforces this at commit;
+ *  the client uses it to gate the board zones to sell / mortgage. */
+export function isRaiseOnly(state: GameState): boolean {
+  const { phase } = state.turn;
+  return phase === "must-raise-cash" || phase === "buy-decision";
 }
 
 /** Apply a staged mortgage map to a copy of the state, so the build planner

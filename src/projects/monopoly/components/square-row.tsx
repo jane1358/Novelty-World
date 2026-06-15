@@ -7,7 +7,7 @@ import { SPACES } from "../data";
 import { colorAt, developmentLevel, groupPositions } from "../development";
 import { laneOffset } from "../lanes";
 import { hasMonopoly, rentAt, type RentDisplay } from "../logic";
-import { manageActorId } from "../manage";
+import { isRaiseOnly, manageActorId } from "../manage";
 import { useMonopolyStore } from "../store";
 import { useTokenAnim } from "../token-anim-store";
 import { PLAYER_COLOR_VAR, PROPERTY_COLOR_VAR } from "../theme";
@@ -99,8 +99,9 @@ export function SquareRow({ position }: Props) {
     const color = colorAt(position);
     if (color === null || s.state.ownership[position] !== me) return false;
     if (!hasMonopoly(s.state, color, me)) return false;
-    // Forced raise-cash can only sell down — gated to built squares.
-    if (s.state.turn.phase === "must-raise-cash") {
+    // Raise-only (forced settle, or a buy-decision cash-raise) can only sell
+    // down — gated to built squares.
+    if (isRaiseOnly(s.state)) {
       return developmentLevel(s.state, position) > 0;
     }
     // Voluntary: buildable only on an unmortgaged set (counting staged flips).
@@ -115,9 +116,9 @@ export function SquareRow({ position }: Props) {
     const me = s.myPlayerId;
     if (!me || manageActorId(s.state) !== me) return false;
     if (s.state.ownership[position] !== me) return false;
-    // During forced raise-cash, un-mortgaging is illegal, so an already
-    // mortgaged square isn't a tap target.
-    if (s.state.turn.phase === "must-raise-cash" && s.state.mortgaged[position]) {
+    // Raise-only (forced settle, or a buy-decision cash-raise) can't un-mortgage,
+    // so an already mortgaged square isn't a tap target.
+    if (isRaiseOnly(s.state) && s.state.mortgaged[position]) {
       return false;
     }
     // Mortgaging needs the lot building-free; selling its buildings to 0 in the

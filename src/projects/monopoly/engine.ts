@@ -173,6 +173,8 @@ function enterPostRoll(state: GameState): TurnState {
     phase: "post-roll",
     pendingBuy: undefined,
     raiseCash: undefined,
+    // Drop any buy-decision cash-raise staging so it never leaks past the buy.
+    manageStaged: undefined,
   };
 }
 
@@ -191,6 +193,7 @@ function afterLanding(state: GameState): GameState {
       ...state.turn,
       phase: "pre-roll",
       pendingBuy: undefined,
+      manageStaged: undefined,
     };
     return { ...state, turn };
   }
@@ -549,21 +552,48 @@ function applyBuy(
   if (price === null) {
     return { ok: false, reason: "not an ownable space" };
   }
-  const playerIdx = state.players.findIndex((p) => p.id === intent.playerId);
-  const player = state.players[playerIdx];
+
+  // Optional cash-raise: sell buildings / mortgage OTHER lots to cover the
+  // price, applied raise-first and atomically with the purchase. It runs
+  // against the player's current holdings — which exclude `position` (not yet
+  // owned) — so a lot can never fund its own purchase, and cash never dips
+  // below zero (no must-raise-cash detour). The official "raise the money,
+  // then buy" play.
+  let working = state;
+  let raiseEvents: readonly GameEvent[] = [];
+  const raise = intent.raise;
+  if (
+    raise !== undefined &&
+    (Object.keys(raise.build).length > 0 ||
+      Object.keys(raise.mortgage).length > 0)
+  ) {
+    const raised = applyManageCommit(
+      state,
+      intent.playerId,
+      raise.build,
+      raise.mortgage,
+      true,
+    );
+    if (!raised.ok) return { ok: false, reason: raised.reason };
+    working = raised.state;
+    raiseEvents = raised.events;
+  }
+
+  const playerIdx = working.players.findIndex((p) => p.id === intent.playerId);
+  const player = working.players[playerIdx];
   if (player.cash < price) {
     return { ok: false, reason: "insufficient cash" };
   }
 
   const updatedPlayer: Player = { ...player, cash: player.cash - price };
-  const players = state.players.map((p, i) =>
+  const players = working.players.map((p, i) =>
     i === playerIdx ? updatedPlayer : p,
   );
-  const ownership = { ...state.ownership, [position]: intent.playerId };
+  const ownership = { ...working.ownership, [position]: intent.playerId };
   const buyEvent: GameEvent = { kind: "buy", position, price };
-  const turns = appendEventToActiveTurn(state.turns, buyEvent);
+  const turns = appendEventToActiveTurn(working.turns, buyEvent);
   const afterPurchase: GameState = {
-    ...state,
+    ...working,
     players,
     ownership,
     turns,
@@ -571,7 +601,7 @@ function applyBuy(
   return {
     ok: true,
     state: afterLanding(afterPurchase),
-    newEvents: [buyEvent],
+    newEvents: [...raiseEvents, buyEvent],
   };
 }
 
@@ -650,7 +680,15 @@ function enterAuction(
   };
   return {
     ...state,
-    turn: { ...state.turn, phase: "auction", pendingBuy: undefined, auction },
+    turn: {
+      ...state.turn,
+      phase: "auction",
+      pendingBuy: undefined,
+      // A buy-decision raise that was staged but not committed is dropped — the
+      // decliner mortgaged nothing (atomic with the buy that never happened).
+      manageStaged: undefined,
+      auction,
+    },
   };
 }
 
@@ -886,23 +924,71 @@ function applyManage(
     }
   }
 
-  const playerIdx = state.players.findIndex((p) => p.id === intent.playerId);
+  const committed = applyManageCommit(
+    state,
+    intent.playerId,
+    intent.build,
+    intent.mortgage,
+    inRaiseCash,
+  );
+  if (!committed.ok) return committed;
+
+  if (inRaiseCash) {
+    const resume = state.turn.raiseCash ?? "after-landing";
+    return {
+      ok: true,
+      state: settleOrRaise(committed.state, resume),
+      newEvents: committed.events,
+    };
+  }
+  // Voluntary commit: close the intermission and return to the boundary, where
+  // the next autoStep re-checks the queue (mirrors the trade exit).
+  return {
+    ok: true,
+    state: returnToPreRoll(committed.state),
+    newEvents: committed.events,
+  };
+}
+
+type ManageCommit =
+  | { ok: true; state: GameState; events: GameEvent[]; netCash: number }
+  | { ok: false; reason: string };
+
+/** Apply a build/sell + mortgage/un-mortgage commit for `playerId`, raise-first
+ *  / spend-second and all-or-nothing — the shared core behind both `manage`
+ *  entry contexts and the buy-decision cash-raise. Returns the new state, the
+ *  cash-flow-ordered events, and the combined net cash; the caller decides
+ *  where play resumes (it carries no phase/turn concerns).
+ *
+ *  `raiseOnly` (the forced `must-raise-cash` settler and the buy-decision raise)
+ *  forbids the spend side: no builds, no un-mortgages, and the non-negative
+ *  end-state cash check is skipped — a forced settler starts negative and only
+ *  climbs, and the buyer's affordability is checked by the caller against the
+ *  purchase price. */
+function applyManageCommit(
+  state: GameState,
+  playerId: string,
+  build: Readonly<Record<number, number>>,
+  mortgage: Readonly<Record<number, boolean>>,
+  raiseOnly: boolean,
+): ManageCommit {
+  const playerIdx = state.players.findIndex((p) => p.id === playerId);
   const player = state.players[playerIdx];
 
   // --- Resolve the mortgage flips (only entries that change the flag). The
   //     build's final levels gate whether a property can be mortgaged. ---
   const finalLevel = (pos: number): number =>
-    intent.build[pos] ?? developmentLevel(state, pos);
+    build[pos] ?? developmentLevel(state, pos);
   const finalMortgaged: Record<number, boolean> = {};
   for (const [posStr, flag] of Object.entries(state.mortgaged)) {
     finalMortgaged[Number(posStr)] = flag;
   }
   const mortgageEvents: GameEvent[] = [];
   let mortgageNet = 0;
-  for (const [posStr, want] of Object.entries(intent.mortgage)) {
+  for (const [posStr, want] of Object.entries(mortgage)) {
     const pos = Number(posStr);
     if (want === (state.mortgaged[pos] === true)) continue;
-    if (state.ownership[pos] !== intent.playerId) {
+    if (state.ownership[pos] !== playerId) {
       return { ok: false, reason: "you don't own that property" };
     }
     if (want) {
@@ -919,13 +1005,13 @@ function applyManage(
       mortgageNet += value;
       mortgageEvents.push({
         kind: "mortgage",
-        playerId: intent.playerId,
+        playerId,
         position: pos,
         received: value,
       });
     } else {
-      // Un-mortgaging spends cash — not allowed while settling a debt.
-      if (inRaiseCash) {
+      // Un-mortgaging spends cash — not allowed while only raising.
+      if (raiseOnly) {
         return { ok: false, reason: "can only raise cash now" };
       }
       const cost = unmortgageCostAt(pos);
@@ -934,7 +1020,7 @@ function applyManage(
       mortgageNet -= cost;
       mortgageEvents.push({
         kind: "unmortgage",
-        playerId: intent.playerId,
+        playerId,
         position: pos,
         cost,
       });
@@ -945,11 +1031,11 @@ function applyManage(
   //     being unmortgaged in this same commit is buildable. ---
   const plan = planDevelopment(
     { ...state, mortgaged: finalMortgaged },
-    intent.playerId,
-    intent.build,
+    playerId,
+    build,
   );
   if (!plan.ok) return { ok: false, reason: plan.reason };
-  if (inRaiseCash && plan.steps.some((s) => s.kind === "build")) {
+  if (raiseOnly && plan.steps.some((s) => s.kind === "build")) {
     return { ok: false, reason: "can only sell to raise cash" };
   }
   if (plan.steps.length === 0 && mortgageEvents.length === 0) {
@@ -957,10 +1043,10 @@ function applyManage(
   }
 
   // Cash check: with raise-first ordering the low-water mark is the final
-  // balance, so a non-negative end state is sufficient (forced settlers are
-  // already negative and only raising, so they skip this).
+  // balance, so a non-negative end state is sufficient (raise-only callers
+  // skip it — already negative and only climbing, or gating on a price).
   const totalNet = plan.netCash + mortgageNet;
-  if (!inRaiseCash && player.cash + totalNet < 0) {
+  if (!raiseOnly && player.cash + totalNet < 0) {
     return { ok: false, reason: "insufficient cash" };
   }
 
@@ -974,7 +1060,7 @@ function applyManage(
       houses[step.position] = step.toLevel;
       buildEvents.push({
         kind: "build",
-        playerId: intent.playerId,
+        playerId,
         position: step.position,
         toLevel: step.toLevel,
         cost: step.cost,
@@ -987,7 +1073,7 @@ function applyManage(
       else houses[step.position] = toLevel;
       sellEvents.push({
         kind: "sell-building",
-        playerId: intent.playerId,
+        playerId,
         position: step.position,
         toLevel,
         refund: step.refund,
@@ -1017,14 +1103,7 @@ function applyManage(
     players,
     turns,
   };
-
-  if (inRaiseCash) {
-    const resume = state.turn.raiseCash ?? "after-landing";
-    return { ok: true, state: settleOrRaise(after, resume), newEvents: events };
-  }
-  // Voluntary commit: close the intermission and return to the boundary, where
-  // the next autoStep re-checks the queue (mirrors the trade exit).
-  return { ok: true, state: returnToPreRoll(after), newEvents: events };
+  return { ok: true, state: after, events, netCash: totalNet };
 }
 
 /** Mortgage a single property — the forced-debtor / bot raise-cash path only.
@@ -1392,6 +1471,9 @@ function applyUpdateManageStaging(
   let actor: string | null;
   if (phase === "managing") actor = managerId ?? null;
   else if (phase === "must-raise-cash") actor = firstNegativePlayer(state);
+  // A buy-decision lets the active player stage a cash-raise (sell / mortgage
+  // their OTHER lots) before buying, broadcast like a manage intermission.
+  else if (phase === "buy-decision") actor = state.turn.playerId;
   else return { ok: false, reason: "no manage intermission open" };
   if (actor === null || intent.playerId !== actor) {
     return { ok: false, reason: "not the manage actor" };
@@ -1598,6 +1680,23 @@ function moveActivePlayer(state: GameState, total: number): GameState {
   return { ...state, players };
 }
 
+/** Open a buy-decision on `position` for the active player. Seeds an empty
+ *  manage staging so the buyer can stage a cash-raise (sell / mortgage their
+ *  OTHER lots) that every player watches take shape — the same broadcast
+ *  discipline as a manage intermission. Shared by the normal landing and the
+ *  "advance to nearest" card path. */
+function openBuyDecision(state: GameState, position: number): GameState {
+  return {
+    ...state,
+    turn: {
+      ...state.turn,
+      phase: "buy-decision",
+      pendingBuy: position,
+      manageStaged: { build: {}, mortgage: {} },
+    },
+  };
+}
+
 /** Resolve the tile the active player has just moved onto: a "Go to Jail" cell
  *  sends them away, an unowned ownable opens a buy-decision, an owned square
  *  charges rent (which may bust them), anything else settles the landing.
@@ -1628,12 +1727,7 @@ function resolveTile(
   const landedOnUnownedOwnable =
     ownablePrice(toPos) !== null && !(toPos in state.ownership);
   if (landedOnUnownedOwnable) {
-    const turn: TurnState = {
-      ...state.turn,
-      phase: "buy-decision",
-      pendingBuy: toPos,
-    };
-    return { state: { ...state, turn }, newEvents: [] };
+    return { state: openBuyDecision(state, toPos), newEvents: [] };
   }
 
   const amount = rentDue(state, toPos, total, state.turn.playerId);
@@ -2023,8 +2117,7 @@ function advanceNearestCard(
 
   if (!ownerId) {
     // Unowned: offer to buy at face price (existing buy-decision flow).
-    const turn: TurnState = { ...cur.turn, phase: "buy-decision", pendingBuy: pos };
-    return { state: { ...cur, turn }, newEvents: before };
+    return { state: openBuyDecision(cur, pos), newEvents: before };
   }
   if (ownerId === landerId || cur.mortgaged[pos]) {
     return { state: afterLanding(cur), newEvents: before };
