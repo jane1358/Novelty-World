@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  ChevronDown,
-  ChevronUp,
-  Droplets,
-  KeyRound,
-  Train,
-  Zap,
-} from "lucide-react";
+import { ChevronDown, ChevronUp, KeyRound } from "lucide-react";
 import {
   Fragment,
   useEffect,
@@ -16,7 +9,8 @@ import {
   type ReactNode,
 } from "react";
 import { deckFor, SPACES } from "../data";
-import { PLAYER_COLOR_VAR, PROPERTY_COLOR_VAR } from "../theme";
+import { PLAYER_COLOR_VAR } from "../theme";
+import { SetContextChips } from "./holdings-grid";
 import type {
   CardSource,
   GameEvent,
@@ -593,37 +587,13 @@ function Arrow() {
 function SpaceLabel({ position }: { position: number }) {
   const space = SPACES[position];
   switch (space.kind) {
+    // Ownables carry no name in the log — the set strip alone identifies them by
+    // color + position-in-set (the same grammar as the header), which keeps the
+    // dense log line tight. Non-ownable squares below still need their label.
     case "property":
-      return (
-        <span className="inline-flex min-w-0 items-center gap-1">
-          <ColorSwatch color={PROPERTY_COLOR_VAR[space.color]} />
-          <span className="font-medium">{shortPropertyName(space.name)}</span>
-        </span>
-      );
     case "railroad":
-      return (
-        <span className="inline-flex min-w-0 items-center gap-1">
-          <Train
-            className="h-3.5 w-3.5 shrink-0"
-            style={{ color: "var(--mono-rail)" }}
-          />
-          <span className="font-medium">{shortRailroadName(space.name)}</span>
-        </span>
-      );
-    case "utility": {
-      const Icon = space.name === "Electric Company" ? Zap : Droplets;
-      return (
-        <span className="inline-flex min-w-0 items-center gap-1">
-          <Icon
-            className="h-3.5 w-3.5 shrink-0"
-            style={{ color: "var(--mono-utility)" }}
-          />
-          <span className="font-medium">
-            {space.name === "Electric Company" ? "Electric" : "Water"}
-          </span>
-        </span>
-      );
-    }
+    case "utility":
+      return <SetContextChips position={position} />;
     case "go":
       return <span className="font-medium">GO</span>;
     case "jail":
@@ -639,34 +609,6 @@ function SpaceLabel({ position }: { position: number }) {
     case "tax":
       return <span className="font-medium">{space.name}</span>;
   }
-}
-
-// Strip trailing " Avenue" entirely and shorten " Place" → " Pl". Property
-// identity is conveyed by the color swatch + first word(s); the suffix is
-// noise that pushes content widths around.
-function shortPropertyName(name: string): string {
-  return name.replace(/ Avenue$/, "").replace(/ Place$/, " Pl");
-}
-
-// "Reading Railroad" → "Reading RR", "Pennsylvania Railroad" → "Penn RR",
-// "B. & O. Railroad" → "B&O RR". "Short Line" is left as-is.
-function shortRailroadName(name: string): string {
-  return name
-    .replace("Pennsylvania", "Penn")
-    .replace("B. & O.", "B&O")
-    .replace(" Railroad", " RR");
-}
-
-function ColorSwatch({ color }: { color: string }) {
-  return (
-    <span
-      className="inline-block h-3 w-3 shrink-0 rounded-sm"
-      style={{
-        backgroundColor: color,
-        boxShadow: "0 0 0 1px var(--mono-frame)",
-      }}
-    />
-  );
 }
 
 function PlayerChip({ player }: { player: Player }) {

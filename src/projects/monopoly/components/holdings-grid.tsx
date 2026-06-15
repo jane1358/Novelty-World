@@ -334,6 +334,40 @@ export function ChipSet({
   );
 }
 
+/** One property shown in its set context — the set strip with this position
+ *  filled (the header's "owned" look) and its set-mates as faint outlines, so
+ *  the eye reads it by color + position-in-set ("orange, first of three"). A
+ *  thin wrapper over `ChipSet` for the recurring "name one property" surfaces
+ *  outside the header: the buy prompt, the auction lot, and the event log. This
+ *  is identity, not ownership — it says nothing about who owns the set-mates.
+ *  Renders nothing for a non-ownable position. */
+export function SetContextChips({
+  position,
+  mortgaged = false,
+}: {
+  position: number;
+  mortgaged?: boolean;
+}) {
+  const group = SLOT_GROUPS.find((g) =>
+    g.slots.some((slot) => slot.kind !== "gojf" && slot.position === position),
+  );
+  if (!group) return null;
+  return (
+    <ChipSet
+      slots={group.slots}
+      chipState={(slot) => {
+        const isLot = slot.position === position;
+        return {
+          owned: isLot,
+          mortgaged: isLot && mortgaged,
+          visible: true,
+          emphasized: false,
+        };
+      }}
+    />
+  );
+}
+
 function GojfIcon() {
   return (
     <div className="relative flex h-4 w-4 shrink-0 items-center justify-center">

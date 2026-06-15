@@ -5,9 +5,9 @@ import { SPACES } from "../data";
 import { firstNegativePlayer, JAIL_FEE } from "../engine";
 import { heldJailCard, ownablePrice } from "../logic";
 import { useMonopolyStore } from "../store";
-import { PROPERTY_COLOR_VAR } from "../theme";
 import type { GameState } from "../types";
 import { AuctionPanel } from "./auction-panel";
+import { SetContextChips } from "./holdings-grid";
 import { ManagePanel } from "./manage-panel";
 import { TradePanel } from "./trade-panel";
 
@@ -261,22 +261,17 @@ function PromptButton({
 
 function SpaceTag({ position }: { position: number }): ReactNode {
   const space = SPACES[position];
-  if (space.kind === "property") {
-    return (
-      <span className="inline-flex min-w-0 items-center gap-1.5">
-        <span
-          className="inline-block h-3 w-3 shrink-0 rounded-sm"
-          style={{
-            backgroundColor: PROPERTY_COLOR_VAR[space.color],
-            boxShadow: "0 0 0 1px var(--mono-frame)",
-          }}
-        />
-        <span className="truncate font-semibold">{space.name}</span>
-      </span>
-    );
+  if (
+    space.kind !== "property" &&
+    space.kind !== "railroad" &&
+    space.kind !== "utility"
+  ) {
+    return null;
   }
-  if (space.kind === "railroad" || space.kind === "utility") {
-    return <span className="truncate font-semibold">{space.name}</span>;
-  }
-  return null;
+  return (
+    <span className="inline-flex min-w-0 items-center gap-1.5">
+      <SetContextChips position={position} />
+      <span className="truncate font-semibold">{space.name}</span>
+    </span>
+  );
 }
