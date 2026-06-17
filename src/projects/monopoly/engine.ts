@@ -1623,12 +1623,27 @@ function applyAcceptTrade(
   // Unanimous — execute. Move assets + cash + fees, log it, then settle (any
   // receiver pushed into the red raises cash before play resumes at pre-roll).
   const executed = applyTradeTerms(state, pending);
+  // Capture each moved asset's previous owner BEFORE the transfer so the log
+  // can show "from → to" (validation guarantees every moved asset is owned/held,
+  // so the lookups are always present). Cash carries no "from" — it's net.
+  const propertyFrom: Record<number, string> = {};
+  for (const posStr of Object.keys(pending.propertyTo)) {
+    const prev = state.ownership[Number(posStr)];
+    if (prev) propertyFrom[Number(posStr)] = prev;
+  }
+  const gojfFrom: Partial<Record<CardSource, string>> = {};
+  for (const src of Object.keys(pending.gojfTo)) {
+    const prev = state.jailFreeCards[src as CardSource];
+    if (prev) gojfFrom[src as CardSource] = prev;
+  }
   const tradeEvent: GameEvent = {
     kind: "trade",
     proposerId: pending.proposerId,
     propertyTo: pending.propertyTo,
     gojfTo: pending.gojfTo,
     cashDelta: pending.cashDelta,
+    propertyFrom,
+    gojfFrom,
   };
   const turns = appendEventToActiveTurn(executed.turns, tradeEvent);
   return {

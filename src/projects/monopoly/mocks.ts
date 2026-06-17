@@ -271,6 +271,8 @@ function MOCK_TURNS(): readonly TurnGroup[] {
           propertyTo: { 14: "p4", 27: "p2" },
           gojfTo: {},
           cashDelta: { p2: -200, p4: 200 },
+          propertyFrom: { 14: "p2", 27: "p4" },
+          gojfFrom: {},
         },
         { kind: "sell-building", playerId: "p2", position: 11, toLevel: 4, refund: 50 },
       ],

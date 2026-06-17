@@ -1847,7 +1847,13 @@ describe("trade approval + execution", () => {
     expect(accepted.state.players.find((p) => p.id === "p1")?.cash).toBe(1560);
     expect(accepted.state.players.find((p) => p.id === "p2")?.cash).toBe(1440);
     expect(accepted.state.turn.phase).toBe("pre-roll");
-    expect(accepted.newEvents.some((e) => e.kind === "trade")).toBe(true);
+    // The trade event records each moved asset's PREVIOUS owner (paired with
+    // propertyTo) so the log can render the move as "from → to".
+    const tradeEvent = accepted.newEvents.find((e) => e.kind === "trade");
+    expect(tradeEvent).toMatchObject({
+      propertyTo: { 1: "p2" },
+      propertyFrom: { 1: "p1" },
+    });
   });
 
   it("cancels the whole proposal on a single decline", () => {

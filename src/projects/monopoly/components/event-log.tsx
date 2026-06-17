@@ -138,6 +138,11 @@ function TurnFragment({
       </div>
       {turn.events.flatMap((event, i) => {
         const key = `${turn.turn}-${i}`;
+        // A trade moves several things at once; like build/sell it gets one
+        // row per move rather than a single crammed line. See `tradeRows`.
+        if (event.kind === "trade") {
+          return tradeRows({ event, playersById, myId, keyBase: key });
+        }
         const cells: ReactNode[] = [
           <EventCells
             key={key}
@@ -200,7 +205,7 @@ function EventCells({
     <Fragment>
       <VerbCell verb={verbFor(event)} />
       <BodyCell>
-        <EventBody event={event} playersById={playersById} myId={myId} />
+        <EventBody event={event} playersById={playersById} />
       </BodyCell>
       <NumericCell>
         <EventNumeric event={event} myId={myId} turnPlayerId={turnPlayerId} />
@@ -301,11 +306,9 @@ function cardName(source: CardSource, cardId: string): string {
 function EventBody({
   event,
   playersById,
-  myId,
 }: {
   event: GameEvent;
   playersById: ReadonlyMap<string, Player>;
-  myId: string | null;
 }) {
   switch (event.kind) {
     case "roll":
@@ -354,20 +357,10 @@ function EventBody({
     case "mortgage":
     case "unmortgage":
       return <SpaceLabel position={event.position} />;
-    case "trade": {
-      const proposer = playersById.get(event.proposerId);
-      return (
-        <>
-          {proposer && (
-            <>
-              <span style={{ opacity: 0.6 }}>by</span>
-              <PlayerChip player={proposer} />
-            </>
-          )}
-          <TradeMoves event={event} playersById={playersById} myId={myId} />
-        </>
-      );
-    }
+    case "trade":
+      // Trades render as one row per move via `tradeRows` (see `TurnFragment`),
+      // never as a single EventCells body, so this arm is unreachable.
+      return null;
     case "go-to-jail": {
       const reason =
         event.reason === "tile"
@@ -587,58 +580,83 @@ function RollTotal({ value }: { value: number }) {
   );
 }
 
-// Multi-party trade summary: one "asset → new holder" segment per property
-// and card that changed hands, plus one "player ±$" segment per cash move.
-// Reads as "who ends up with what", which scans better across N parties than
-// trying to render each player's give/get columns on one log line.
-function TradeMoves({
+// A trade moves several assets and cash deltas at once. Rather than cram them
+// onto one log line, each move gets its own grid row — the same line-per-change
+// treatment build/sell get. An asset move reads as "«from» «asset» → «to»"; a
+// cash move puts its net amount in the right-aligned numeric column like every
+// other money line (cash has no "from" — `cashDelta` is a net per player, not a
+// pairwise flow). Who proposed the trade is intentionally not shown.
+function tradeRows({
   event,
   playersById,
   myId,
+  keyBase,
 }: {
   event: Extract<GameEvent, { kind: "trade" }>;
   playersById: ReadonlyMap<string, Player>;
   myId: string | null;
-}) {
-  const parts: ReactNode[] = [];
-  for (const [posStr, ownerId] of Object.entries(event.propertyTo)) {
-    const owner = playersById.get(ownerId);
-    if (!owner) continue;
-    parts.push(
-      <span key={`p-${posStr}`} className="inline-flex items-center gap-0.5">
-        <SpaceLabel position={Number(posStr)} />
-        <Arrow />
-        <PlayerChip player={owner} />
-      </span>,
-    );
+  keyBase: string;
+}): ReactNode[] {
+  const moves: { key: string; body: ReactNode; numeric?: ReactNode }[] = [];
+  for (const [posStr, toId] of Object.entries(event.propertyTo)) {
+    const pos = Number(posStr);
+    const fromId = event.propertyFrom[pos];
+    const from = fromId ? playersById.get(fromId) : undefined;
+    const to = playersById.get(toId);
+    if (!from || !to) continue;
+    moves.push({
+      key: `p-${posStr}`,
+      body: (
+        <>
+          <PlayerChip player={from} />
+          <SpaceLabel position={pos} />
+          <Arrow />
+          <PlayerChip player={to} />
+        </>
+      ),
+    });
   }
-  for (const [src, holderId] of Object.entries(event.gojfTo)) {
-    const holder = holderId ? (playersById.get(holderId) ?? null) : null;
-    if (!holder) continue;
-    parts.push(
-      <span key={`g-${src}`} className="inline-flex items-center gap-0.5">
-        <GojfTag source={src as CardSource} />
-        <Arrow />
-        <PlayerChip player={holder} />
-      </span>,
-    );
+  for (const [src, toId] of Object.entries(event.gojfTo)) {
+    const fromId = event.gojfFrom[src as CardSource];
+    const from = fromId ? playersById.get(fromId) : undefined;
+    const to = toId ? playersById.get(toId) : undefined;
+    if (!from || !to) continue;
+    moves.push({
+      key: `g-${src}`,
+      body: (
+        <>
+          <PlayerChip player={from} />
+          <GojfTag source={src as CardSource} />
+          <Arrow />
+          <PlayerChip player={to} />
+        </>
+      ),
+    });
   }
   for (const [pid, delta] of Object.entries(event.cashDelta)) {
     if (!delta) continue;
     const p = playersById.get(pid);
     if (!p) continue;
-    parts.push(
-      <span key={`c-${pid}`} className="inline-flex items-center gap-0.5">
-        <PlayerChip player={p} />
+    moves.push({
+      key: `c-${pid}`,
+      body: <PlayerChip player={p} />,
+      numeric: (
         <Money
           amount={Math.abs(delta)}
           sign={delta > 0 ? "+" : "-"}
           mine={myId !== null && pid === myId}
         />
-      </span>,
-    );
+      ),
+    });
   }
-  return <span className="inline-flex items-center gap-x-2">{parts}</span>;
+
+  return moves.map((move) => (
+    <Fragment key={`${keyBase}-${move.key}`}>
+      <VerbCell verb={verbFor(event)} />
+      <BodyCell>{move.body}</BodyCell>
+      <NumericCell>{move.numeric}</NumericCell>
+    </Fragment>
+  ));
 }
 
 function GojfTag({ source }: { source: CardSource }) {

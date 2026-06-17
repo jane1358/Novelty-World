@@ -222,6 +222,11 @@ export type GameEvent =
       propertyTo: Readonly<Record<number, string>>;
       gojfTo: Readonly<Partial<Record<CardSource, string>>>;
       cashDelta: Readonly<Record<string, number>>;
+      /** Each moved property's / card's PREVIOUS owner, paired with `propertyTo`
+       *  / `gojfTo` so the log can render each asset move as "from → to". Cash
+       *  has no "from": `cashDelta` is a net per player, not a pairwise flow. */
+      propertyFrom: Readonly<Record<number, string>>;
+      gojfFrom: Readonly<Partial<Record<CardSource, string>>>;
     }
   | { kind: "go-to-jail"; reason: "tile" | "card" | "three-doubles" }
   | {
