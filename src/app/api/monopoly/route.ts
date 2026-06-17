@@ -4,14 +4,8 @@ import { PLAYER_COLORS, PLAYER_ICONS } from "@/projects/monopoly/data";
 import { applyDevCommand } from "@/projects/monopoly/dev-ops";
 import { apply, autoStep } from "@/projects/monopoly/engine";
 import {
-  addBot,
   createLobby,
-  joinLobby,
-  removePlayer,
-  setPlayerColor,
-  setPlayerIcon,
-  setPlayerName,
-  startGame,
+  lobbyReduce,
   type LobbyResult,
 } from "@/projects/monopoly/lobby";
 import { freshGame } from "@/projects/monopoly/mocks";
@@ -230,19 +224,15 @@ function compute(
     case "dev":
       return { ok: true, state: applyDevCommand(state, action.command, rngSeed) };
     case "join":
-      return fromLobby(joinLobby(state, action.profile));
     case "addBot":
-      return fromLobby(addBot(state));
     case "removePlayer":
-      return fromLobby(removePlayer(state, action.playerId));
     case "setColor":
-      return fromLobby(setPlayerColor(state, action.playerId, action.color));
     case "setIcon":
-      return fromLobby(setPlayerIcon(state, action.playerId, action.icon));
     case "setName":
-      return fromLobby(setPlayerName(state, action.playerId, action.name));
     case "start":
-      return fromLobby(startGame(state));
+      // The action carries a `fromVersion` the op type ignores — structurally a
+      // LobbyOp, applied through the same dispatcher the client predicts with.
+      return fromLobby(lobbyReduce(state, action));
     case "submit": {
       // Apply-only: intents do NOT auto-drain mechanics. One unit of progress
       // per call is the contract — a separate `step` runs each `autoStep`,

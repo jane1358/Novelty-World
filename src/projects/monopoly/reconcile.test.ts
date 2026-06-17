@@ -1,8 +1,18 @@
 import { describe, expect, it } from "vitest";
+import { PLAYER_COLORS } from "./data";
 import { apply } from "./engine";
+import { createLobby, joinLobby, type LobbyOp } from "./lobby";
 import { freshGame } from "./mocks";
-import { rebuildOverlay } from "./reconcile";
+import { rebuildLobbyOverlay, rebuildOverlay } from "./reconcile";
 import type { AuctionState, GameState, Intent } from "./types";
+
+/** A lobby seating the host (color 0) plus one joined player (color 1). */
+function twoSeatLobby(): GameState {
+  const base = createLobby({ id: "host", name: "Host" }, "rc-lobby");
+  const joined = joinLobby(base, { id: "p2", name: "Alex" });
+  if (!joined.ok) throw new Error("join failed");
+  return joined.state;
+}
 
 /** A head whose active player's turn is past the roll — used to prove an armed
  *  intent rebases onto a boundary it wasn't predicted against. */
@@ -95,6 +105,37 @@ describe("rebuildOverlay", () => {
   it("returns the head untouched for an empty outbox", () => {
     const head = freshGame("rc-empty");
     const { state, outbox } = rebuildOverlay(head, []);
+    expect(state).toBe(head);
+    expect(outbox).toEqual([]);
+  });
+});
+
+describe("rebuildLobbyOverlay", () => {
+  it("keeps a seat edit that still applies on the head", () => {
+    const head = twoSeatLobby();
+    // The host picks a hue no one holds — applies cleanly and is kept.
+    const op: LobbyOp = { type: "setColor", playerId: "host", color: PLAYER_COLORS[2] };
+    const { state, outbox } = rebuildLobbyOverlay(head, [op]);
+    expect(state.players[0].color).toBe(PLAYER_COLORS[2]);
+    expect(outbox).toEqual([op]);
+  });
+
+  it("prunes a pick a racing seat already claimed (the loser reverts)", () => {
+    // The host's pending pick targets p2's hue. On a head where p2 holds it, the
+    // op fails to re-apply and is dropped — the display falls back to the host's
+    // confirmed color, exactly the silent revert the lobby race resolves to.
+    const head = twoSeatLobby();
+    const contested = head.players[1].color;
+    const op: LobbyOp = { type: "setColor", playerId: "host", color: contested };
+    const { state, outbox } = rebuildLobbyOverlay(head, [op]);
+    expect(state).toBe(head);
+    expect(state.players[0].color).toBe(PLAYER_COLORS[0]);
+    expect(outbox).toEqual([]);
+  });
+
+  it("returns the head untouched for an empty outbox", () => {
+    const head = twoSeatLobby();
+    const { state, outbox } = rebuildLobbyOverlay(head, []);
     expect(state).toBe(head);
     expect(outbox).toEqual([]);
   });

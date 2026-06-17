@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { PLAYER_COLORS } from "./data";
+import { createLobby, joinLobby } from "./lobby";
 import { freshGame } from "./mocks";
 import type { MonopolyAction, MonopolyResult } from "./protocol";
 import type { AuctionState, GameState, ManageStaged } from "./types";
@@ -74,6 +76,7 @@ function setup(state: GameState): void {
     profile: { id: "p1", name: "P1" },
     optimistic: null,
     outbox: [],
+    lobbyOutbox: [],
     buffer: [],
   });
 }
@@ -422,5 +425,131 @@ describe("optimistic reconcile", () => {
     expect(action.intents).toEqual([
       { kind: "set-queue", playerId: "p1", queue: "trade", armed: true },
     ]);
+  });
+});
+
+describe("optimistic lobby", () => {
+  const tick = (): Promise<void> =>
+    new Promise((resolve) => setTimeout(resolve, 0));
+
+  /** A lobby seating the host (color 0) plus one joined player (color 1). */
+  function twoSeatLobby(): GameState {
+    const base = createLobby({ id: "host", name: "Host" }, "store-lobby");
+    const joined = joinLobby(base, { id: "p2", name: "Alex" });
+    if (!joined.ok) throw new Error("join failed");
+    return joined.state;
+  }
+
+  /** Seat the store in a connected lobby as the host. */
+  function setupLobby(state: GameState): void {
+    submitted.length = 0;
+    useMonopolyStore.setState({
+      state,
+      headState: state,
+      version: 1,
+      gameId: "lobby-1",
+      myPlayerId: "host",
+      profile: { id: "host", name: "Host" },
+      optimistic: null,
+      outbox: [],
+      lobbyOutbox: [],
+      buffer: [],
+    });
+  }
+
+  const hostColor = (): string =>
+    useMonopolyStore.getState().state.players[0].color;
+
+  it("paints a color pick instantly, before the route confirms", () => {
+    setupLobby(twoSeatLobby());
+    useMonopolyStore.getState().setColor("host", PLAYER_COLORS[2]);
+    // Synchronously painted and queued — no round-trip wait.
+    expect(hostColor()).toBe(PLAYER_COLORS[2]);
+    expect(useMonopolyStore.getState().lobbyOutbox).toHaveLength(1);
+    const action = submitted[0].action;
+    expect(action.type).toBe("setColor");
+  });
+
+  it("reverts a color pick that lost the race to another seat", async () => {
+    const head = twoSeatLobby();
+    setupLobby(head);
+    // The route hands back a winner where p2 grabbed the hue the host just picked.
+    const winner: GameState = {
+      ...head,
+      players: head.players.map((p) =>
+        p.id === "p2" ? { ...p, color: PLAYER_COLORS[2] } : p,
+      ),
+    };
+    responses.push({ ok: false, conflict: true, state: winner, version: 2 });
+
+    useMonopolyStore.getState().setColor("host", PLAYER_COLORS[2]);
+    expect(hostColor()).toBe(PLAYER_COLORS[2]); // optimistic
+
+    await tick();
+    await tick();
+    // The pick no longer applies (taken), so it's pruned: the host reverts to
+    // their confirmed color and the outbox drains. The swatch greys out as taken.
+    expect(hostColor()).toBe(PLAYER_COLORS[0]);
+    expect(useMonopolyStore.getState().lobbyOutbox).toHaveLength(0);
+  });
+
+  it("keeps a still-valid pick when an unrelated change wins the race", async () => {
+    const head = twoSeatLobby();
+    setupLobby(head);
+    // A racing write only renames p2 — the host's hue is still free, so the
+    // rebased pick survives and re-flushes against the new version.
+    const winner: GameState = {
+      ...head,
+      players: head.players.map((p) =>
+        p.id === "p2" ? { ...p, name: "Renamed" } : p,
+      ),
+    };
+    responses.push({ ok: false, conflict: true, state: winner, version: 2 });
+
+    useMonopolyStore.getState().setColor("host", PLAYER_COLORS[2]);
+    await tick();
+    await tick();
+    expect(hostColor()).toBe(PLAYER_COLORS[2]); // still applied
+    expect(useMonopolyStore.getState().state.players[1].name).toBe("Renamed");
+  });
+
+  it("ignores a stale snapshot that would snap the display backwards", () => {
+    // The brief-revert flash: once a predicted edit confirms and drains from the
+    // outbox, a late / out-of-order Realtime echo of the PRE-edit row must not
+    // snap the display back. Without the version guard it would, until the fresh
+    // echo re-arrived.
+    const head = twoSeatLobby();
+    const redHead: GameState = {
+      ...head,
+      players: head.players.map((p) =>
+        p.id === "host" ? { ...p, color: PLAYER_COLORS[2] } : p,
+      ),
+    };
+    setupLobby(head); // version 1
+    // The edit is confirmed at version 2 and already drained from the outbox.
+    useMonopolyStore.setState({
+      state: redHead,
+      headState: redHead,
+      version: 2,
+      lobbyOutbox: [],
+    });
+    // A late echo of the pre-edit row (version 1) arrives out of order.
+    useMonopolyStore.getState().applyStateUpdate(head, 1);
+    // It's stale, so it's dropped — the display holds the confirmed edit.
+    expect(hostColor()).toBe(PLAYER_COLORS[2]);
+    expect(useMonopolyStore.getState().version).toBe(2);
+  });
+
+  it("drops a locally-illegal pick to the route, unpredicted", () => {
+    const head = twoSeatLobby();
+    setupLobby(head);
+    const taken = head.players[1].color; // p2 already holds it
+    useMonopolyStore.getState().setColor("host", taken);
+    // No optimistic paint (it can't apply locally) and nothing queued; the route
+    // arbitrates the rejected pick.
+    expect(hostColor()).toBe(PLAYER_COLORS[0]);
+    expect(useMonopolyStore.getState().lobbyOutbox).toHaveLength(0);
+    expect(submitted).toHaveLength(1);
+    expect(submitted[0].action.type).toBe("setColor");
   });
 });

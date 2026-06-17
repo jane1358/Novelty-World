@@ -8,6 +8,7 @@ import {
   groupPositions,
 } from "./development";
 import { apply } from "./engine";
+import { type LobbyOp, lobbyReduce } from "./lobby";
 import { hasMonopoly } from "./logic";
 import { isRaiseOnly, manageActorId } from "./manage";
 import { freshGame } from "./mocks";
@@ -19,7 +20,7 @@ import {
   type Snapshot,
 } from "./pacing";
 import type { DevCommand, MonopolyAction, MonopolyResult } from "./protocol";
-import { rebuildOverlay } from "./reconcile";
+import { rebuildLobbyOverlay, rebuildOverlay } from "./reconcile";
 import { loadGame, submitAction, subscribeGame, type LoadedGame } from "./sync";
 import type {
   ApplyResult,
@@ -229,6 +230,12 @@ export type MonopolyStore = {
    *  Flushed as one version-guarded batch and drained as confirmations land;
    *  emptied on a rollback. */
   outbox: readonly Intent[];
+  /** Local lobby ops predicted but not yet confirmed, oldest first. The lobby's
+   *  lighter counterpart to `outbox`: flushed one at a time (distinct action
+   *  types can't batch), drained as confirmations land, and rebased onto each
+   *  fresh head — a pick that lost a color/icon race is pruned, reverting the
+   *  loser's seat. Empty while a game is `active`. */
+  lobbyOutbox: readonly LobbyOp[];
 } & MonopolyActions;
 
 // Module-scoped because Realtime channels aren't serializable into zustand
@@ -242,6 +249,12 @@ let activeGameId: string | null = null;
 // optimistic outbox: only one batch is on the wire at a time, so each flush
 // CASes against a known version (the prior batch's confirmation).
 let predictionInFlight = false;
+
+// The lobby's counterpart to `predictionInFlight`: true while a predicted lobby
+// op is on the wire. Lobby ops are distinct action types (not a batchable
+// `submit`), so they flush one at a time, oldest first — this serializes them so
+// each CASes against the prior op's confirmation.
+let lobbyFlushInFlight = false;
 
 function teardownSubscription(): void {
   if (activeUnsub) {
@@ -265,6 +278,12 @@ function authVersion(buffer: readonly Snapshot[], headVersion: number): number {
 
 function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
+}
+
+// Stamp a lobby op with the version guard it flushes under. A LobbyOp is
+// structurally a lobby `MonopolyAction` minus its `fromVersion`.
+function toLobbyAction(op: LobbyOp, fromVersion: number): MonopolyAction {
+  return { ...op, fromVersion };
 }
 
 export const useMonopolyStore = create<MonopolyStore>((set, get) => {
@@ -407,6 +426,75 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
     if (res.reason !== undefined) set({ syncError: res.reason });
   }
 
+  // Optimistically apply a lobby op: fold it onto the display head right away for
+  // instant feedback, queue it for a serialized version-guarded flush, and let
+  // the authoritative result reconcile. A locally-illegal op (e.g. a hue another
+  // seat just took) is sent un-predicted — the route stays the arbiter.
+  function predictLobby(op: LobbyOp): void {
+    const { gameId, state, lobbyOutbox } = get();
+    if (!gameId) return;
+    const res = lobbyReduce(state, op);
+    if (!res.ok) {
+      versionedOp((fromVersion) => toLobbyAction(op, fromVersion));
+      return;
+    }
+    set({ state: res.state, lobbyOutbox: [...lobbyOutbox, op] });
+    flushLobby();
+  }
+
+  // POST the oldest pending lobby op, version-guarded. Serialized by
+  // `lobbyFlushInFlight` so the CAS base is always the previous confirmation.
+  function flushLobby(): void {
+    if (lobbyFlushInFlight) return;
+    const { gameId, lobbyOutbox, buffer, version } = get();
+    if (!gameId || lobbyOutbox.length === 0) return;
+    const op = lobbyOutbox[0];
+    lobbyFlushInFlight = true;
+    void submitAction(gameId, toLobbyAction(op, authVersion(buffer, version))).then(
+      (res) => {
+        lobbyFlushInFlight = false;
+        handleLobbyFlush(res);
+      },
+    );
+  }
+
+  // Rebuild the lobby overlay on the latest confirmed head (the buffer is empty
+  // in a lobby, so that's `headState`), pruning any pending op that no longer
+  // applies. Display falls back to the head once the outbox empties.
+  function rebaseLobby(): void {
+    const rebuilt = rebuildLobbyOverlay(get().headState, get().lobbyOutbox);
+    set({
+      lobbyOutbox: rebuilt.outbox,
+      state: rebuilt.outbox.length > 0 ? rebuilt.state : get().headState,
+    });
+  }
+
+  // Reconcile a flushed lobby op. Success drops the confirmed op (idempotent ops
+  // wouldn't be pruned by a rebase) and folds the winner, which rebases and
+  // re-flushes the rest. A conflict folds the winner (a pick it claimed is
+  // silently pruned — the loser reverts) or, lacking one, rebuilds and waits for
+  // the echo. A genuine rejection drops just the offending op, silently.
+  function handleLobbyFlush(res: MonopolyResult): void {
+    if (res.ok) {
+      if ("state" in res) {
+        set({ lobbyOutbox: get().lobbyOutbox.slice(1) });
+        get().applyStateUpdate(res.state, res.version);
+      }
+      return;
+    }
+    if (res.conflict) {
+      if (res.state !== undefined && res.version !== undefined) {
+        get().applyStateUpdate(res.state, res.version);
+      } else {
+        rebaseLobby();
+      }
+      return;
+    }
+    set({ lobbyOutbox: get().lobbyOutbox.slice(1) });
+    rebaseLobby();
+    flushLobby();
+  }
+
   return {
     myPlayerId: null,
     state: freshGame(),
@@ -420,35 +508,39 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
     connecting: false,
     optimistic: null,
     outbox: [],
+    lobbyOutbox: [],
 
     setMyPlayer: (playerId) => { set({ myPlayerId: playerId }); },
 
     joinGame: () => {
       const { profile } = get();
       if (!profile) return;
-      versionedOp((fromVersion) => ({ type: "join", profile, fromVersion }));
+      predictLobby({ type: "join", profile });
     },
 
     addBot: () => {
-      versionedOp((fromVersion) => ({ type: "addBot", fromVersion }));
+      predictLobby({ type: "addBot" });
     },
 
     removePlayer: (playerId) => {
-      versionedOp((fromVersion) => ({ type: "removePlayer", playerId, fromVersion }));
+      predictLobby({ type: "removePlayer", playerId });
     },
 
     setColor: (playerId, color) => {
-      versionedOp((fromVersion) => ({ type: "setColor", playerId, color, fromVersion }));
+      predictLobby({ type: "setColor", playerId, color });
     },
 
     setIcon: (playerId, icon) => {
-      versionedOp((fromVersion) => ({ type: "setIcon", playerId, icon, fromVersion }));
+      predictLobby({ type: "setIcon", playerId, icon });
     },
 
     setName: (playerId, name) => {
-      versionedOp((fromVersion) => ({ type: "setName", playerId, name, fromVersion }));
+      predictLobby({ type: "setName", playerId, name });
     },
 
+    // Starting is NOT predicted: flipping `status` to `active` optimistically
+    // would hand the just-built board to the playback pump before the row
+    // confirms. A one-time round-trip here is fine.
     startGame: () => {
       versionedOp((fromVersion) => ({ type: "start", fromVersion }));
     },
@@ -699,22 +791,42 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
     applyStateUpdate: (next, version) => {
       const { profile, connecting, version: headVersion, buffer } = get();
 
-      // First authoritative state after connect: snap the playback head
-      // straight to it with an empty buffer — no animating across the connect
-      // gap. This is also the rejoin path: jump to the live authoritative head
-      // and start fresh, exactly as the design intends. Re-derives the seat.
-      if (connecting) {
+      // Snap straight to a non-buffered head — nothing to animate — in two
+      // cases: the first state after connect / a rejoin (any status), and any
+      // lobby update (a lobby has no token motion to play out). Both re-derive
+      // the seat and rebase pending lobby ops onto the fresh head, so a seat
+      // edit stays painted while another player's change folds in; a pick a
+      // racing seat claimed fails to re-apply and is pruned (the loser reverts).
+      // A finished game still buffers below so its final move animates.
+      if (connecting || next.status === "lobby") {
+        // Drop a stale / duplicate snapshot — an older version, or a write's own
+        // route response plus its Realtime echo of the same version. Without this
+        // an out-of-order delivery snaps the display backwards to a pre-edit head
+        // (the brief revert flash) once the predicted op has drained from the
+        // outbox. The connect snap always applies: it's the first state and may
+        // carry any version (even one below a previous game's leftover). Mirrors
+        // `ingestSnapshot`'s guard on the in-play path.
+        if (!connecting && version <= headVersion) return;
         const seated = profile ? isMember(next, profile) : false;
+        const pending = get().lobbyOutbox;
+        const rebuilt =
+          pending.length > 0
+            ? rebuildLobbyOverlay(next, pending)
+            : { state: next, outbox: pending };
         set({
-          state: next,
+          state: rebuilt.state,
           headState: next,
           version,
           buffer: [],
           optimistic: null,
           outbox: [],
+          lobbyOutbox: rebuilt.outbox,
           myPlayerId: seated && profile ? profile.id : null,
           connecting: false,
         });
+        // A surviving lobby op (or one left unsent by a bare write-race) re-
+        // flushes once this fresh version lands. No-op if in flight or empty.
+        if (rebuilt.outbox.length > 0) flushLobby();
         return;
       }
 
@@ -749,6 +861,7 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
         // Abandon any prediction from a previous game.
         optimistic: null,
         outbox: [],
+        lobbyOutbox: [],
         syncError: null,
         // Gate the UI on a "Connecting…" placeholder until the first
         // authoritative state lands, so the stale default game never flashes.
@@ -810,6 +923,7 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
         buffer: [],
         optimistic: null,
         outbox: [],
+        lobbyOutbox: [],
         myPlayerId: null,
         syncError: null,
         connecting: false,

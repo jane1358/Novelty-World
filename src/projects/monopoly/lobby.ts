@@ -285,6 +285,41 @@ export function setPlayerName(
   return { ok: true, state: updatePlayer(state, playerId, { name: trimmed }) };
 }
 
+/** A lobby mutation, stripped of transport (`fromVersion`): the semantic core
+ *  shared by the route (which applies it authoritatively) and the client (which
+ *  predicts it optimistically and rebases it on conflict). Mirrors the
+ *  lobby-op members of `MonopolyAction` minus their version guard. */
+export type LobbyOp =
+  | { type: "join"; profile: PlayerProfile }
+  | { type: "addBot" }
+  | { type: "removePlayer"; playerId: string }
+  | { type: "setColor"; playerId: string; color: PlayerColor }
+  | { type: "setIcon"; playerId: string; icon: PlayerIcon }
+  | { type: "setName"; playerId: string; name: string }
+  | { type: "start" };
+
+/** Apply a lobby op to the state via the matching pure helper. One dispatcher
+ *  so the authoritative route and the client's optimistic overlay can't drift
+ *  on which op maps to which transform. */
+export function lobbyReduce(state: GameState, op: LobbyOp): LobbyResult {
+  switch (op.type) {
+    case "join":
+      return joinLobby(state, op.profile);
+    case "addBot":
+      return addBot(state);
+    case "removePlayer":
+      return removePlayer(state, op.playerId);
+    case "setColor":
+      return setPlayerColor(state, op.playerId, op.color);
+    case "setIcon":
+      return setPlayerIcon(state, op.playerId, op.icon);
+    case "setName":
+      return setPlayerName(state, op.playerId, op.name);
+    case "start":
+      return startGame(state);
+  }
+}
+
 /** Flip the lobby into play. Requires the minimum participant count with at
  *  least one human. Randomizes the seating into play order (so turn order isn't
  *  the lobby join order — that would hand early joiners a first-move edge),
