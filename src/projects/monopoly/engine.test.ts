@@ -2738,7 +2738,7 @@ describe("tradeMortgageFees", () => {
     // Works (28) (each a $75 mortgage -> $7.50, rounded up to $8). The receiver
     // owes $9 + $8 + $8 = $25 — NOT $24, because the two half-dollar interests
     // each round up before they're summed.
-    const base = freshGame(2);
+    const base = freshGame("trade-fees");
     const state: GameState = {
       ...base,
       ownership: { 16: "p1", 12: "p1", 28: "p1" },
@@ -2756,7 +2756,7 @@ describe("tradeMortgageFees", () => {
   // the receiver's cash drops by exactly $25 while the giver's is untouched
   // (the fee is a bank charge, separate from the players' zero-sum cashDelta).
   it("debits the receiver and never credits the giver", () => {
-    const base = freshGame(2);
+    const base = freshGame("trade-fees-debit");
     const giver = base.players[0];
     const receiver = base.players[1];
     const state: GameState = {
