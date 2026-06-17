@@ -223,49 +223,51 @@ describe("commitManage", () => {
   });
 });
 
-describe("buyProperty", () => {
-  /** A `buy-decision` for p1 (the active buyer) landing on Oriental (pos 6),
-   *  owning Mediterranean (pos 1) as a building-free lot to mortgage. */
-  function buyDecisionState(overrides: Partial<GameState> = {}): GameState {
+describe("buyProperty / raiseCash", () => {
+  /** A plain `buy-decision` for p1 (the active buyer) on Oriental (pos 6),
+   *  holding $75 — short of the $100 price. */
+  function buyDecisionState(): GameState {
     const base = freshGame("store-buy-test");
     return {
       ...base,
       players: base.players.map((p) =>
         p.id === "p1" ? { ...p, cash: 75 } : p,
       ),
-      ownership: { 1: "p1", ...(overrides.ownership ?? {}) },
-      turn: {
-        playerId: "p1",
-        phase: "buy-decision",
-        doublesStreak: 0,
-        pendingBuy: 6,
-        manageStaged: { build: {}, mortgage: {} },
-      },
-      ...overrides,
+      ownership: { 1: "p1" },
+      turn: { playerId: "p1", phase: "buy-decision", doublesStreak: 0, pendingBuy: 6 },
     };
   }
 
-  it("bakes the staged raise (diffed against live state) into the buy intent", () => {
-    setup(buyDecisionState());
-    stage({ build: {}, mortgage: { 1: true } });
+  /** A `raising-cash` state for p1 with the given staged raise — enough to buy. */
+  function raisingCashState(staged: ManageStaged): GameState {
+    return {
+      ...buyDecisionState(),
+      turn: {
+        playerId: "p1",
+        phase: "raising-cash",
+        doublesStreak: 0,
+        pendingBuy: 6,
+        manageStaged: staged,
+      },
+    };
+  }
+
+  it("buyProperty fires a parameterless buy intent — the engine reads the staging", () => {
+    setup(raisingCashState({ build: {}, mortgage: { 1: true } }));
     useMonopolyStore.getState().buyProperty();
     expect(submitted).toHaveLength(1);
     const action = submitted[0].action;
     if (action.type !== "submit") throw new Error("expected submit");
-    const intent = action.intents[0];
-    if (intent.kind !== "buy") throw new Error("expected buy intent");
-    expect(intent.raise).toEqual({ build: {}, mortgage: { 1: true } });
+    expect(action.intents[0]).toEqual({ kind: "buy", playerId: "p1" });
   });
 
-  it("omits the raise entirely when nothing is staged", () => {
+  it("raiseCash fires a raise-cash intent to open the raise", () => {
     setup(buyDecisionState());
-    useMonopolyStore.getState().buyProperty();
+    useMonopolyStore.getState().raiseCash();
     expect(submitted).toHaveLength(1);
     const action = submitted[0].action;
     if (action.type !== "submit") throw new Error("expected submit");
-    const intent = action.intents[0];
-    if (intent.kind !== "buy") throw new Error("expected buy intent");
-    expect(intent.raise).toBeUndefined();
+    expect(action.intents[0]).toEqual({ kind: "raise-cash", playerId: "p1" });
   });
 });
 

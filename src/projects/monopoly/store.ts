@@ -88,13 +88,17 @@ interface MonopolyActions {
    *  the phase transition it triggers drops the synced staging. */
   commitManage: () => void;
 
-  /** Buy the landed-on property (`buy-decision`). Any staged cash-raise (the
-   *  buyer selling buildings / mortgaging their OTHER lots, staged on the board
-   *  like a manage intermission) rides along as the `buy` intent's `raise`,
-   *  applied raise-first and atomically with the purchase. Carries only the
-   *  staged entries that DIFFER from the live state, or no raise at all when the
-   *  buyer already has the cash. */
+  /** Buy the landed-on property — from `buy-decision` (paying outright) or from
+   *  `raising-cash` (committing the staged cash-raise). The buy intent carries no
+   *  raise of its own: the engine reads any staging straight from synced
+   *  `turn.manageStaged` and applies it raise-first, atomically with the
+   *  purchase. */
   buyProperty: () => void;
+
+  /** Step from a `buy-decision` into `raising-cash` — the buyer is short and
+   *  wants to sell buildings / mortgage their OTHER lots to afford the property.
+   *  Opens an empty staging they then drive on the board (raise-only). */
+  raiseCash: () => void;
 
   /** Toggle a boundary intermission for the local player — arms/disarms a spot
    *  in the FIFO boundary queue for the given kind ("trade" or "manage"). Fires
@@ -656,27 +660,17 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
     },
 
     buyProperty: () => {
-      const { state, myPlayerId } = get();
+      const { myPlayerId } = get();
       if (!myPlayerId) return;
-      const staged = state.turn.manageStaged ?? { build: {}, mortgage: {} };
-      // Same diff extraction as commitManage: carry only what changed.
-      const build: Record<number, number> = {};
-      for (const [posStr, level] of Object.entries(staged.build)) {
-        const pos = Number(posStr);
-        if (level !== developmentLevel(state, pos)) build[pos] = level;
-      }
-      const mortgage: Record<number, boolean> = {};
-      for (const [posStr, flag] of Object.entries(staged.mortgage)) {
-        const pos = Number(posStr);
-        if (flag !== (state.mortgaged[pos] === true)) mortgage[pos] = flag;
-      }
-      const hasRaise =
-        Object.keys(build).length > 0 || Object.keys(mortgage).length > 0;
-      predict({
-        kind: "buy",
-        playerId: myPlayerId,
-        raise: hasRaise ? { build, mortgage } : undefined,
-      });
+      // No raise payload: the engine reads any `raising-cash` staging straight
+      // from synced `turn.manageStaged` and applies it raise-first.
+      predict({ kind: "buy", playerId: myPlayerId });
+    },
+
+    raiseCash: () => {
+      const { myPlayerId } = get();
+      if (!myPlayerId) return;
+      predict({ kind: "raise-cash", playerId: myPlayerId });
     },
 
     toggleQueue: (queue) => {
@@ -694,8 +688,9 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
     cancelManage: () => {
       const { myPlayerId } = get();
       if (!myPlayerId) return;
-      // Abandoning the intermission returns to pre-roll, which drops the synced
-      // staging — no separate local clear to do.
+      // Abandoning the intermission drops the synced staging — no separate local
+      // clear to do. From `managing` it returns to pre-roll; from `raising-cash`
+      // it returns to the pending buy-decision (the engine decides which).
       predict({ kind: "cancel-manage", playerId: myPlayerId });
     },
 

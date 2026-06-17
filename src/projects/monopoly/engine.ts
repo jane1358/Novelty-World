@@ -125,6 +125,7 @@ export function initialDecks(rng: Rng): {
  *  `state.rngState` themselves. */
 export function apply(state: GameState, intent: Intent): ApplyResult {
   if (intent.kind === "buy") return applyBuy(state, intent);
+  if (intent.kind === "raise-cash") return applyRaiseCash(state, intent);
   if (intent.kind === "decline-buy") return applyDeclineBuy(state, intent);
   if (intent.kind === "bid") return applyBid(state, intent);
   if (intent.kind === "pass-bid") return applyPassBid(state, intent);
@@ -174,7 +175,7 @@ function enterPostRoll(state: GameState): TurnState {
     phase: "post-roll",
     pendingBuy: undefined,
     raiseCash: undefined,
-    // Drop any buy-decision cash-raise staging so it never leaks past the buy.
+    // Drop any `raising-cash` staging so it never leaks past the buy.
     manageStaged: undefined,
   };
 }
@@ -542,7 +543,9 @@ function applyBuy(
   if (intent.playerId !== state.turn.playerId) {
     return { ok: false, reason: "not your turn" };
   }
-  if (state.turn.phase !== "buy-decision") {
+  // Buy outright from a `buy-decision`, or commit a staged cash-raise from
+  // `raising-cash` — the only two phases where there's a pending purchase.
+  if (state.turn.phase !== "buy-decision" && state.turn.phase !== "raising-cash") {
     return { ok: false, reason: `cannot buy in phase ${state.turn.phase}` };
   }
   const position = state.turn.pendingBuy;
@@ -554,15 +557,15 @@ function applyBuy(
     return { ok: false, reason: "not an ownable space" };
   }
 
-  // Optional cash-raise: sell buildings / mortgage OTHER lots to cover the
-  // price, applied raise-first and atomically with the purchase. It runs
-  // against the player's current holdings — which exclude `position` (not yet
-  // owned) — so a lot can never fund its own purchase, and cash never dips
-  // below zero (no must-raise-cash detour). The official "raise the money,
-  // then buy" play.
+  // The cash-raise the buyer staged during `raising-cash` (sell buildings /
+  // mortgage their OTHER lots), read straight from synced `turn.manageStaged`
+  // and applied raise-first, atomically with the purchase. It runs against the
+  // player's current holdings — which exclude `position` (not yet owned) — so a
+  // lot can never fund its own purchase, and cash never dips below zero (no
+  // must-raise-cash detour). The official "raise the money, then buy" play.
   let working = state;
   let raiseEvents: readonly GameEvent[] = [];
-  const raise = intent.raise;
+  const raise = state.turn.phase === "raising-cash" ? state.turn.manageStaged : undefined;
   if (
     raise !== undefined &&
     (Object.keys(raise.build).length > 0 ||
@@ -603,6 +606,38 @@ function applyBuy(
     ok: true,
     state: afterLanding(afterPurchase),
     newEvents: [...raiseEvents, buyEvent],
+  };
+}
+
+/** Step from a `buy-decision` into `raising-cash`: the active buyer is short and
+ *  wants to sell / mortgage their OTHER lots to afford the property. Opens an
+ *  empty staging (broadcast like a manage intermission); the buyer drives it on
+ *  the board raise-only, then commits via `buy` or backs out via `cancel-manage`
+ *  (which returns here, to the buy-decision). `pendingBuy` carries through. */
+function applyRaiseCash(
+  state: GameState,
+  intent: Extract<Intent, { kind: "raise-cash" }>,
+): ApplyResult {
+  if (intent.playerId !== state.turn.playerId) {
+    return { ok: false, reason: "not your turn" };
+  }
+  if (state.turn.phase !== "buy-decision") {
+    return { ok: false, reason: `cannot raise-cash in phase ${state.turn.phase}` };
+  }
+  if (state.turn.pendingBuy === undefined) {
+    return { ok: false, reason: "no pending buy" };
+  }
+  return {
+    ok: true,
+    state: {
+      ...state,
+      turn: {
+        ...state.turn,
+        phase: "raising-cash",
+        manageStaged: { build: {}, mortgage: {} },
+      },
+    },
+    newEvents: [],
   };
 }
 
@@ -685,8 +720,7 @@ function enterAuction(
       ...state.turn,
       phase: "auction",
       pendingBuy: undefined,
-      // A buy-decision raise that was staged but not committed is dropped — the
-      // decliner mortgaged nothing (atomic with the buy that never happened).
+      // Clear any leftover staging defensively as we enter the auction sub-game.
       manageStaged: undefined,
       auction,
     },
@@ -957,11 +991,11 @@ type ManageCommit =
 
 /** Apply a build/sell + mortgage/un-mortgage commit for `playerId`, raise-first
  *  / spend-second and all-or-nothing — the shared core behind both `manage`
- *  entry contexts and the buy-decision cash-raise. Returns the new state, the
+ *  entry contexts and the `raising-cash` cash-raise. Returns the new state, the
  *  cash-flow-ordered events, and the combined net cash; the caller decides
  *  where play resumes (it carries no phase/turn concerns).
  *
- *  `raiseOnly` (the forced `must-raise-cash` settler and the buy-decision raise)
+ *  `raiseOnly` (the forced `must-raise-cash` settler and the `raising-cash` raise)
  *  forbids the spend side: no builds, no un-mortgages, and the non-negative
  *  end-state cash check is skipped — a forced settler starts negative and only
  *  climbs, and the buyer's affordability is checked by the caller against the
@@ -1448,6 +1482,22 @@ function applyCancelManage(
   state: GameState,
   intent: Extract<Intent, { kind: "cancel-manage" }>,
 ): ApplyResult {
+  // From `raising-cash` (the buy-time cash-raise), cancelling drops the staging
+  // and returns the buyer to their pending buy-decision (Buy / Auction), rather
+  // than to pre-roll like a voluntary manage intermission.
+  if (state.turn.phase === "raising-cash") {
+    if (intent.playerId !== state.turn.playerId) {
+      return { ok: false, reason: "not the buyer" };
+    }
+    return {
+      ok: true,
+      state: {
+        ...state,
+        turn: { ...state.turn, phase: "buy-decision", manageStaged: undefined },
+      },
+      newEvents: [],
+    };
+  }
   if (state.turn.phase !== "managing") {
     return { ok: false, reason: "no manage intermission open" };
   }
@@ -1462,8 +1512,9 @@ function applyCancelManage(
  *  bank supply, affordability) is enforced at the `manage` commit — so this only
  *  guards the things that would make the broadcast itself dishonest: the right
  *  phase, the right actor, and ownership of every staged square. The actor is the
- *  manager (`managing`) or the current debtor (`must-raise-cash`); mirrors
- *  `manageActorId`, inlined to avoid an engine→manage import cycle. */
+ *  manager (`managing`), the current debtor (`must-raise-cash`), or the active
+ *  buyer (`raising-cash`); mirrors `manageActorId`, inlined to avoid an
+ *  engine→manage import cycle. */
 function applyUpdateManageStaging(
   state: GameState,
   intent: Extract<Intent, { kind: "update-manage-staging" }>,
@@ -1472,9 +1523,9 @@ function applyUpdateManageStaging(
   let actor: string | null;
   if (phase === "managing") actor = managerId ?? null;
   else if (phase === "must-raise-cash") actor = firstNegativePlayer(state);
-  // A buy-decision lets the active player stage a cash-raise (sell / mortgage
+  // `raising-cash` lets the active buyer stage a cash-raise (sell / mortgage
   // their OTHER lots) before buying, broadcast like a manage intermission.
-  else if (phase === "buy-decision") actor = state.turn.playerId;
+  else if (phase === "raising-cash") actor = state.turn.playerId;
   else return { ok: false, reason: "no manage intermission open" };
   if (actor === null || intent.playerId !== actor) {
     return { ok: false, reason: "not the manage actor" };
@@ -1717,19 +1768,35 @@ function moveActivePlayer(state: GameState, total: number): GameState {
   return { ...state, players };
 }
 
-/** Open a buy-decision on `position` for the active player. Seeds an empty
- *  manage staging so the buyer can stage a cash-raise (sell / mortgage their
- *  OTHER lots) that every player watches take shape — the same broadcast
- *  discipline as a manage intermission. Shared by the normal landing and the
- *  "advance to nearest" card path. */
+/** Open a buy-decision on `position` for the active player — a quick Buy /
+ *  Auction (or Raise Cash) choice. Shared by the normal landing and the
+ *  "advance to nearest" card path.
+ *
+ *  If the player can't afford it even after raising everything they could
+ *  (mortgaging + selling buildings, `cash + maxRaisableCash < price`), there's
+ *  no decision to make — buy is impossible — so it's forced straight to auction,
+ *  skipping the prompt (built for pros: no prompt for a non-choice). They can
+ *  still bid in the resulting auction up to their net worth. */
 function openBuyDecision(state: GameState, position: number): GameState {
+  const price = ownablePrice(position);
+  const playerId = state.turn.playerId;
+  const player = state.players.find((p) => p.id === playerId);
+  if (
+    price !== null &&
+    player !== undefined &&
+    player.cash + maxRaisableCash(state, playerId) < price
+  ) {
+    return enterAuction(state, position, { kind: "landing" });
+  }
+  // The board is inert during a plain buy-decision — no staging surface, so no
+  // `manageStaged` seed. The buyer only gets one by stepping into `raising-cash`
+  // (see `applyRaiseCash`).
   return {
     ...state,
     turn: {
       ...state.turn,
       phase: "buy-decision",
       pendingBuy: position,
-      manageStaged: { build: {}, mortgage: {} },
     },
   };
 }

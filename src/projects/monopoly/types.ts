@@ -304,6 +304,7 @@ export type TurnPhase =
   | "pre-roll"
   | "post-roll"
   | "buy-decision"
+  | "raising-cash"
   | "must-raise-cash"
   | "auction"
   | "jail-decision"
@@ -398,7 +399,9 @@ export interface TurnState {
    *  necessarily `playerId`. */
   managerId?: string;
   /** Position of an unowned ownable square the active player just landed
-   *  on, awaiting a buy / decline-buy decision. */
+   *  on, awaiting a buy / decline-buy decision. Retained through `raising-cash`
+   *  (the buyer staging a cash-raise to afford it), since that resumes back into
+   *  this same buy. */
   pendingBuy?: number;
   /** Present iff `phase === "must-raise-cash"`. Says where play resumes once
    *  every player who went negative has climbed back to ≥ 0. The debtor(s) and
@@ -406,10 +409,12 @@ export interface TurnState {
    *  here — see `firstNegativePlayer`. */
   raiseCash?: RaiseCashResume;
   auction?: AuctionState;
-  /** Present during `managing` / `must-raise-cash`: the actor's staged build /
-   *  mortgage changes before they commit. Seeded empty when the intermission
-   *  opens and dropped when the phase exits; broadcast so every player watches
-   *  the intermission take shape, the same as `tradeDraft`. */
+  /** Present during `managing` / `raising-cash` / `must-raise-cash`: the actor's
+   *  staged build / mortgage changes before they commit. Seeded empty when the
+   *  intermission opens and dropped when the phase exits; broadcast so every
+   *  player watches the intermission take shape, the same as `tradeDraft`. In
+   *  `raising-cash` it's the raise the buyer is assembling, which the `buy`
+   *  commit reads straight from here (the intent carries no raise of its own). */
   manageStaged?: ManageStaged;
   /** Present iff `phase === "trade-building"`: the proposal being assembled,
    *  visible to all players as the proposer edits it. */
@@ -434,13 +439,20 @@ export interface PlayerPreferences {
  *  move, pay rent, draw card) are NOT intents — they live inside
  *  `autoStep`. See `monopoly/CLAUDE.md` "Intents vs mechanics — the line". */
 export type Intent =
-  /** Buy the landed-on property. `raise` (optional) sells buildings / mortgages
-   *  the buyer's OTHER lots first, atomically, to cover the price when cash on
-   *  hand falls short — the official "raise the money, then buy" play. It's
-   *  applied raise-first against pre-purchase holdings (which exclude the
-   *  landed-on lot), so a property can never fund its own purchase. */
-  | { kind: "buy"; playerId: string; raise?: ManageStaged }
+  /** Buy the landed-on property. Legal from `buy-decision` (paying outright) and
+   *  from `raising-cash`, where the buyer has staged a cash-raise in
+   *  `turn.manageStaged` — `applyBuy` runs that raise first, atomically, against
+   *  pre-purchase holdings (which exclude the landed-on lot, so a property can
+   *  never fund its own purchase), then completes the purchase. The intent
+   *  carries no raise of its own; the staging lives in synced state. */
+  | { kind: "buy"; playerId: string }
   | { kind: "decline-buy"; playerId: string }
+  /** Step from a `buy-decision` into `raising-cash`: the active buyer is short
+   *  and wants to sell buildings / mortgage their OTHER lots to afford the
+   *  landed-on property. Opens an empty staging the buyer drives on the board
+   *  (raise-only), committing via `buy` or backing out via `cancel-manage`
+   *  (which returns to the buy-decision). */
+  | { kind: "raise-cash"; playerId: string }
   /** Place a bid of `amount` — an absolute total; the client sends what the
    *  bidder saw plus one increment. The amount is always RECORDED as that
    *  player's standing bid (so a tap is never lost), and takes the lead only
@@ -481,13 +493,15 @@ export type Intent =
    *  pre-roll opens the head entry's intermission (`trade-building` /
    *  `managing`). */
   | { kind: "set-queue"; playerId: string; queue: "trade" | "manage"; armed: boolean }
-  /** The manager abandons their open manage intermission with nothing
-   *  committed, returning to pre-roll (the next autoStep re-checks the queue). */
+  /** Abandon an open manage-style intermission with nothing committed. From
+   *  `managing` it returns the manager to pre-roll (the next autoStep re-checks
+   *  the queue); from `raising-cash` it returns the buyer to their pending
+   *  `buy-decision`. */
   | { kind: "cancel-manage"; playerId: string }
   /** Actor replaces their live manage staging wholesale (the client computes the
    *  next staged maps and sends a full snapshot — same shape and broadcast model
    *  as `update-trade-draft`). Legal in `managing` for the manager, in
-   *  `must-raise-cash` for the current debtor, or in `buy-decision` for the
+   *  `must-raise-cash` for the current debtor, or in `raising-cash` for the
    *  active buyer staging a cash-raise; staging is a preview, validated finally
    *  at the `manage` or `buy` commit. */
   | { kind: "update-manage-staging"; playerId: string; staged: ManageStaged }

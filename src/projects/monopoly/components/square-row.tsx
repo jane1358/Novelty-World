@@ -100,8 +100,8 @@ export function SquareRow({ position }: Props) {
     const color = colorAt(position);
     if (color === null || s.state.ownership[position] !== me) return false;
     if (!hasMonopoly(s.state, color, me)) return false;
-    // Raise-only (forced settle, or a buy-decision cash-raise) can only sell
-    // down — gated to built squares.
+    // Raise-only (forced settle, or a `raising-cash` buy) can only sell down —
+    // gated to built squares.
     if (isRaiseOnly(s.state)) {
       return developmentLevel(s.state, position) > 0;
     }
@@ -117,8 +117,8 @@ export function SquareRow({ position }: Props) {
     const me = s.myPlayerId;
     if (!me || manageActorId(s.state) !== me) return false;
     if (s.state.ownership[position] !== me) return false;
-    // Raise-only (forced settle, or a buy-decision cash-raise) can't un-mortgage,
-    // so an already mortgaged square isn't a tap target.
+    // Raise-only (forced settle, or a `raising-cash` buy) can't un-mortgage, so
+    // an already mortgaged square isn't a tap target.
     if (isRaiseOnly(s.state) && s.state.mortgaged[position]) {
       return false;
     }

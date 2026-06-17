@@ -826,9 +826,28 @@ describe("autoStep buy-decision", () => {
     expect(event.toPosition).toBe(target);
     expect(next.turn.phase).toBe("buy-decision");
     expect(next.turn.pendingBuy).toBe(target);
-    // Empty manage staging is seeded so the buyer can stage a cash-raise that
-    // every player watches take shape (mirrors a manage intermission).
-    expect(next.turn.manageStaged).toEqual({ build: {}, mortgage: {} });
+    // The board is inert during a plain buy-decision — no staging is seeded
+    // until the buyer steps into `raising-cash`.
+    expect(next.turn.manageStaged).toBeUndefined();
+  });
+
+  it("forces a landing straight to auction when the buyer can't afford it even after raising", () => {
+    const base = freshGame("test-cant-afford");
+    // $50 cash, no owned lots → nothing raisable, so a $400 lot is unreachable.
+    const poor: GameState = {
+      ...base,
+      players: base.players.map((p, i): Player =>
+        i === 0 ? { ...p, cash: 50 } : p,
+      ),
+    };
+    const { total } = predictRoll(poor.rngState);
+    const target = 39; // Boardwalk ($400)
+    const positioned = placeActivePlayerAt(poor, (target - total + 40) % 40);
+    const { state: next } = autoStep(positioned);
+    // No buy-decision prompt — there's no decision to make.
+    expect(next.turn.phase).toBe("auction");
+    expect(next.turn.auction?.position).toBe(target);
+    expect(next.turn.pendingBuy).toBeUndefined();
   });
 
   it("stays at post-roll when landing on a property someone else owns", () => {
@@ -1075,14 +1094,21 @@ describe("apply decline-buy", () => {
   });
 });
 
-describe("apply buy with a cash-raise", () => {
-  // Buyer holds $75 but lands on a $100 lot (Oriental, pos 6). Mortgaging an
-  // owned, building-free lot (Mediterranean, pos 1, mortgage value $30) inside
-  // the same buy raises the gap atomically — no negative cash, no
-  // must-raise-cash detour. This is the official "mortgage to raise the money,
-  // then buy" play, and the raise runs against holdings that EXCLUDE the
-  // landed-on lot (not yet owned), so a lot can never fund its own purchase.
-  function shortBuyer(seed: string): { state: GameState; playerId: string } {
+describe("raising-cash buy", () => {
+  // Buyer holds $75 but lands on a $100 lot (Oriental, pos 6). They step into
+  // `raising-cash` and mortgage an owned, building-free lot (Mediterranean, pos
+  // 1, mortgage value $30) to cover the gap; the `buy` then commits the staged
+  // raise atomically — no negative cash, no must-raise-cash detour. The official
+  // "mortgage to raise the money, then buy" play. The raise reads from synced
+  // `turn.manageStaged` and runs against holdings that EXCLUDE the landed-on lot
+  // (not yet owned), so a lot can never fund its own purchase.
+
+  /** A `buy-decision` for the active player on `pendingBuy`, holding $75 and
+   *  owning Mediterranean (pos 1) so there's a lot to mortgage. */
+  function shortBuyer(
+    seed: string,
+    pendingBuy = 6,
+  ): { state: GameState; playerId: string } {
     const game = freshGame(seed);
     const playerId = game.turn.playerId;
     const state: GameState = {
@@ -1091,23 +1117,39 @@ describe("apply buy with a cash-raise", () => {
         i === 0 ? { ...p, cash: 75 } : p,
       ),
       ownership: { ...game.ownership, 1: playerId },
-      turn: {
-        ...game.turn,
-        phase: "buy-decision",
-        pendingBuy: 6,
-        manageStaged: { build: {}, mortgage: {} },
-      },
+      turn: { ...game.turn, phase: "buy-decision", pendingBuy },
     };
     return { state, playerId };
   }
 
+  /** Put `state` into `raising-cash` with the given staged mortgage flips — as
+   *  if the buyer had entered the raise and tapped the board. */
+  function raising(
+    state: GameState,
+    mortgage: Record<number, boolean>,
+  ): GameState {
+    return {
+      ...state,
+      turn: {
+        ...state.turn,
+        phase: "raising-cash",
+        manageStaged: { build: {}, mortgage },
+      },
+    };
+  }
+
+  it("raise-cash opens an empty staging, keeping the pending buy", () => {
+    const { state, playerId } = shortBuyer("buy-raise-enter");
+    const result = apply(state, { kind: "raise-cash", playerId });
+    if (!result.ok) throw new Error(`expected ok, got ${result.reason}`);
+    expect(result.state.turn.phase).toBe("raising-cash");
+    expect(result.state.turn.pendingBuy).toBe(6);
+    expect(result.state.turn.manageStaged).toEqual({ build: {}, mortgage: {} });
+  });
+
   it("mortgages an owned lot to cover the price, atomically, without going negative", () => {
     const { state, playerId } = shortBuyer("buy-raise-ok");
-    const result = apply(state, {
-      kind: "buy",
-      playerId,
-      raise: { build: {}, mortgage: { 1: true } },
-    });
+    const result = apply(raising(state, { 1: true }), { kind: "buy", playerId });
     if (!result.ok) throw new Error(`expected ok, got ${result.reason}`);
     expect(result.state.ownership[6]).toBe(playerId);
     expect(result.state.ownership[1]).toBe(playerId);
@@ -1124,61 +1166,34 @@ describe("apply buy with a cash-raise", () => {
 
   it("clears the staged raise from the turn after buying", () => {
     const { state, playerId } = shortBuyer("buy-raise-clear");
-    const result = apply(state, {
-      kind: "buy",
-      playerId,
-      raise: { build: {}, mortgage: { 1: true } },
-    });
+    const result = apply(raising(state, { 1: true }), { kind: "buy", playerId });
     if (!result.ok) throw new Error(`expected ok, got ${result.reason}`);
     expect(result.state.turn.manageStaged).toBeUndefined();
   });
 
   it("cannot mortgage the property being bought to fund its own purchase", () => {
     const { state, playerId } = shortBuyer("buy-raise-self");
-    const result = apply(state, {
-      kind: "buy",
-      playerId,
-      // pos 6 is the pendingBuy lot — not yet owned, so it can't be raised against.
-      raise: { build: {}, mortgage: { 6: true } },
-    });
+    // pos 6 is the pendingBuy lot — not yet owned, so it can't be raised against.
+    const result = apply(raising(state, { 6: true }), { kind: "buy", playerId });
     expect(result.ok).toBe(false);
   });
 
-  it("rejects when even a full raise can't reach the price", () => {
-    const game = freshGame("buy-raise-short");
-    const playerId = game.turn.playerId;
-    const state: GameState = {
-      ...game,
-      players: game.players.map((p, i): Player =>
-        i === 0 ? { ...p, cash: 75 } : p,
-      ),
-      ownership: { ...game.ownership, 1: playerId },
-      // Connecticut (pos 9, price 120): 75 + 30 = 105 net worth falls short.
-      turn: {
-        ...game.turn,
-        phase: "buy-decision",
-        pendingBuy: 9,
-        manageStaged: { build: {}, mortgage: {} },
-      },
-    };
-    const result = apply(state, {
-      kind: "buy",
-      playerId,
-      raise: { build: {}, mortgage: { 1: true } },
-    });
+  it("rejects the buy when even a full raise can't reach the price", () => {
+    // Connecticut (pos 9, price 120): 75 + 30 = 105 net worth falls short.
+    const { state, playerId } = shortBuyer("buy-raise-short", 9);
+    const result = apply(raising(state, { 1: true }), { kind: "buy", playerId });
     expect(result.ok).toBe(false);
   });
 
-  it("declining a buy with staged raise drops the staging and mortgages nothing", () => {
-    const { state, playerId } = shortBuyer("buy-raise-decline");
-    const staged: GameState = {
-      ...state,
-      turn: { ...state.turn, manageStaged: { build: {}, mortgage: { 1: true } } },
-    };
-    const result = apply(staged, { kind: "decline-buy", playerId });
+  it("cancel returns to the buy-decision with the staging dropped", () => {
+    const { state, playerId } = shortBuyer("buy-raise-cancel");
+    const result = apply(raising(state, { 1: true }), {
+      kind: "cancel-manage",
+      playerId,
+    });
     if (!result.ok) throw new Error(`expected ok, got ${result.reason}`);
-    // Sent to auction; the staged mortgage was never committed.
-    expect(result.state.turn.phase).toBe("auction");
+    expect(result.state.turn.phase).toBe("buy-decision");
+    expect(result.state.turn.pendingBuy).toBe(6);
     expect(result.state.mortgaged[1]).toBeUndefined();
     expect(result.state.turn.manageStaged).toBeUndefined();
   });

@@ -1,6 +1,8 @@
 "use client";
 
 import type { CSSProperties, ReactNode } from "react";
+import { SPACES } from "../data";
+import { ownablePrice } from "../logic";
 import {
   bankSupply,
   hasStagedChanges,
@@ -17,47 +19,58 @@ interface Props {
 
 const EMPTY_STAGED: ManageStaged = { build: {}, mortgage: {} };
 
-/** Summary bar for the manage intermission — the board rows are the controls
+/** Summary bar for a manage-style intermission — the board rows are the controls
  *  (color strip cycles build level, body toggles mortgage); this bar shows the
  *  running cash delta, the bank's remaining houses / hotels, any shortage-forced
- *  liquidation, and the commit / cancel actions.
+ *  liquidation, the goal status, and the commit / cancel actions.
  *
  *  Staging lives in synced `turn.manageStaged`, so this is shown to EVERY player
- *  as a live view — `playerId` is the ACTOR (the manager, or the forced debtor),
- *  not necessarily the local player. Only the actor gets the action buttons and
- *  the interactive board zones; everyone else watches it take shape read-only.
+ *  as a live view — `playerId` is the ACTOR (the manager, the buyer, or the
+ *  forced debtor), not necessarily the local player. Only the actor gets the
+ *  action buttons and the interactive board zones; everyone else watches it take
+ *  shape read-only.
  *
- *  Two entry paths share it:
+ *  Three entry paths share it, varying two knobs — allowed ops and how you leave:
  *
- *  - Voluntary `managing`: the queued manager builds / sells / mortgages. Cancel
- *    abandons the intermission (`cancel-manage`); Commit fires the `manage`
- *    intent when something legal is staged and affordable.
- *  - Forced `must-raise-cash`: the current debtor raises cash by selling
- *    buildings and / or mortgaging. No cancel — they must settle; Pay is enabled
- *    once the staged raise brings them back to ≥ 0, at which point the engine
- *    auto-settles and the phase exits. */
+ *  - Voluntary `managing`: full ops. Cancel abandons the intermission; Commit
+ *    fires the `manage` intent when something legal is staged and affordable
+ *    (cashAfter ≥ 0).
+ *  - `raising-cash` (buy-time): raise-only ops. Cancel returns to the buy
+ *    decision; Buy fires the `buy` intent once the staged raise covers the
+ *    property's price (cashAfter ≥ price).
+ *  - Forced `must-raise-cash`: raise-only ops. No cancel — they must settle; Pay
+ *    enables once the staged raise brings them back to ≥ 0, at which point the
+ *    engine auto-settles and the phase exits. */
 export function ManagePanel({ state, playerId }: Props) {
   const staged = useMonopolyStore((s) => s.state.turn.manageStaged) ?? EMPTY_STAGED;
   const myPlayerId = useMonopolyStore((s) => s.myPlayerId);
   const cancelManage = useMonopolyStore((s) => s.cancelManage);
   const commitManage = useMonopolyStore((s) => s.commitManage);
+  const buyProperty = useMonopolyStore((s) => s.buyProperty);
 
   const player = state.players.find((p) => p.id === playerId);
   if (!player) return null;
 
   const isActor = myPlayerId === playerId;
   const isForced = state.turn.phase === "must-raise-cash";
+  const isBuy = state.turn.phase === "raising-cash";
+  const raiseOnly = isForced || isBuy;
+
+  const buyPosition = isBuy ? state.turn.pendingBuy : undefined;
+  const price =
+    buyPosition !== undefined ? (ownablePrice(buyPosition) ?? 0) : 0;
+
   const summary = manageSummary(state, playerId, staged);
   const netCash = summary.ok ? summary.netCash : 0;
   const notes = summary.ok ? summary.notes : [];
   const cashAfter = player.cash + netCash;
-  const backInBlack = cashAfter >= 0;
   const hasStaged = hasStagedChanges(state, staged);
-  // Commit needs a legal build plan, something staged, and enough cash to cover
-  // the net spend (cashAfter ≥ 0). That single gate also covers forced mode:
-  // the debtor's negative starting cash means Pay only enables once the staged
-  // raise climbs them back to ≥ 0.
-  const canCommit = summary.ok && hasStaged && backInBlack;
+  // The leave gate, by knob B: managing / must-raise-cash need cashAfter ≥ 0;
+  // a buy needs cashAfter ≥ the property's price. (For the debtor, the negative
+  // starting cash means Pay only enables once the staged raise climbs to ≥ 0.)
+  const target = isBuy ? price : 0;
+  const meetsTarget = cashAfter >= target;
+  const canCommit = summary.ok && hasStaged && meetsTarget;
 
   const bank = bankSupply(state);
 
@@ -70,14 +83,25 @@ export function ManagePanel({ state, playerId }: Props) {
           minHeight: "56px",
         }}
       >
-        <Header isForced={isForced} shortfall={Math.max(0, -player.cash)} />
+        <Header
+          text={
+            isForced
+              ? `Raise $${Math.max(0, -player.cash).toLocaleString("en-US")} — sell or mortgage`
+              : isBuy && buyPosition !== undefined
+                ? `Raise cash → Buy ${ownableName(buyPosition)} ($${price.toLocaleString("en-US")})`
+                : "Manage"
+          }
+          alarm={isForced}
+        />
         <CashLine
           cashBefore={player.cash}
           cashAfter={cashAfter}
           netDelta={netCash}
         />
         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5">
-          <BankSupply houses={bank.houses} hotels={bank.hotels} />
+          {/* Bank supply is a build constraint — irrelevant when you can only
+              sell / mortgage, so it's shown only in the voluntary manage. */}
+          {!raiseOnly && <BankSupply houses={bank.houses} hotels={bank.hotels} />}
           {!summary.ok && (
             <span className="truncate" style={{ color: "var(--mono-red)" }}>
               {summary.reason}
@@ -88,16 +112,18 @@ export function ManagePanel({ state, playerId }: Props) {
               Hotel liquidated — house shortage
             </span>
           )}
-          {isForced && (
+          {raiseOnly && (
             <span
               className="truncate tabular-nums"
               style={{
-                color: backInBlack ? "var(--mono-green)" : "var(--mono-red)",
+                color: meetsTarget ? "var(--mono-green)" : "var(--mono-red)",
               }}
             >
-              {backInBlack
-                ? "Back in the black"
-                : `Need $${(-cashAfter).toLocaleString("en-US")} more`}
+              {meetsTarget
+                ? isBuy
+                  ? "Enough to buy"
+                  : "Back in the black"
+                : `Need $${(target - cashAfter).toLocaleString("en-US")} more`}
             </span>
           )}
         </div>
@@ -112,9 +138,10 @@ export function ManagePanel({ state, playerId }: Props) {
       )}
       {isActor && (
         <PanelButton
-          label={isForced ? "Pay" : "Commit"}
+          label={isForced ? "Pay" : isBuy ? "Buy" : "Commit"}
           onClick={() => {
-            commitManage();
+            if (isBuy) buyProperty();
+            else commitManage();
           }}
           disabled={!canCommit}
           variant="primary"
@@ -124,32 +151,27 @@ export function ManagePanel({ state, playerId }: Props) {
   );
 }
 
+/** The display name of an ownable square (property / railroad / utility). The
+ *  caller only passes a `pendingBuy` position, which is always ownable, so the
+ *  `name` field is present — the guard just narrows the Space union for TS. */
+function ownableName(position: number): string {
+  const space = SPACES[position];
+  return "name" in space ? space.name : "";
+}
+
 const SECTION_STYLE: CSSProperties = {
   backgroundColor: "var(--mono-card)",
   color: "var(--mono-ink)",
   boxShadow: "inset 0 1px 0 var(--mono-frame)",
 };
 
-function Header({
-  isForced,
-  shortfall,
-}: {
-  isForced: boolean;
-  shortfall: number;
-}) {
-  if (isForced) {
-    return (
-      <span
-        className="truncate font-semibold uppercase tracking-wide"
-        style={{ color: "var(--mono-red)" }}
-      >
-        Raise ${shortfall.toLocaleString("en-US")} — sell or mortgage
-      </span>
-    );
-  }
+function Header({ text, alarm }: { text: string; alarm: boolean }) {
   return (
-    <span className="truncate font-semibold uppercase tracking-wide">
-      Manage
+    <span
+      className="truncate font-semibold uppercase tracking-wide"
+      style={alarm ? { color: "var(--mono-red)" } : undefined}
+    >
+      {text}
     </span>
   );
 }
