@@ -1880,6 +1880,38 @@ describe("trade approval + execution", () => {
     expect(declined.state.ownership[1]).toBe("p1"); // unchanged
   });
 
+  it("logs a trade-declined event with the proposed terms and the decliner", () => {
+    const start = withOwnership(freshGame("trade-decline-log"), { 1: "p1" });
+    const building = inTradeBuilding(start, "p1");
+    const staged = apply(building, {
+      kind: "update-trade-draft",
+      playerId: "p1",
+      terms: { propertyTo: { 1: "p2" }, gojfTo: {}, cashDelta: { p1: 60, p2: -60 } },
+    });
+    if (!staged.ok) throw new Error(staged.reason);
+    const proposed = apply(staged.state, { kind: "propose-trade", playerId: "p1" });
+    if (!proposed.ok) throw new Error(proposed.reason);
+    const pending = proposed.state.turn.pendingTrade;
+    if (!pending) throw new Error("expected a pending trade");
+
+    const declined = apply(proposed.state, {
+      kind: "decline-trade",
+      playerId: "p2",
+      tradeId: pending.id,
+    });
+    if (!declined.ok) throw new Error(declined.reason);
+    // The rejected offer is logged with the terms that never executed (incl.
+    // each asset's would-be "from") and who killed it.
+    const event = declined.newEvents.find((e) => e.kind === "trade-declined");
+    expect(event).toMatchObject({
+      proposerId: "p1",
+      declinedBy: "p2",
+      propertyTo: { 1: "p2" },
+      propertyFrom: { 1: "p1" },
+      cashDelta: { p1: 60, p2: -60 },
+    });
+  });
+
   it("executes an out-of-turn trade and returns to the active player's pre-roll", () => {
     // p1 is the active turn owner; p2 (building) trades Mediterranean to p3.
     let start = withOwnership(freshGame("trade-offturn"), { 1: "p2" });

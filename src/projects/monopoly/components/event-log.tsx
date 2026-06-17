@@ -139,8 +139,10 @@ function TurnFragment({
       {turn.events.flatMap((event, i) => {
         const key = `${turn.turn}-${i}`;
         // A trade moves several things at once; like build/sell it gets one
-        // row per move rather than a single crammed line. See `tradeRows`.
-        if (event.kind === "trade") {
+        // row per move rather than a single crammed line. A declined offer
+        // renders the same rows, dimmed, plus a "declined by" row. See
+        // `tradeRows`.
+        if (event.kind === "trade" || event.kind === "trade-declined") {
           return tradeRows({ event, playersById, myId, keyBase: key });
         }
         const cells: ReactNode[] = [
@@ -228,28 +230,48 @@ function PassedGoCells({ mine }: { mine: boolean }) {
   );
 }
 
-function VerbCell({ verb }: { verb: string }) {
+// `dim` fades a row to signal a move that didn't take effect (a declined trade
+// offer). The verb is already half-opacity, so dimming drops it further.
+function VerbCell({ verb, dim = false }: { verb: string; dim?: boolean }) {
   return (
     <div
       className="py-0.5 text-right font-mono text-[11px] font-semibold uppercase tracking-wider"
-      style={{ color: "var(--mono-ink)", opacity: 0.5 }}
+      style={{ color: "var(--mono-ink)", opacity: dim ? 0.3 : 0.5 }}
     >
       {verb}
     </div>
   );
 }
 
-function BodyCell({ children }: { children: ReactNode }) {
+function BodyCell({
+  children,
+  dim = false,
+}: {
+  children: ReactNode;
+  dim?: boolean;
+}) {
   return (
-    <div className="flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap py-0.5 text-sm leading-snug">
+    <div
+      className="flex min-w-0 items-center gap-1.5 overflow-hidden whitespace-nowrap py-0.5 text-sm leading-snug"
+      style={{ opacity: dim ? 0.5 : undefined }}
+    >
       {children}
     </div>
   );
 }
 
-function NumericCell({ children }: { children: ReactNode }) {
+function NumericCell({
+  children,
+  dim = false,
+}: {
+  children: ReactNode;
+  dim?: boolean;
+}) {
   return (
-    <div className="flex shrink-0 items-center justify-end py-0.5 text-sm leading-snug">
+    <div
+      className="flex shrink-0 items-center justify-end py-0.5 text-sm leading-snug"
+      style={{ opacity: dim ? 0.5 : undefined }}
+    >
       {children}
     </div>
   );
@@ -275,6 +297,8 @@ function verbFor(event: GameEvent): string {
       return "UNMORT";
     case "trade":
       return "TRADE";
+    case "trade-declined":
+      return "OFFER";
     case "go-to-jail":
       return "JAIL";
     case "jail-roll":
@@ -358,8 +382,9 @@ function EventBody({
     case "unmortgage":
       return <SpaceLabel position={event.position} />;
     case "trade":
+    case "trade-declined":
       // Trades render as one row per move via `tradeRows` (see `TurnFragment`),
-      // never as a single EventCells body, so this arm is unreachable.
+      // never as a single EventCells body, so these arms are unreachable.
       return null;
     case "go-to-jail": {
       const reason =
@@ -551,6 +576,7 @@ function cashFor(
     case "roll":
     case "jail-roll":
     case "trade":
+    case "trade-declined":
     case "go-to-jail":
     case "jail-card":
     case "bankrupt":
@@ -586,17 +612,22 @@ function RollTotal({ value }: { value: number }) {
 // cash move puts its net amount in the right-aligned numeric column like every
 // other money line (cash has no "from" — `cashDelta` is a net per player, not a
 // pairwise flow). Who proposed the trade is intentionally not shown.
+//
+// A declined offer (`trade-declined`) renders the same would-be move rows but
+// dimmed — nothing took effect — under an OFFER verb, then a final un-dimmed row
+// stating who rejected it.
 function tradeRows({
   event,
   playersById,
   myId,
   keyBase,
 }: {
-  event: Extract<GameEvent, { kind: "trade" }>;
+  event: Extract<GameEvent, { kind: "trade" | "trade-declined" }>;
   playersById: ReadonlyMap<string, Player>;
   myId: string | null;
   keyBase: string;
 }): ReactNode[] {
+  const declined = event.kind === "trade-declined";
   const moves: { key: string; body: ReactNode; numeric?: ReactNode }[] = [];
   for (const [posStr, toId] of Object.entries(event.propertyTo)) {
     const pos = Number(posStr);
@@ -650,13 +681,31 @@ function tradeRows({
     });
   }
 
-  return moves.map((move) => (
+  const verb = verbFor(event);
+  const rows: ReactNode[] = moves.map((move) => (
     <Fragment key={`${keyBase}-${move.key}`}>
-      <VerbCell verb={verbFor(event)} />
-      <BodyCell>{move.body}</BodyCell>
-      <NumericCell>{move.numeric}</NumericCell>
+      <VerbCell verb={verb} dim={declined} />
+      <BodyCell dim={declined}>{move.body}</BodyCell>
+      <NumericCell dim={declined}>{move.numeric}</NumericCell>
     </Fragment>
   ));
+
+  if (event.kind === "trade-declined") {
+    const decliner = playersById.get(event.declinedBy);
+    rows.push(
+      <Fragment key={`${keyBase}-declined`}>
+        <VerbCell verb={verb} dim />
+        <BodyCell>
+          <span style={{ color: "var(--mono-red)", fontWeight: 600 }}>✗</span>
+          <span style={{ opacity: 0.6 }}>declined by</span>
+          {decliner && <PlayerChip player={decliner} />}
+        </BodyCell>
+        <NumericCell>{null}</NumericCell>
+      </Fragment>,
+    );
+  }
+
+  return rows;
 }
 
 function GojfTag({ source }: { source: CardSource }) {

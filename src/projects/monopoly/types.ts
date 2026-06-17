@@ -168,6 +168,25 @@ export interface ManageStaged {
   mortgage: Readonly<Record<number, boolean>>;
 }
 
+/** The asset + cash movements of a trade, shared by the executed (`trade`) and
+ *  rejected (`trade-declined`) log events — both render the same per-move
+ *  "from → to" rows. For a declined offer the moves describe what *would* have
+ *  happened; nothing was applied. */
+export interface TradeMoves {
+  /** Who assembled and proposed the trade (may not be a participant). */
+  proposerId: string;
+  /** Asset + cash movements (same shape as the proposal). */
+  propertyTo: Readonly<Record<number, string>>;
+  gojfTo: Readonly<Partial<Record<CardSource, string>>>;
+  cashDelta: Readonly<Record<string, number>>;
+  /** Each moved property's / card's owner before the trade, paired with
+   *  `propertyTo` / `gojfTo` so the log can render each asset move as
+   *  "from → to". Cash has no "from": `cashDelta` is a net per player, not a
+   *  pairwise flow. */
+  propertyFrom: Readonly<Record<number, string>>;
+  gojfFrom: Readonly<Partial<Record<CardSource, string>>>;
+}
+
 /** Single recorded action in the play log. Every kind that mutates the
  *  authoritative state has a corresponding event so the log is a faithful
  *  replay of the game so far. */
@@ -214,20 +233,13 @@ export type GameEvent =
     }
   | { kind: "mortgage"; playerId: string; position: number; received: number }
   | { kind: "unmortgage"; playerId: string; position: number; cost: number }
-  | {
-      kind: "trade";
-      /** Who assembled and proposed the trade (may not be a participant). */
-      proposerId: string;
-      /** Asset + cash movements as executed (same shape as the proposal). */
-      propertyTo: Readonly<Record<number, string>>;
-      gojfTo: Readonly<Partial<Record<CardSource, string>>>;
-      cashDelta: Readonly<Record<string, number>>;
-      /** Each moved property's / card's PREVIOUS owner, paired with `propertyTo`
-       *  / `gojfTo` so the log can render each asset move as "from → to". Cash
-       *  has no "from": `cashDelta` is a net per player, not a pairwise flow. */
-      propertyFrom: Readonly<Record<number, string>>;
-      gojfFrom: Readonly<Partial<Record<CardSource, string>>>;
-    }
+  | ({ kind: "trade" } & TradeMoves)
+  | ({
+      kind: "trade-declined";
+      /** The party who declined. A single decline kills the whole proposal, so
+       *  this is the first (and only) rejecter — there's never a list. */
+      declinedBy: string;
+    } & TradeMoves)
   | { kind: "go-to-jail"; reason: "tile" | "card" | "three-doubles" }
   | {
       kind: "jail-roll";

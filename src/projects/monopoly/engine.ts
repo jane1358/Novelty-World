@@ -27,6 +27,7 @@ import type {
   PendingTrade,
   Player,
   RaiseCashResume,
+  TradeMoves,
   TradeTerms,
   TurnGroup,
   TurnState,
@@ -1593,6 +1594,33 @@ function applyProposeTrade(
   };
 }
 
+/** Build the shared `TradeMoves` for a log event from a pending trade, capturing
+ *  each moved asset's owner from `state` (validation guarantees every moved
+ *  asset is owned/held, so the lookups are present). Cash carries no "from" —
+ *  `cashDelta` is a net per player, not a pairwise flow. Called BEFORE the trade
+ *  is applied (executed) or when it's rejected (never applied), so `state` is
+ *  the pre-trade board either way. */
+function tradeMovesFrom(state: GameState, pending: PendingTrade): TradeMoves {
+  const propertyFrom: Record<number, string> = {};
+  for (const posStr of Object.keys(pending.propertyTo)) {
+    const prev = state.ownership[Number(posStr)];
+    if (prev) propertyFrom[Number(posStr)] = prev;
+  }
+  const gojfFrom: Partial<Record<CardSource, string>> = {};
+  for (const src of Object.keys(pending.gojfTo)) {
+    const prev = state.jailFreeCards[src as CardSource];
+    if (prev) gojfFrom[src as CardSource] = prev;
+  }
+  return {
+    proposerId: pending.proposerId,
+    propertyTo: pending.propertyTo,
+    gojfTo: pending.gojfTo,
+    cashDelta: pending.cashDelta,
+    propertyFrom,
+    gojfFrom,
+  };
+}
+
 function applyAcceptTrade(
   state: GameState,
   intent: Extract<Intent, { kind: "accept-trade" }>,
@@ -1623,27 +1651,9 @@ function applyAcceptTrade(
   // Unanimous — execute. Move assets + cash + fees, log it, then settle (any
   // receiver pushed into the red raises cash before play resumes at pre-roll).
   const executed = applyTradeTerms(state, pending);
-  // Capture each moved asset's previous owner BEFORE the transfer so the log
-  // can show "from → to" (validation guarantees every moved asset is owned/held,
-  // so the lookups are always present). Cash carries no "from" — it's net.
-  const propertyFrom: Record<number, string> = {};
-  for (const posStr of Object.keys(pending.propertyTo)) {
-    const prev = state.ownership[Number(posStr)];
-    if (prev) propertyFrom[Number(posStr)] = prev;
-  }
-  const gojfFrom: Partial<Record<CardSource, string>> = {};
-  for (const src of Object.keys(pending.gojfTo)) {
-    const prev = state.jailFreeCards[src as CardSource];
-    if (prev) gojfFrom[src as CardSource] = prev;
-  }
   const tradeEvent: GameEvent = {
     kind: "trade",
-    proposerId: pending.proposerId,
-    propertyTo: pending.propertyTo,
-    gojfTo: pending.gojfTo,
-    cashDelta: pending.cashDelta,
-    propertyFrom,
-    gojfFrom,
+    ...tradeMovesFrom(state, pending),
   };
   const turns = appendEventToActiveTurn(executed.turns, tradeEvent);
   return {
@@ -1665,8 +1675,20 @@ function applyDeclineTrade(
   if (!(intent.playerId in pending.approvals)) {
     return { ok: false, reason: "not a party to this trade" };
   }
-  // A single decline kills the whole proposal.
-  return { ok: true, state: returnToPreRoll(state), newEvents: [] };
+  // A single decline kills the whole proposal. Nothing moves, but the rejected
+  // offer is logged (with the terms that never executed and who killed it) so
+  // players can see what was on the table.
+  const declinedEvent: GameEvent = {
+    kind: "trade-declined",
+    declinedBy: intent.playerId,
+    ...tradeMovesFrom(state, pending),
+  };
+  const turns = appendEventToActiveTurn(state.turns, declinedEvent);
+  return {
+    ok: true,
+    state: returnToPreRoll({ ...state, turns }),
+    newEvents: [declinedEvent],
+  };
 }
 
 // ---------------------------------------------------------------------------
