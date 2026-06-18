@@ -108,8 +108,10 @@ Shared invariants:
   is the actor. A plain `buy-decision` is **inert** — no staging surface.
 - **Unaffordable-even-after-raising** landings skip the prompt and go straight to
   auction (no button for a non-choice); the player can still bid up to net worth.
-- **The bot never raises to buy** — it buys only when `cash ≥ price`, else
-  declines.
+- **Bots CAN raise to buy.** The pacer drives `raising-cash` for a bot buyer (the
+  `claude` policy enters it for a property it judges worth owning, stages a
+  mortgage raise, then commits the `buy`); the `dumb` baseline still buys only
+  when `cash ≥ price`.
 - **TODO (v2):** auction scarce houses/hotels when demand exceeds supply; v1
   approximates with the arm-order FIFO.
 
@@ -162,39 +164,75 @@ flavor text.
 ### Bots
 
 ```ts
-type Bot = (state: GameState, playerId: string) => Intent | null;
+type Bot = (state: GameState, playerId: string) => BotDecision | null;
+interface BotDecision { intent: Intent; note?: string }
 ```
 
-A bot is one pure function: the intent its seat should submit now, or `null`
-when it has nothing to do. Each seat's strategy is `Player.botStrategy`
-(`BotStrategy | null` — `null` is a human) and is resolved to a policy through
-**`bots/registry.ts`** (`BOTS`). Adding a strategy is a new `BotStrategy` union
-member plus a registry entry. Current strategies:
+A bot is one pure function: the move its seat should make now (an intent, plus
+an optional reasoning `note`), or `null` when it has nothing to do. The contract
+lives in **`bots/decision.ts`** (separate from the registry so the policies can
+import the `move()` wrapper without an import cycle). Each seat's strategy is
+`Player.botStrategy` (`BotStrategy | null` — `null` is a human), resolved through
+**`bots/registry.ts`** (`BOTS`). Adding a strategy is a new `BotStrategy` member
+plus a registry entry. Current strategies:
 
-- **`dumb`** (`bots/dumb.ts`) — the reactive baseline. Answers the proxy-driven
-  decision phases (buy, auction, must-raise-cash settling, trade-pending accept,
-  jail) and never initiates. Returns `null` at `pre-roll`.
-- **`claude`** (`bots/claude.ts`) — intended as a strong, proactive opponent.
-  **Currently a stub that delegates to `dumb`**; the real policy + its planned
-  heuristics live as a TODO in that file.
+- **`dumb`** (`bots/dumb.ts`) — the reactive baseline; answers the proxy-driven
+  decision phases and never initiates. Returns note-less decisions.
+- **`claude`** (`bots/claude.ts`) — the strong, proactive, pro-level opponent
+  and the **default** for added bots (`addBot`) and the `freshGame` seed. A pure
+  dispatcher over `bots/valuation.ts` (scoring, build planning, value-preserving
+  liquidation, jail-haven) and `bots/trades.ts` (counterparty-aware proposals +
+  evaluation). Everything keys off `positionValue` — a move is good iff it raises
+  a seat's position worth. It buys/raises-to-buy, bids auctions to value,
+  develops with a state-aware 3-vs-4-hold-vs-hotel judgment, trades to complete
+  monopolies, and **notes its reasoning on every decision** (see "BOT notes").
 
-The pacer (`pacing.ts`) consults a bot policy in three roles: the reactive
-decision phases (some, like an auction bid or a trade vote, can wait on an
-OFF-turn bot); the bot's own `pre-roll`, where the policy may return a
-`set-queue` intent to **proactively arm** a build / trade intermission before
-rolling; and a `managing` / `trade-building` intermission whose actor is a bot,
-which the policy drives to a `manage` / `propose-trade` commit (the pacer
-cancels as a fallback if the policy stalls). The engine is unchanged by all
-this — proactive bot play reuses the same boundary-queue + intermission
-machinery a human uses; only the pacer learned to drive it for a bot.
+**BOT notes.** A `bot-note` GameEvent (verb **BOT** in the log) records a bot's
+reasoning. It is the lone log event with **no board change** — pure annotation —
+and the one sanctioned exception to "no event without a state change": it always
+rides in the same atomic submit as the decision it explains (the pacer prepends
+it; `applyBotNote` is lenient — a note for a non-bot seat is a no-op, never a
+rejection, so it can't stall a batch). Notes are generated deterministically by
+the policy (no live model call), so replay is unaffected. Reactive decisions
+note on the decision; the arm→intermission→commit flows note on the **arm**
+(which explains the plan) and commit silently.
 
-**Proactive scope + invariants:** a bot acts proactively only on its **own**
-turn (off-turn bot-initiated trades are deferred — they'd need a cross-client
-arming window). A policy must (1) arm at `pre-roll` only when the commit will
-change state — the pacer skips a redundant arm, but a policy that keeps wanting
-a no-op would still spin; and (2) resolve any intermission it armed. The
-proactive path is verified in `pacing.test.ts` against mock policies injected
-through `driveOp`'s resolver (no shipped strategy exercises it yet).
+The pacer (`pacing.ts`) consults a policy in: the reactive decision phases (buy,
+auction, **raising-cash**, must-raise-cash, trade-pending, jail — some wait on an
+OFF-turn bot); `pre-roll`, where a bot may **proactively arm** a build (own turn)
+or a trade (**own OR off-turn** — see below); and a `managing` / `trade-building`
+/ `raising-cash` intermission whose actor is a bot, driven to a commit (the pacer
+cancels as a fallback if the policy stalls). The engine is unchanged — proactive
+play reuses the boundary-queue + intermission machinery a human uses.
+
+**Proactive scope + invariants:**
+- **Off-turn trades are enabled.** At any turn boundary the pacer consults every
+  bot (not just the active one) for a trade arm; the engine already opens a
+  queued intermission for whoever armed it, even off-turn, so a bot can negotiate
+  between turns. Builds stay own-turn only. (The active player's client is the
+  sole driver, so off-turn arms ride on it; the human-turn sync barrier holds.)
+- A policy must (1) arm at `pre-roll` only when the commit will change state —
+  the pacer skips a redundant arm, but a policy that keeps wanting a no-op spins;
+  and (2) resolve any intermission it armed.
+- **Termination of trades:** a *declined* trade leaves state unchanged, so the
+  `claude` policy guards against loops with (a) **one proposal per turn group**
+  (it reads the turn's own `trade`/`trade-declined` events) and (b) a
+  **decline-memory** (don't re-pitch an identical declined offer unless sweetened
+  for the decliner). Builds are naturally idempotent via board state.
+- Trade proposals are validated to be strictly proposable (`isProposable` mirrors
+  the engine's checks) so a built draft is never route-rejected — a rejected
+  drive would latch the once-per-version guard and stall the phase.
+
+The pacer's drive paths are covered in `pacing.test.ts` (with both injected mock
+policies and the real default resolver); the `claude` decision logic in
+`bots/claude.test.ts`. The browser-only playback pump is **not** unit-tested —
+verify the end-to-end proactive flow (off-turn trades, raise-to-buy) by running
+the app.
+
+**Known v1 limits (flagged for follow-up):** trade *construction* searches 2-way
+deals (mutual-completion swaps + cash) — the engine + the valuation model are
+N-way-ready, but the search isn't; and builds / trade sweeteners are cash-funded
+(no mortgage-to-fund-a-build yet, though raise-to-*buy* is wired).
 
 ## Lobby
 
@@ -293,9 +331,12 @@ reconcile.ts  pure rebuildOverlay: replay/rebase the optimistic outbox
 store.ts      Zustand store, "use client", route client + playback pump
 mocks.ts      MOCK_STATE fixture + freshGame seed
 dev-ops.ts / dev.ts   dev-only state transforms + hotkeys
-bots/registry.ts      Bot type + BOTS strategy map (botStrategy -> policy)
+bots/registry.ts      BOTS strategy map (botStrategy -> policy); re-exports the contract
+bots/decision.ts      Bot / BotDecision contract + move() wrapper
 bots/dumb.ts          dumb (reactive baseline) policy
-bots/claude.ts        claude policy (stub -> dumb; TODO real strategy)
+bots/claude.ts        claude policy: phase dispatcher + reasoning notes
+bots/valuation.ts     claude scoring: positionValue, buy / build / jail / liquidation
+bots/trades.ts        claude trade construction + evaluation
 components/           React board + lobby/seat UI
 ```
 

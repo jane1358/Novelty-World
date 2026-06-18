@@ -142,6 +142,20 @@ function TurnFragment({
       </div>
       {turn.events.flatMap((event, i) => {
         const key = `${turn.turn}-${i}`;
+        // A bot's reasoning gets a full-width, wrapping row of its own (the
+        // dense 3-cell grid would truncate it) — distinct so players can scan
+        // past it, or read why the bot acted. The acting bot may be off-turn
+        // (an off-turn trade proposal), so it carries its own playerId.
+        if (event.kind === "bot-note") {
+          const noteRow: ReactNode[] = [
+            <BotNoteRow
+              key={key}
+              actor={playersById.get(event.playerId)}
+              text={event.text}
+            />,
+          ];
+          return noteRow;
+        }
         // A trade moves several things at once; like build/sell it gets one
         // row per move rather than a single crammed line. A declined offer
         // renders the same rows, dimmed, plus a "declined by" row. See
@@ -191,6 +205,36 @@ function TurnDivider({ turn, actor }: { turn: number; actor: Player }) {
           }}
         />
         <span className="font-semibold">{actor.name}</span>
+      </span>
+    </div>
+  );
+}
+
+/** A bot's reasoning line — full-width and wrapping (unlike the dense one-line
+ *  event rows), under an orange "BOT" tag with the acting bot's chip, so it
+ *  reads as the bot "speaking" and players can scan past it or read why it
+ *  acted. The actor may be off-turn (an off-turn trade proposal). */
+function BotNoteRow({
+  actor,
+  text,
+}: {
+  actor: Player | undefined;
+  text: string;
+}) {
+  return (
+    <div
+      className="flex items-start gap-1.5 py-0.5 text-xs leading-snug"
+      style={{ gridColumn: "1 / -1" }}
+    >
+      <span
+        className="shrink-0 font-mono text-[11px] font-semibold uppercase tracking-wider"
+        style={{ color: "var(--mono-orange)" }}
+      >
+        Bot
+      </span>
+      {actor && <PlayerChip player={actor} />}
+      <span className="min-w-0 italic" style={{ opacity: 0.7 }}>
+        {text}
       </span>
     </div>
   );
@@ -323,6 +367,10 @@ function verbFor(event: GameEvent): string {
       return "BUST";
     case "winner":
       return "WIN";
+    case "bot-note":
+      // Rendered as a full-width row (see `BotNoteRow`), not through the 3-cell
+      // grid, so this label is only a fallback for the exhaustive switch.
+      return "BOT";
   }
 }
 
@@ -496,6 +544,9 @@ function EventBody({
       if (!winner) return null;
       return <PlayerChip player={winner} />;
     }
+    case "bot-note":
+      // Rendered as a full-width row (see `BotNoteRow`), never through this cell.
+      return null;
   }
 }
 
@@ -585,6 +636,7 @@ function cashFor(
     case "jail-card":
     case "bankrupt":
     case "winner":
+    case "bot-note":
       return null;
   }
 }

@@ -1,5 +1,6 @@
 import type { PlayerProfile } from "@/shared/lib/profile";
 import type {
+  BotStrategy,
   GameState,
   Intent,
   PlayerColor,
@@ -54,6 +55,8 @@ export type MonopolyAction =
   | { type: "setIcon"; playerId: string; icon: PlayerIcon; fromVersion: number }
   /** Rename a lobby seat. */
   | { type: "setName"; playerId: string; name: string; fromVersion: number }
+  /** Switch a bot seat's strategy (claude ⇄ dumb); rejected for a human seat. */
+  | { type: "setStrategy"; playerId: string; strategy: BotStrategy; fromVersion: number }
   /** Flip the lobby into play (≥2 players, ≥1 human). */
   | { type: "start"; fromVersion: number }
   /** Apply one or more intents in order (apply-only, no auto-drain). Batched

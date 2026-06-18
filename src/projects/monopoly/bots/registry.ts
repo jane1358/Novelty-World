@@ -1,21 +1,13 @@
-import type { BotStrategy, GameState, Intent } from "../types";
+import type { BotStrategy } from "../types";
 import { claudeBot } from "./claude";
+import type { Bot } from "./decision";
 import { dumbBot } from "./dumb";
 
-/** A bot policy: given the full game state (Monopoly is open-information) and
- *  the bot's seat id, the single intent that seat should submit right now, or
- *  null when it has nothing to do (the pacer then rolls / moves on). One pure
- *  function covers every phase a bot is consulted in:
- *  - the reactive decision phases (`buy-decision`, `auction`, `must-raise-cash`,
- *    `trade-pending`, `jail-decision`);
- *  - `pre-roll`, where it may return a `set-queue` arm to PROACTIVELY open a
- *    build / trade intermission, or null to just roll;
- *  - `managing` / `trade-building`, where it drives the intermission it armed to
- *    a `manage` / `propose-trade` commit (or a cancel).
- *
- *  The same shape works for the dumb baseline, a strong rule-based policy, and a
- *  future learned policy. See `monopoly/CLAUDE.md` "Bots". */
-export type Bot = (state: GameState, playerId: string) => Intent | null;
+// The bot-decision contract lives in `decision.ts` (so policies can import it
+// without a cycle through this registry). Re-exported here so existing call
+// sites keep importing `Bot` / `BotDecision` / `move` from the registry.
+export type { Bot, BotDecision } from "./decision";
+export { move } from "./decision";
 
 /** Every selectable bot policy, keyed by the seat's `botStrategy`. The pacer
  *  resolves a bot seat's policy through this map; adding a strategy is a new

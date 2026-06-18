@@ -10,10 +10,21 @@ import {
   type Snapshot,
 } from "./pacing";
 import type { Bot } from "./bots/registry";
-import type { GameState, Intent, Player } from "./types";
+import type { GameState, Player } from "./types";
 
 // freshGame seats p1 as the human and p2..p4 as bots, p1 active at pre-roll.
-const base = freshGame();
+// Pin the bots to the `dumb` baseline so the pacer's default-resolver tests
+// assert note-less reactive intents — these exercise the pacer, not a strategy;
+// the proactive suite below injects its own policies regardless.
+const base: GameState = (() => {
+  const game = freshGame();
+  return {
+    ...game,
+    players: game.players.map((p) =>
+      p.botStrategy !== null ? { ...p, botStrategy: "dumb" } : p,
+    ),
+  };
+})();
 
 function withTurn(state: GameState, patch: Partial<GameState["turn"]>): GameState {
   return { ...state, turn: { ...state.turn, ...patch } };
@@ -129,11 +140,23 @@ describe("driveOp — proactive bot infrastructure", () => {
 
   it("submits a bot's pre-roll arm before rolling", () => {
     const armManage: Bot = () => ({
-      kind: "set-queue", playerId: "p2", queue: "manage", armed: true,
+      intent: { kind: "set-queue", playerId: "p2", queue: "manage", armed: true },
     });
     expect(driveOp(botTurn({}), true, "p1", onlyP2(armManage))).toEqual({
       kind: "intent",
       intent: { kind: "set-queue", playerId: "p2", queue: "manage", armed: true },
+    });
+  });
+
+  it("carries a bot decision's reasoning note onto the drive op", () => {
+    const armWithNote: Bot = () => ({
+      intent: { kind: "set-queue", playerId: "p2", queue: "manage", armed: true },
+      note: "Developing my oranges.",
+    });
+    expect(driveOp(botTurn({}), true, "p1", onlyP2(armWithNote))).toEqual({
+      kind: "intent",
+      intent: { kind: "set-queue", playerId: "p2", queue: "manage", armed: true },
+      note: "Developing my oranges.",
     });
   });
 
@@ -142,7 +165,7 @@ describe("driveOp — proactive bot infrastructure", () => {
     // spin (each write bumps the version, re-triggering the drive). The pacer
     // falls through to `step`, which is what drains the queue into managing.
     const armManage: Bot = () => ({
-      kind: "set-queue", playerId: "p2", queue: "manage", armed: true,
+      intent: { kind: "set-queue", playerId: "p2", queue: "manage", armed: true },
     });
     const alreadyArmed: GameState = {
       ...botTurn({}),
@@ -154,7 +177,9 @@ describe("driveOp — proactive bot infrastructure", () => {
   });
 
   it("ignores a non-arm intent at pre-roll and rolls (only set-queue is legal there)", () => {
-    const wrong: Bot = () => ({ kind: "manage", playerId: "p2", build: {}, mortgage: {} });
+    const wrong: Bot = () => ({
+      intent: { kind: "manage", playerId: "p2", build: {}, mortgage: {} },
+    });
     expect(driveOp(botTurn({}), true, "p1", onlyP2(wrong))).toEqual({ kind: "step" });
   });
 
@@ -163,9 +188,45 @@ describe("driveOp — proactive bot infrastructure", () => {
     expect(driveOp(botTurn({}), true, "p1", onlyP2(idle))).toEqual({ kind: "step" });
   });
 
+  it("arms an OFF-TURN bot's trade at the active player's boundary", () => {
+    // p3 is a bot, NOT the active player (p2 is). It still gets to arm a trade —
+    // the engine opens a queued intermission for whoever armed it, even off-turn.
+    const onlyP3 = (bot: Bot) => (_s: GameState, id: string): Bot | null =>
+      id === "p3" ? bot : null;
+    const armTrade: Bot = () => ({
+      intent: { kind: "set-queue", playerId: "p3", queue: "trade", armed: true },
+    });
+    expect(driveOp(botTurn({}), true, "p1", onlyP3(armTrade))).toEqual({
+      kind: "intent",
+      intent: { kind: "set-queue", playerId: "p3", queue: "trade", armed: true },
+    });
+  });
+
+  it("drives a bot buyer's raising-cash intermission", () => {
+    const raiseBot: Bot = () => ({
+      intent: { kind: "buy", playerId: "p2" },
+      note: "Raised the cash — buying it.",
+    });
+    const state = botTurn({ phase: "raising-cash", pendingBuy: 16 });
+    expect(driveOp(state, true, "p1", onlyP2(raiseBot))).toEqual({
+      kind: "intent",
+      intent: { kind: "buy", playerId: "p2" },
+      note: "Raised the cash — buying it.",
+    });
+  });
+
+  it("cancels a bot buyer's stalled raising-cash back to the buy-decision", () => {
+    const idle: Bot = () => null;
+    const state = botTurn({ phase: "raising-cash", pendingBuy: 16 });
+    expect(driveOp(state, true, "p1", onlyP2(idle))).toEqual({
+      kind: "intent",
+      intent: { kind: "cancel-manage", playerId: "p2" },
+    });
+  });
+
   it("drives a bot manager's managing intermission to its commit", () => {
     const buildBot: Bot = () => ({
-      kind: "manage", playerId: "p2", build: { 16: 1 }, mortgage: {},
+      intent: { kind: "manage", playerId: "p2", build: { 16: 1 }, mortgage: {} },
     });
     const state = botTurn({ phase: "managing", managerId: "p2" });
     expect(driveOp(state, true, "p1", onlyP2(buildBot))).toEqual({
@@ -184,7 +245,7 @@ describe("driveOp — proactive bot infrastructure", () => {
   });
 
   it("drives a bot proposer's trade-building to its draft/propose intents", () => {
-    const proposeBot: Bot = () => ({ kind: "propose-trade", playerId: "p2" });
+    const proposeBot: Bot = () => ({ intent: { kind: "propose-trade", playerId: "p2" } });
     const state = botTurn({
       phase: "trade-building",
       tradeDraft: { proposerId: "p2", propertyTo: { 1: "p3" }, gojfTo: {}, cashDelta: {} },
@@ -210,7 +271,7 @@ describe("driveOp — proactive bot infrastructure", () => {
   it("never drives a human's intermission, even with a proactive resolver", () => {
     // managerId p1 is the human seat; the resolver returns null for non-p2, so
     // the pacer leaves it to the human's UI.
-    const anyBot: Bot = (): Intent => ({ kind: "cancel-manage", playerId: "p1" });
+    const anyBot: Bot = () => ({ intent: { kind: "cancel-manage", playerId: "p1" } });
     const state = withTurn(base, { phase: "managing", managerId: "p1" });
     expect(driveOp(state, true, "p1", onlyP2(anyBot))).toBeNull();
   });

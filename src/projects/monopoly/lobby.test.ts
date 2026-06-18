@@ -95,16 +95,37 @@ describe("addBot", () => {
   it("seats a bot with a synthetic id, a name, and a free color + icon", () => {
     const state = ok(addBot(lobby()));
     const bot = state.players[1];
-    expect(bot.botStrategy).toBe("dumb");
+    // Defaults to the strong Claude policy — the opponent for a real game.
+    expect(bot.botStrategy).toBe("claude");
     expect(bot.id).toBe("bot-1");
     expect(bot.name).toBe("Alex");
     expect(bot.color).toBe(PLAYER_COLORS[1]);
     expect(bot.icon).toBe(PLAYER_ICONS[1]);
   });
 
+  it("can seat a specific strategy", () => {
+    expect(ok(addBot(lobby(), "dumb")).players[1].botStrategy).toBe("dumb");
+  });
+
   it("gives each added bot a distinct id", () => {
     const state = ok(addBot(ok(addBot(lobby()))));
     expect(state.players.map((p) => p.id)).toEqual(["host", "bot-1", "bot-2"]);
+  });
+});
+
+describe("setPlayerStrategy", () => {
+  it("switches a bot seat's strategy", () => {
+    const withBot = ok(addBot(lobby())); // claude by default
+    const switched = ok(
+      lobbyReduce(withBot, { type: "setStrategy", playerId: "bot-1", strategy: "dumb" }),
+    );
+    expect(switched.players[1].botStrategy).toBe("dumb");
+  });
+
+  it("rejects switching a human seat (no strategy)", () => {
+    expect(
+      lobbyReduce(lobby(), { type: "setStrategy", playerId: "host", strategy: "dumb" }).ok,
+    ).toBe(false);
   });
 });
 
@@ -219,7 +240,7 @@ describe("lobbyReduce", () => {
   it("dispatches each op to its matching helper", () => {
     expect(ok(lobbyReduce(lobby(), { type: "join", profile: { id: "p2", name: "Alex" } })).players)
       .toHaveLength(2);
-    expect(ok(lobbyReduce(lobby(), { type: "addBot" })).players[1].botStrategy).toBe("dumb");
+    expect(ok(lobbyReduce(lobby(), { type: "addBot" })).players[1].botStrategy).toBe("claude");
     expect(ok(lobbyReduce(ok(addBot(lobby())), { type: "removePlayer", playerId: "bot-1" })).players)
       .toHaveLength(1);
     expect(ok(lobbyReduce(lobby(), { type: "setColor", playerId: "host", color: "emerald" })).players[0].color)

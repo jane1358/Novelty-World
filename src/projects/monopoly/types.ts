@@ -292,7 +292,15 @@ export type GameEvent =
        *  otherwise the creditor who receives the estate. */
       creditorId: string | null;
     }
-  | { kind: "winner"; winnerId: string };
+  | { kind: "winner"; winnerId: string }
+  /** A bot's reasoning, surfaced in the log under a "BOT" verb so players (and
+   *  we, debugging) can see WHY a computer seat acted. This is the lone log
+   *  event with no corresponding board change — pure annotation. It's always
+   *  written in the same atomic submit as the decision it explains, immediately
+   *  before it, and is generated deterministically by the policy (no live model
+   *  call), so it never breaks deterministic replay. `playerId` is the acting
+   *  bot (may be off-turn for an off-turn trade proposal), used for attribution. */
+  | { kind: "bot-note"; playerId: string; text: string };
 
 /** One full play turn, grouping every event that happened while a single
  *  player held the dice. A turn ends when the player ends it (or busts to
@@ -530,6 +538,11 @@ export type Intent =
   // TradeTerms model + update-trade-draft are shaped to support it later.
   | { kind: "pay-to-leave-jail"; playerId: string }
   | { kind: "use-jail-card"; playerId: string }
+  /** Record a bot's reasoning as a `bot-note` log event (no board change). The
+   *  pacer prepends it to the same submit batch as the decision it annotates, so
+   *  the two land atomically (see `bots/`, `pacing.ts`). A no-op for a non-bot
+   *  seat, so it can never reject the batch and stall a turn. */
+  | { kind: "bot-note"; playerId: string; text: string }
   | { kind: "end-turn"; playerId: string };
 
 /** Result of applying an external intent to the state. On success the

@@ -171,9 +171,7 @@ function SeatRow({
         </span>
         <span className="flex-1 truncate font-semibold">{player.name}</span>
         {player.botStrategy !== null ? (
-          <span className="flex items-center gap-1 text-xs" style={{ color: "var(--mono-rail)" }}>
-            <Bot className="h-3.5 w-3.5" aria-hidden="true" /> Bot
-          </span>
+          <BotStrategyToggle player={player} />
         ) : isMine ? (
           <span className="text-xs font-semibold" style={{ color: "var(--mono-orange)" }}>You</span>
         ) : null}
@@ -192,6 +190,41 @@ function SeatRow({
 
       {isMine && <SeatPickers player={player} />}
     </li>
+  );
+}
+
+/** Per-bot strategy selector: `Claude` (the strong, proactive opponent — the
+ *  default for a real game) vs `dumb` (the reactive baseline, handy for an easy
+ *  game or testing). Anyone in the lobby can switch it, like kicking a bot. */
+function BotStrategyToggle({ player }: { player: Player }) {
+  const setStrategy = useMonopolyStore((s) => s.setStrategy);
+  return (
+    <span className="flex items-center gap-1">
+      <Bot
+        className="h-3.5 w-3.5"
+        aria-hidden="true"
+        style={{ color: "var(--mono-rail)" }}
+      />
+      {(["claude", "dumb"] as const).map((strat) => {
+        const active = player.botStrategy === strat;
+        return (
+          <button
+            key={strat}
+            type="button"
+            onClick={() => { setStrategy(player.id, strat); }}
+            aria-pressed={active}
+            className="rounded px-1.5 py-0.5 text-[11px] font-semibold capitalize transition-colors"
+            style={{
+              backgroundColor: active ? "var(--mono-orange)" : "transparent",
+              color: active ? "var(--mono-card)" : "var(--mono-rail)",
+              boxShadow: active ? undefined : "inset 0 0 0 1px var(--mono-frame)",
+            }}
+          >
+            {strat}
+          </button>
+        );
+      })}
+    </span>
   );
 }
 

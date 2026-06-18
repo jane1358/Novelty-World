@@ -147,6 +147,7 @@ export function apply(state: GameState, intent: Intent): ApplyResult {
     return applyPayToLeaveJail(state, intent);
   }
   if (intent.kind === "use-jail-card") return applyUseJailCard(state, intent);
+  if (intent.kind === "bot-note") return applyBotNote(state, intent);
   // `end-turn` is the only kind left; an unconditional return keeps the dispatch
   // exhaustive — a new Intent kind makes this `applyEndTurn` call fail to type.
   return applyEndTurn(state, intent);
@@ -1213,6 +1214,30 @@ function applyEndTurn(
     state: advanceToNextPlayer(state, intent.playerId),
     newEvents: [],
   };
+}
+
+/** Record a bot's reasoning as a `bot-note` log event — pure annotation, no
+ *  board change. Gated to bot seats so a client can't inject narration onto a
+ *  human's turn, but **lenient**: a note for a non-bot (or unknown) seat is a
+ *  silent no-op success, never a rejection. That matters because the pacer
+ *  submits the note in the SAME batch as the real decision; a rejection here
+ *  would fail the whole batch and stall the turn. The pacer only ever emits
+ *  these for a bot acting as itself, so the guard never trips in normal play. */
+function applyBotNote(
+  state: GameState,
+  intent: Extract<Intent, { kind: "bot-note" }>,
+): ApplyResult {
+  const player = state.players.find((p) => p.id === intent.playerId);
+  if (!player || player.botStrategy === null) {
+    return { ok: true, state, newEvents: [] };
+  }
+  const event: GameEvent = {
+    kind: "bot-note",
+    playerId: intent.playerId,
+    text: intent.text,
+  };
+  const turns = appendEventToActiveTurn(state.turns, event);
+  return { ok: true, state: { ...state, turns }, newEvents: [event] };
 }
 
 // ---------------------------------------------------------------------------

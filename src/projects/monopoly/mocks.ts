@@ -39,9 +39,9 @@ export function freshGame(
       inJail: false,
       jailTurns: 0,
       bankrupt: false,
-      // Slot 0 is the seeding human; fillers are dumb bots until the lobby seats
-      // real players. Set explicitly so it never rides on PLAYERS' ordering.
-      botStrategy: i !== 0 ? "dumb" : null,
+      // Slot 0 is the seeding human; fillers are the strong Claude bots (the
+      // real opponent). Set explicitly so it never rides on PLAYERS' ordering.
+      botStrategy: i !== 0 ? "claude" : null,
     };
     if (i === 0 && seat) {
       return { ...base, id: seat.id, name: seat.name };

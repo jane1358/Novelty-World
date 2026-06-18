@@ -13,14 +13,16 @@ import {
   ownablePrice,
 } from "../logic";
 import type { GameState, Intent, PropertyColor } from "../types";
+import { type BotDecision, move } from "./decision";
 
-/** The "dumb" bot policy: the decision a bot `playerId` should submit right now,
- *  or null if it isn't this bot's move. Purely REACTIVE — it answers the decision
- *  phases the engine pauses on and never initiates (it doesn't build, mortgage
- *  voluntarily, or propose trades). The pacer iterates the bot seats and submits
- *  the first non-null intent; any connected client may proxy a bot (the route's
- *  version guard dedupes the redundant writes). A live human's own decisions are
- *  left to their UI — never to this policy.
+/** The "dumb" bot policy: a note-less `BotDecision` wrapping the decision a bot
+ *  `playerId` should submit right now, or null if it isn't this bot's move.
+ *  Purely REACTIVE — it answers the decision phases the engine pauses on and
+ *  never initiates (it doesn't build, mortgage voluntarily, or propose trades).
+ *  The pacer iterates the bot seats and submits the first non-null decision; any
+ *  connected client may proxy a bot (the route's version guard dedupes the
+ *  redundant writes). A live human's own decisions are left to their UI — never
+ *  to this policy.
  *
  *  Resolved per seat through `bots/registry.ts`. The contrast strategy is the
  *  proactive `claudeBot` (`bots/claude.ts`). Covers the proxy-driven decision
@@ -42,7 +44,14 @@ import type { GameState, Intent, PropertyColor } from "../types";
  *  At `pre-roll` it returns null (no proactive arming), so the pacer simply
  *  rolls. Mechanical phases (`pre-roll` → step, `post-roll` → end-turn) are
  *  handled by the pacer itself, not here. */
-export function dumbBot(state: GameState, playerId: string): Intent | null {
+export function dumbBot(state: GameState, playerId: string): BotDecision | null {
+  return move(dumbIntent(state, playerId));
+}
+
+/** The dumb policy's raw intent (or null) — wrapped note-less by `dumbBot`. Split
+ *  out so the policy reads as plain intent logic; the `BotDecision` shape (which
+ *  the Claude policy uses to attach reasoning) is added by the one-line wrap. */
+function dumbIntent(state: GameState, playerId: string): Intent | null {
   const { phase, pendingBuy, pendingTrade } = state.turn;
 
   if (phase === "jail-decision") {

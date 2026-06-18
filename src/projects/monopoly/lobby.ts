@@ -174,8 +174,13 @@ export function joinLobby(state: GameState, profile: PlayerProfile): LobbyResult
   };
 }
 
-/** Add a bot seat with a synthetic id/name and the first free color + icon. */
-export function addBot(state: GameState): LobbyResult {
+/** Add a bot seat with a synthetic id/name and the first free color + icon.
+ *  Seats the strong `claude` policy by default — the opponent a human picks for
+ *  a real game; downgrade it to `dumb` per seat via `setPlayerStrategy`. */
+export function addBot(
+  state: GameState,
+  strategy: BotStrategy = "claude",
+): LobbyResult {
   if (state.status !== "lobby") {
     return { ok: false, reason: "game already started" };
   }
@@ -194,12 +199,28 @@ export function addBot(state: GameState): LobbyResult {
         name: nextBotName(state),
         color,
         icon,
-        // Picking a strategy in the lobby is deferred until the Claude bot is
-        // real; until then every added bot is the dumb baseline.
-        botStrategy: "dumb",
+        botStrategy: strategy,
       }),
     ),
   };
+}
+
+/** Switch a bot seat's strategy (`claude` ⇄ `dumb`). Rejected for a human seat
+ *  (a human has no strategy) or once the game has started. */
+export function setPlayerStrategy(
+  state: GameState,
+  playerId: string,
+  strategy: BotStrategy,
+): LobbyResult {
+  if (state.status !== "lobby") {
+    return { ok: false, reason: "game already started" };
+  }
+  const player = state.players.find((p) => p.id === playerId);
+  if (!player) return { ok: false, reason: "unknown player" };
+  if (player.botStrategy === null) {
+    return { ok: false, reason: "not a bot seat" };
+  }
+  return { ok: true, state: updatePlayer(state, playerId, { botStrategy: strategy }) };
 }
 
 /** Remove a seat (a leaving human or a kicked bot). Drops the player and their
@@ -299,6 +320,7 @@ export type LobbyOp =
   | { type: "setColor"; playerId: string; color: PlayerColor }
   | { type: "setIcon"; playerId: string; icon: PlayerIcon }
   | { type: "setName"; playerId: string; name: string }
+  | { type: "setStrategy"; playerId: string; strategy: BotStrategy }
   | { type: "start" };
 
 /** Apply a lobby op to the state via the matching pure helper. One dispatcher
@@ -318,6 +340,8 @@ export function lobbyReduce(state: GameState, op: LobbyOp): LobbyResult {
       return setPlayerIcon(state, op.playerId, op.icon);
     case "setName":
       return setPlayerName(state, op.playerId, op.name);
+    case "setStrategy":
+      return setPlayerStrategy(state, op.playerId, op.strategy);
     case "start":
       return startGame(state);
   }

@@ -1,4 +1,4 @@
-import { BOTS, type Bot } from "./bots/registry";
+import { BOTS, type Bot, type BotDecision } from "./bots/registry";
 import { driverRole } from "./driver";
 import type { GameState, Intent } from "./types";
 
@@ -51,8 +51,14 @@ export interface Snapshot {
 
 /** What this client should send to the backend to make the active turn
  *  progress: a mechanical `step` (roll / drain to the next decision) or a
- *  decision `intent` proxied for a bot seat. */
-export type DriveOp = { kind: "step" } | { kind: "intent"; intent: Intent };
+ *  decision `intent` proxied for a bot seat. A proxied bot decision may carry a
+ *  `note` — the bot's reasoning — which the store prepends as a `bot-note`
+ *  intent in the SAME atomic submit, so the explanation lands just before the
+ *  action in the log. Pacer-internal intents (end-turn, the stall-fallback
+ *  cancels) carry no note. */
+export type DriveOp =
+  | { kind: "step" }
+  | { kind: "intent"; intent: Intent; note?: string };
 
 /** Resolve the bot policy for a seat, or null if the seat isn't a bot. Injected
  *  into `turnOp` / `driveOp` (defaulting to the strategy registry) so a test can
@@ -81,15 +87,22 @@ function isNoOpArm(
   return intent.armed === present;
 }
 
+/** Turn a bot's `BotDecision` into a proxied drive op, carrying its reasoning
+ *  note through to the store (which logs it). */
+function opFor(decision: BotDecision): DriveOp {
+  return { kind: "intent", intent: decision.intent, note: decision.note };
+}
+
 /** The bare turn op for a state, ignoring playback position: the mechanical
  *  beat for the active seat (`pre-roll` → step, `post-roll` → end-turn) when
- *  this client drives it, or the intent a proxied BOT seat owes. A bot policy is
- *  consulted in three roles:
- *  - its reactive decision phases (`buy-decision`, `auction`, `must-raise-cash`,
- *    `trade-pending`, `jail-decision`), some of which can wait on an OFF-turn
- *    bot (a bidder, a trade debtor, a vote);
- *  - its own `pre-roll`, where the policy may PROACTIVELY arm a boundary action
- *    (build / propose-trade) via a `set-queue` intent before rolling;
+ *  this client drives it, or the decision a proxied BOT seat owes. A bot policy
+ *  is consulted in these roles:
+ *  - its reactive decision phases (`buy-decision`, `auction`, `raising-cash`,
+ *    `must-raise-cash`, `trade-pending`, `jail-decision`), some of which can
+ *    wait on an OFF-turn bot (a bidder, a trade debtor, a vote);
+ *  - `pre-roll`, where the ACTIVE bot may arm its own build/trade AND any
+ *    OFF-TURN bot may arm a trade at this turn boundary (a `set-queue` arm — the
+ *    engine opens a queued intermission for whoever armed it, even off-turn);
  *  - a `managing` / `trade-building` intermission whose actor is a bot, which
  *    the policy drives to a commit (cancelling as a fallback).
  *  A human's own decisions (buy, raise-cash, manage, trade) are left to their
@@ -104,16 +117,28 @@ function turnOp(
 
   if (phase === "pre-roll") {
     const role = driverRole(state, myPlayerId);
+    // role "none" = the active seat is another connected human; their client is
+    // the sole driver of this boundary (including any off-turn bot arming that
+    // rides on it), so we stay out.
     if (role === "none") return null;
-    // A bot's own pre-roll: let its policy arm a boundary action before rolling.
-    // Only a `set-queue` arm is honored here (the one proactive move legal at
-    // pre-roll), and only when it actually changes the queue. Off-turn
-    // bot-initiated actions are out of scope — only the active bot is consulted.
-    if (role === "proxy") {
-      const bot = botFor(state, playerId);
-      const arm = bot ? bot(state, playerId) : null;
-      if (arm && arm.kind === "set-queue" && !isNoOpArm(state, arm)) {
-        return { kind: "intent", intent: arm };
+    // Proactive arming: consult every bot — the ACTIVE bot for its own
+    // build/trade, and any OFF-TURN bot for a trade it wants to open at this
+    // turn boundary. The active player's own client is the single driver, so
+    // off-turn arms ride on it; the engine opens the queued intermission for the
+    // arming seat regardless of whose turn it is. Only a state-changing
+    // `set-queue` arm is honored here (the lone proactive move legal at
+    // pre-roll); a redundant arm the queue already reflects is skipped so the
+    // pacer falls through to `step`, which drains the queue into the intermission.
+    for (const p of state.players) {
+      const bot = botFor(state, p.id);
+      if (!bot) continue;
+      const decision = bot(state, p.id);
+      if (
+        decision &&
+        decision.intent.kind === "set-queue" &&
+        !isNoOpArm(state, decision.intent)
+      ) {
+        return opFor(decision);
       }
     }
     return { kind: "step" };
@@ -129,8 +154,20 @@ function turnOp(
     // the policy, else step the jail roll (the policy returns null for "roll").
     if (driverRole(state, myPlayerId) !== "proxy") return null;
     const bot = botFor(state, playerId);
-    const intent = bot ? bot(state, playerId) : null;
-    return intent ? { kind: "intent", intent } : { kind: "step" };
+    const decision = bot ? bot(state, playerId) : null;
+    return decision ? opFor(decision) : { kind: "step" };
+  }
+  if (phase === "raising-cash") {
+    // The active buyer staging a cash-raise to afford a landed-on property. Only
+    // a bot buyer is driven (a human uses their own raise-cash UI); the buyer is
+    // always the active player, so gate on proxy. A stalled policy cancels back
+    // to the buy-decision (where it then declines) rather than wedging the phase.
+    if (driverRole(state, myPlayerId) !== "proxy") return null;
+    const bot = botFor(state, playerId);
+    const decision = bot ? bot(state, playerId) : null;
+    return decision
+      ? opFor(decision)
+      : { kind: "intent", intent: { kind: "cancel-manage", playerId } };
   }
   if (
     phase === "buy-decision" ||
@@ -144,8 +181,8 @@ function turnOp(
     for (const p of state.players) {
       const bot = botFor(state, p.id);
       if (!bot) continue;
-      const intent = bot(state, p.id);
-      if (intent) return { kind: "intent", intent };
+      const decision = bot(state, p.id);
+      if (decision) return opFor(decision);
     }
     return null;
   }
@@ -159,16 +196,20 @@ function turnOp(
     if (actor === undefined) return null;
     const bot = botFor(state, actor);
     if (!bot) return null;
-    const intent = bot(state, actor) ?? { kind: "cancel-manage", playerId: actor };
-    return { kind: "intent", intent };
+    const decision = bot(state, actor);
+    return decision
+      ? opFor(decision)
+      : { kind: "intent", intent: { kind: "cancel-manage", playerId: actor } };
   }
   if (phase === "trade-building") {
     const actor = state.turn.tradeDraft?.proposerId;
     if (actor === undefined) return null;
     const bot = botFor(state, actor);
     if (!bot) return null;
-    const intent = bot(state, actor) ?? { kind: "cancel-trade", playerId: actor };
-    return { kind: "intent", intent };
+    const decision = bot(state, actor);
+    return decision
+      ? opFor(decision)
+      : { kind: "intent", intent: { kind: "cancel-trade", playerId: actor } };
   }
   return null;
 }

@@ -2827,3 +2827,29 @@ describe("tradeMortgageFees", () => {
     expect(cashById[giver.id]).toBe(giver.cash);
   });
 });
+
+describe("apply — bot-note", () => {
+  // freshGame seats p1 human and p2..p4 as bots.
+  const base = freshGame();
+
+  it("logs a bot-note for a bot seat without changing the board", () => {
+    const note = { kind: "bot-note", playerId: "p2", text: "Building my oranges." } as const;
+    const result = apply(base, note);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // Pure annotation — players / ownership / houses untouched.
+    expect(result.state.players).toEqual(base.players);
+    expect(result.state.ownership).toEqual(base.ownership);
+    expect(result.newEvents).toEqual([note]);
+    const lastTurn = result.state.turns[result.state.turns.length - 1];
+    expect(lastTurn.events[lastTurn.events.length - 1]).toEqual(note);
+  });
+
+  it("is a no-op for a human seat — never rejects, so it can't stall a batch", () => {
+    const result = apply(base, { kind: "bot-note", playerId: "p1", text: "nope" });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.newEvents).toEqual([]);
+    expect(result.state).toBe(base); // unchanged, same reference
+  });
+});

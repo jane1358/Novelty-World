@@ -24,6 +24,7 @@ import { rebuildLobbyOverlay, rebuildOverlay } from "./reconcile";
 import { loadGame, submitAction, subscribeGame, type LoadedGame } from "./sync";
 import type {
   ApplyResult,
+  BotStrategy,
   CardSource,
   GameState,
   Intent,
@@ -59,6 +60,9 @@ interface MonopolyActions {
 
   /** Lobby: rename a seat. */
   setName: (playerId: string, name: string) => void;
+
+  /** Lobby: switch a bot seat's strategy (claude ⇄ dumb). */
+  setStrategy: (playerId: string, strategy: BotStrategy) => void;
 
   /** Lobby: flip the connected lobby into play (≥2 players, ≥1 human). */
   startGame: () => void;
@@ -145,8 +149,11 @@ interface MonopolyActions {
 
   /** Submit a pacer-driven intent (an `end-turn` beat, a proxied bot decision)
    *  WITHOUT prediction. These advance authoritative mechanics off the
-   *  confirmed head and must never be speculatively applied to the display. */
-  driveIntent: (intent: Intent) => void;
+   *  confirmed head and must never be speculatively applied to the display. A
+   *  proxied bot decision may carry a reasoning `note`, prepended as a
+   *  `bot-note` intent in the same atomic batch so the "BOT" log line lands
+   *  immediately before the action it explains. */
+  driveIntent: (intent: Intent, note?: string) => void;
 
   /** Advance mechanics by one unit without an intent — the paced loop's
    *  heartbeat. POSTs a `step` to the route. No-op without a connected game
@@ -562,6 +569,10 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
       predictLobby({ type: "setName", playerId, name });
     },
 
+    setStrategy: (playerId, strategy) => {
+      predictLobby({ type: "setStrategy", playerId, strategy });
+    },
+
     // Starting is NOT predicted: flipping `status` to `active` optimistically
     // would hand the just-built board to the playback pump before the row
     // confirms. A one-time round-trip here is fine.
@@ -795,8 +806,16 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
 
     submit: (intent) => predict(intent),
 
-    driveIntent: (intent) => {
-      runIntents([intent]);
+    driveIntent: (intent, note) => {
+      // A bot's reasoning note rides in the SAME atomic submit as the decision,
+      // prepended so the "BOT" log line precedes the action — and so a version
+      // conflict can never split the note from its action. A `bot-note` for a
+      // non-bot seat is a no-op server-side, so this is always safe.
+      runIntents(
+        note !== undefined
+          ? [{ kind: "bot-note", playerId: intent.playerId, text: note }, intent]
+          : [intent],
+      );
     },
 
     step: () => {
@@ -1040,7 +1059,7 @@ if (typeof window !== "undefined") {
       if (!op) return;
       drivenFrom = store.version;
       if (op.kind === "step") store.step();
-      else store.driveIntent(op.intent);
+      else store.driveIntent(op.intent, op.note);
     } finally {
       pumping = false;
     }

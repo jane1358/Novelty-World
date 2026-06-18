@@ -10,6 +10,7 @@ import {
 } from "@/projects/monopoly/lobby";
 import { freshGame } from "@/projects/monopoly/mocks";
 import type {
+  BotStrategy,
   GameState,
   Intent,
   PlayerColor,
@@ -68,6 +69,10 @@ function isPlayerIcon(v: unknown): v is PlayerIcon {
   return typeof v === "string" && (PLAYER_ICONS as readonly string[]).includes(v);
 }
 
+function isBotStrategy(v: unknown): v is BotStrategy {
+  return v === "dumb" || v === "claude";
+}
+
 function parseDevCommand(v: unknown): DevCommand | null {
   if (!isRecord(v)) return null;
   if (v.kind === "restart") {
@@ -119,6 +124,11 @@ function parseAction(v: unknown): MonopolyAction | null {
   if (type === "setName") {
     return typeof v.playerId === "string" && typeof v.name === "string"
       ? { type, playerId: v.playerId, name: v.name, fromVersion }
+      : null;
+  }
+  if (type === "setStrategy") {
+    return typeof v.playerId === "string" && isBotStrategy(v.strategy)
+      ? { type, playerId: v.playerId, strategy: v.strategy, fromVersion }
       : null;
   }
   if (type === "submit") {
@@ -229,6 +239,7 @@ function compute(
     case "setColor":
     case "setIcon":
     case "setName":
+    case "setStrategy":
     case "start":
       // The action carries a `fromVersion` the op type ignores — structurally a
       // LobbyOp, applied through the same dispatcher the client predicts with.
