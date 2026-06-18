@@ -145,3 +145,29 @@ export function subscribeGame(
     void supabase.removeChannel(channel);
   };
 }
+
+/** Subscribe to changes across the whole games table — any insert, update, or
+ *  delete. `onChange` fires (with no payload) on every such event; the lobby
+ *  browser uses it to re-run `listGames` so the open-games list stays live
+ *  without a manual refresh. Returns a cleanup function that tears down the
+ *  channel. Unlike `subscribeGame` this has no `id` filter, so it sees every
+ *  row. */
+export function subscribeGames(onChange: () => void): () => void {
+  const supabase = createClient();
+  const channel = supabase.channel("monopoly:all");
+  let closed = false;
+
+  channel.on(
+    "postgres_changes",
+    { event: "*", schema: "public", table: TABLE },
+    () => { onChange(); },
+  );
+
+  channel.subscribe();
+
+  return () => {
+    if (closed) return;
+    closed = true;
+    void supabase.removeChannel(channel);
+  };
+}

@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Loader2, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Loader2, Plus, Trash2 } from "lucide-react";
 import { useProfile } from "@/shared/lib/profile";
 import { useHoldToActivate } from "@/shared/lib/use-hold-to-activate";
 import { ProfileEditor } from "@/shared/components/profile-editor";
-import { deleteGame, listGames, type GameSummary } from "../sync";
+import { deleteGame, listGames, subscribeGames, type GameSummary } from "../sync";
 import { PlayerToken } from "./player-token";
 
 interface Props {
@@ -27,7 +27,7 @@ function newGameId(): string {
 /** The no-`?game=` front door: browse open games, create one, or set your
  *  name. Creating mints a fresh id and opens it; `connect` seeds the lobby on
  *  first open. The list is derived from each row's state JSON via `listGames`
- *  and refreshed on demand. */
+ *  and kept live by a table-wide subscription. */
 export function LobbyBrowser({ onOpen }: Props) {
   const [games, setGames] = useState<GameSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -48,17 +48,24 @@ export function LobbyBrowser({ onOpen }: Props) {
       });
   }, []);
 
-  // Manual refresh: clear to null first so the list swaps back to the centered
-  // loading spinner, making the action visible even when the result is
-  // unchanged. (Kept out of `refresh` itself, which the effect calls — a
-  // synchronous setState in an effect body would cascade renders.)
-  const manualRefresh = useCallback(() => {
-    setGames(null);
-    refresh();
-  }, [refresh]);
-
+  // Fetch once on mount, then keep the list live: any insert/update/delete to
+  // the games table triggers a re-fetch. An active game in the list writes on
+  // every move, so coalesce bursts into at most one re-fetch per window rather
+  // than refetching per change.
   useEffect(() => {
     refresh();
+    let pending: ReturnType<typeof setTimeout> | null = null;
+    const unsubscribe = subscribeGames(() => {
+      if (pending !== null) return;
+      pending = setTimeout(() => {
+        pending = null;
+        refresh();
+      }, 250);
+    });
+    return () => {
+      if (pending !== null) clearTimeout(pending);
+      unsubscribe();
+    };
   }, [refresh]);
 
   return (
@@ -86,21 +93,10 @@ export function LobbyBrowser({ onOpen }: Props) {
         </button>
 
         <section className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold uppercase tracking-wider" style={{ color: "var(--mono-rail)" }}>
-              Games
-              {games && games.length > 0 ? ` (${games.length.toString()})` : ""}
-            </h2>
-            <button
-              type="button"
-              onClick={manualRefresh}
-              aria-label="Refresh games"
-              className="rounded-md p-1.5 transition-colors hover:bg-white/10"
-              style={{ color: "var(--mono-rail)" }}
-            >
-              <RefreshCw className="h-4 w-4" aria-hidden="true" />
-            </button>
-          </div>
+          <h2 className="text-sm font-bold uppercase tracking-wider" style={{ color: "var(--mono-rail)" }}>
+            Games
+            {games && games.length > 0 ? ` (${games.length.toString()})` : ""}
+          </h2>
 
           {error !== null && (
             <p className="rounded-md px-3 py-2 text-sm" style={{ backgroundColor: "var(--mono-card)", color: "var(--mono-red)" }}>
