@@ -210,8 +210,12 @@ export function Squares() {
   // roster so even a player's first move animates from the right square. Every
   // authoritative update is a single unit (the route applies one beat per
   // call), so a roll lands as its own commit and the diff against this map
-  // drives the slide. Only the active player moves on a given turn, so updating
-  // the active entry keeps the whole map current.
+  // drives the slide. We refresh EVERY player's entry on each update, not just
+  // the active one: a player can be relocated while OFF-subject — `sendToJail`
+  // moves them to the Jail cell and ends their turn in the same beat — so
+  // tracking only the active player would leave their stale pre-jail square
+  // behind, and the next handoff to that (now jailed) player would read it as a
+  // roll-move and slide the token to Jail for no reason.
   const prevPos = useRef<Map<string, number> | null>(null);
   // The active player id at the last effect run, so we can tell a turn handoff
   // (id changed) from the same player moving. Each authoritative update is a
@@ -246,8 +250,13 @@ export function Squares() {
       );
     }
     const map = prevPos.current;
+    // Read the active player's prior position BEFORE refreshing the map, so its
+    // own slide diff is preserved; then bring every entry up to date (see the
+    // `prevPos` note above on off-subject relocations like jail).
     const from = map.get(active.id);
-    map.set(active.id, active.position);
+    for (const p of useMonopolyStore.getState().state.players) {
+      map.set(p.id, p.position);
+    }
 
     const signed = from === undefined ? 0 : signedRows(from, active.position);
     // Not a slide (first time we see this player, they didn't move, or a
