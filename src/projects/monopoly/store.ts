@@ -291,16 +291,29 @@ function toLobbyAction(op: LobbyOp, fromVersion: number): MonopolyAction {
 }
 
 export const useMonopolyStore = create<MonopolyStore>((set, get) => {
-  // Fold an authoritative route response back into the store. A success
-  // applies the new state + version (and re-derives membership); a conflict
-  // is a no-op — the subscription will deliver the winning state — and a
-  // genuine rejection surfaces as a sync error.
+  // Fold an authoritative route response back into the store. A success applies
+  // the new state + version (and re-derives membership); a stale-version
+  // conflict carries the winning state + version, which we fold in the same way
+  // so the playback head can advance off the stale version (a bare write-race
+  // conflict omits them — the realtime echo resyncs that case); a genuine
+  // rejection surfaces as a sync error.
+  //
+  // The conflict fold is NOT optional: pacer-driven ops (a `step`, a proxied bot
+  // intent) set the pump's `drivenFrom = version` BEFORE this resolves, so a
+  // dropped winner leaves the once-per-version guard latched with no new version
+  // to release it — the turn (e.g. a bot's auction bid) freezes until a realtime
+  // echo happens to arrive. Mirrors `handlePrediction`'s conflict handling for
+  // the optimistic path; the two must stay symmetric on conflicts.
   function handleResult(res: MonopolyResult): void {
     if (res.ok) {
       // A `delete` result carries no state — but the store never submits one
       // (deletes come from the lobby browser), so there's nothing to fold in.
       if ("state" in res) get().applyStateUpdate(res.state, res.version);
-    } else if (!res.conflict && res.reason !== undefined) {
+    } else if (res.conflict) {
+      if (res.state !== undefined && res.version !== undefined) {
+        get().applyStateUpdate(res.state, res.version);
+      }
+    } else if (res.reason !== undefined) {
       set({ syncError: res.reason });
     }
   }
