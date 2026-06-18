@@ -45,13 +45,17 @@ export function EventLog({ state }: Props) {
   // behavior so reviewing history isn't fighting incoming events.
   const stickToBottom = useRef(true);
 
+  // A new turn pushes a turn group (and its divider) before any of its events
+  // exist, so the rendered height grows on turn count too — track both, or the
+  // log won't re-pin to the bottom until the turn's first event lands.
   const totalEvents = state.turns.reduce((n, t) => n + t.events.length, 0);
+  const turnCount = state.turns.length;
   useEffect(() => {
     const el = scrollRef.current;
     if (el && stickToBottom.current) {
       el.scrollTop = el.scrollHeight;
     }
-  }, [totalEvents, expanded]);
+  }, [totalEvents, turnCount, expanded]);
 
   const onScroll = () => {
     const el = scrollRef.current;
