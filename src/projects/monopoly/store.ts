@@ -1072,5 +1072,60 @@ if (typeof window !== "undefined") {
     pump();
   });
 
+  // Recover the connected game when the app returns to the foreground. A
+  // suspended tab (mobile app-switch, screen lock, bfcache restore) keeps its
+  // store but silently drops its realtime socket, and nothing re-runs connect —
+  // the page un-suspends in place with a stale head, a dead subscription, and
+  // the drive guard still latched on the version it last drove. So the game can
+  // sit frozen: no new state arrives to wake the pump, and even a nudge is
+  // blocked by `drivenFrom === version`. On resume we (1) rebuild the
+  // subscription, (2) reload the row so anything missed while away folds in, and
+  // (3) clear the drive guard and re-pump so a stranded bot/own turn re-drives
+  // even when the row never advanced (a drive POST lost mid-background). All
+  // three are idempotent — the version guard and the conflict-fold collapse a
+  // redundant drive — so firing this on every resume event is safe.
+  const resync = (): void => {
+    const { gameId, connecting } = useMonopolyStore.getState();
+    // Nothing connected, or connect() is still establishing the row — don't race
+    // a second subscription / load against it.
+    if (!gameId || connecting || activeGameId !== gameId) return;
+
+    // Rebuild the postgres-changes subscription (mirrors connect): the old
+    // socket may be dead and the channel won't re-join on its own.
+    teardownSubscription();
+    activeGameId = gameId;
+    activeUnsub = subscribeGame(gameId, (next, version) => {
+      if (activeGameId !== gameId) return;
+      useMonopolyStore.getState().applyStateUpdate(next, version);
+    });
+
+    // Catch up on anything written while away rather than waiting for the next
+    // realtime event. A transient failure is fine — the re-pump below still
+    // retries a stranded drive, and a later resume event recovers the rest.
+    void loadGame(gameId)
+      .then((loaded) => {
+        if (loaded && activeGameId === gameId) {
+          useMonopolyStore.getState().applyStateUpdate(loaded.state, loaded.version);
+        }
+      })
+      .catch(() => {
+        // Swallowed: resync is best-effort and self-retrying on the next resume.
+      });
+
+    // Re-kick the driver: if the row never advanced (our last drive POST was
+    // lost while backgrounding), the reload folds in nothing and the pump stays
+    // blocked by the once-per-version guard. Clearing it and pumping re-attempts
+    // the step; a duplicate write is collapsed by the version guard.
+    drivenFrom = null;
+    pump();
+  };
+
+  const onVisible = (): void => {
+    if (document.visibilityState === "visible") resync();
+  };
+  document.addEventListener("visibilitychange", onVisible);
+  window.addEventListener("online", resync);
+  window.addEventListener("pageshow", resync);
+
   pump();
 }
