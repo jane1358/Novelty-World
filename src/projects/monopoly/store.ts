@@ -1033,7 +1033,19 @@ if (typeof window !== "undefined") {
     }
   };
 
-  useMonopolyStore.subscribe((next, prev) => {
+  // Re-evaluate the pump on EVERY store change. The pump is fully guarded
+  // (re-entrancy via `pumping`, mid-dwell via `dwellTimer`, once-per-version via
+  // `drivenFrom`) and idempotent, so calling it indiscriminately is safe — and
+  // is what makes waking it correct BY CONSTRUCTION. A hand-maintained list of
+  // "fields that should wake the pump" inevitably drifts from the fields its
+  // decision actually reads: it had dropped `outbox`, and can never include the
+  // module-local `predictionInFlight` at all. That drift stalled the pacer
+  // whenever a prediction's confirmation freed it without touching a listed
+  // field — e.g. no auto-advance after a buy when the Realtime echo beat the
+  // action's own HTTP response. Letting every change through retires that whole
+  // bug class; each redundant call is a few O(1) guard checks on a turn-based
+  // game.
+  useMonopolyStore.subscribe((next) => {
     if (next.gameId !== lastGameId) {
       // Game context changed (connect / disconnect): abandon any in-flight
       // dwell and reset the drive guard so the new game starts clean.
@@ -1043,15 +1055,6 @@ if (typeof window !== "undefined") {
       }
       drivenFrom = null;
       lastGameId = next.gameId;
-    }
-    if (
-      next.state === prev.state &&
-      next.buffer === prev.buffer &&
-      next.gameId === prev.gameId &&
-      next.myPlayerId === prev.myPlayerId &&
-      next.turnMs === prev.turnMs
-    ) {
-      return;
     }
     pump();
   });

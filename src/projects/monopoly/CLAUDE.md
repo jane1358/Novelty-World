@@ -1,354 +1,284 @@
 # Monopoly — Project Guide
 
-This file is loaded into Claude's context for any work inside `src/projects/monopoly/`. Read it before touching code here.
+Read this before touching code in `src/projects/monopoly/`. It captures the
+*why* and the invariants — the things the code can't tell you. It is **not** a
+walkthrough of what each function does; read the code for that. When you change
+a decision recorded here, update this file; when you'd only be re-describing
+code, don't add it.
 
 ## Philosophy: built for pros
 
-This is Monopoly for players who know the game cold. They don't need explanations, animations, or confirmations — they need fast, dense access to the few decisions the game actually presents.
+Monopoly for players who know the game cold — fast, dense access to the few real
+decisions, nothing else. The whole game collapses to: **buy or auction a landed
+property; bid in auctions; build/sell/mortgage; propose/accept/decline trades;
+leave or stay in jail.** Everything else (roll, move, pass GO, pay rent/tax, draw
+and resolve cards, go to jail, bust, detect a winner) is **mechanical and runs on
+its own** — no buttons, no confirmations.
 
-**The whole game collapses to a small set of real decisions:**
-- Buy a landed-on property at face price, or send it to auction.
-- During auction: when to bid, when to stop.
-- Build / sell houses and hotels.
-- Mortgage / unmortgage.
-- Propose, accept, decline trades — what, with whom, how much.
-- Jail: leave ASAP or stay. The long-term aim is a set-and-forget *stance*, not
-  a per-turn prompt — but **v1 ships the per-turn prompt** (pay / card / roll
-  each jail turn), a deliberate, owner-approved exception. The `jailStance`
-  preference stays in the type, reserved for the future stance toggle. See the
-  "Jail" section below.
-
-**Everything else is mechanical and should run on its own:**
-- Rolling dice, moving the token, passing GO, paying rent, paying tax, drawing and resolving Chance/Community Chest, going to jail on three doubles, busting at the end of a turn — none of this is a decision. The engine does it automatically.
-
-**Auto-play is a spectrum, set by the player:**
-- Default: pause only at real decision points.
-- Threshold policies (later): "auto-buy until cash < $X", "stay in jail while late-game", etc. The engine should not preclude these; per-player preferences live in state.
-- **Trades and property management happen at a turn boundary, not mid-turn.** A player arms "I want to trade" or "I want to manage" (the action-bar Trade / Manage toggles) at any time; the game pauses at the next **pre-roll** — the single point that is both "right after a turn ends" and "right before the next begins" — and opens that player's trade builder or manage intermission. Armed requests form one FIFO `boundaryQueue` (`{ playerId, kind: "trade" | "manage" }`), each resolved in turn before the roll. This is the official "act between turns" window for trading, building/selling, and mortgaging alike. See "Trades" and "Managing properties" below. (Supersedes an earlier mid-move-interrupt idea — the boundary model is simpler and deterministic. The earlier per-turn "armed pause" checkboxes are gone — arming a Trade/Manage queue slot now does that job.)
-
-**UI consequence:** no "press to roll" button by default. No "you landed on Boardwalk, pay $50 rent — click to continue." The screen updates, the event log scrolls, the turn advances. Buttons exist only for actual decisions (and for arming a boundary action).
+Consequences:
+- **No "press to roll" / "click to continue" buttons.** Buttons exist only for
+  real decisions (and for arming a boundary action).
+- **Auto-play is a spectrum** the player sets; the default pauses only at real
+  decision points. Per-player preferences live in state (e.g. `jailStance`,
+  reserved for a future jail toggle — v1 ships a per-turn jail prompt as a
+  deliberate, owner-approved exception).
+- **Trades and property management happen at a turn boundary, not mid-turn.** A
+  player arms "trade" or "manage"; the game pauses at the next **pre-roll** and
+  opens their builder/intermission. Arms form one FIFO `boundaryQueue`
+  (`{ playerId, kind }`), each resolved before the roll. This is the official
+  "act between turns" window.
 
 ## Engine model: hybrid, state-authoritative
 
-State is the single source of truth (one Supabase row per game). Events are folded into state as they happen; the log is derived, not authoritative.
+State is the single source of truth (one Supabase row per game). Events are
+folded into state as they happen; the log is **derived**, not authoritative — so
+never synthesize an event without the corresponding state change.
 
-**Two entry points to the engine — and only two:**
+**Two entry points, and only two:**
 
 ```ts
 // External decisions only — humans, bots, future RL agent.
 apply(state, intent, rng): { ok: true, state, newEvents } | { ok: false, reason }
-
 // Mechanical transitions — runs until the next decision point.
 autoStep(state, rng): { state, newEvents }
 ```
 
-The authoritative route applies **one unit per call**: an `apply` for an external intent (no auto-drain), or a single `autoStep` per `step` request. Clients subscribe to the row and re-render as each unit lands. See the "Multiplayer / networking" section below.
+The authoritative route applies **one unit per call** — one `apply` for an
+intent (no auto-drain) or one `autoStep` per `step` request. `autoStep` only
+progresses at `pre-roll`, where it first **drains `boundaryQueue`** (opening a
+trade/manage intermission for the head requester) before rolling; it exits the
+moment it hits a real decision phase.
 
-### Intents vs mechanics — the line
+**Keep the intent surface small** (`engine.ts` `apply` dispatches them). New
+mechanics belong inside `autoStep`, not as new intents. The line: if a player
+could rationally choose either way it's an **intent**; if the only "choice" is
+the obvious one it's a **mechanic** gated by preferences.
 
-**Intents (external API, small surface):**
-- `buy` (no payload beyond `playerId`: from `buy-decision` it pays outright; from `raising-cash` the engine reads the staged raise straight from `turn.manageStaged` and applies it raise-first — see "Buying short: the cash-raise" below), `raise-cash` (step a short buyer from `buy-decision` into `raising-cash`), `decline-buy` (declining sends to auction)
-- `bid`, `pass-bid` (during auction)
-- `manage` (one atomic build/sell + mortgage/un-mortgage commit; see "Managing properties")
-- `mortgage` (forced raise-cash only — the bot / `must-raise-cash` path; voluntary mortgaging goes through `manage`)
-- `set-queue` (arm/disarm this player's `boundaryQueue` slot for `"trade"` or `"manage"` — carries the desired `armed` boolean so it replays idempotently through the optimistic overlay, not a relative toggle), `update-trade-draft` (proposer edits the live draft), `update-manage-staging` (actor edits the live manage staging), `cancel-trade`, `propose-trade`, `accept-trade`, `decline-trade`, `cancel-manage` (manager abandons their intermission; from `raising-cash` it returns the buyer to their buy-decision) (`counter-trade` is a documented TODO, not wired)
-- `pay-to-leave-jail`, `use-jail-card`
-- `end-turn`
+**Engine code (`engine.ts`, `logic.ts`) is pure** — no React, no side effects,
+no `Math.random`. Every randomness call goes through an **injected RNG**; this is
+non-negotiable (deterministic replay, regression tests, future headless RL).
 
-**Mechanics (internal to `autoStep`, never an intent):**
-- Roll dice, move token, pass-GO credit
-- Pay rent, pay tax
-- Draw card, apply card effects (including recursive move + tile resolution)
-- Go-to-jail (tile / card / three doubles)
-- Detect bankruptcy, transfer assets to creditor or bank
-- Detect winner
+### Turn phases
 
-If something feels borderline (e.g. is "leave jail by paying $50" an intent or a mechanic?) — if the player could rationally choose either way, it's an intent. If the only "choice" is the obvious one, it's a mechanic gated by player preferences.
-
-### State shape
-
-Extend `GameState` with a `turn` block that captures **whose turn it is, what we're waiting on, and any in-flight sub-game** (auction, trade):
-
-```ts
-interface TurnState {
-  playerId: string;
-  phase:
-    | "pre-roll"             // can roll or take pre-roll actions
-    | "post-roll"            // moved + tile resolved; can build/end
-    | "buy-decision"         // landed on unowned ownable; buy / auction / raise cash (board inert)
-    | "raising-cash"         // buyer staging a sell/mortgage raise to afford the pending buy
-    | "must-raise-cash"      // someone is in the red; settle before continuing
-    | "auction"              // auction in progress (see `auction` field)
-    | "jail-decision"        // active player in jail, deciding pay/card/roll
-    | "trade-building"       // a queued player is assembling a proposal
-    | "trade-pending"        // a proposal is awaiting approval votes
-    | "managing"             // a queued player's build/sell/mortgage intermission
-    | "game-over";
-  doublesStreak: number;     // 0-3
-  pendingBuy?: number;       // position of property awaiting buy decision (kept through raising-cash)
-  raiseCash?: "after-landing" | "pre-roll";  // where to resume after must-raise-cash
-  auction?: AuctionState;
-  managerId?: string;        // present during "managing" — the queued manager (may be off-turn)
-  manageStaged?: ManageStaged;  // present during "managing"/"raising-cash"/"must-raise-cash" — the actor's synced staging
-  tradeDraft?: TradeDraft;   // present during trade-building
-  pendingTrade?: PendingTrade;  // present during trade-pending
-}
-
-interface GameState {
-  ...existing fields,
-  status: "lobby" | "active" | "finished";  // lifecycle (see "Lobby")
-  turn: TurnState;
-  boundaryQueue: readonly { playerId: string; kind: "trade" | "manage" }[];  // FIFO of armed between-turns actions
-  preferences: Readonly<Record<string, PlayerPreferences>>;
-  rngSeed: string;           // for deterministic replay + RL training
-}
-```
-
-`autoStep` only progresses when `turn.phase === "pre-roll"`. It exits the moment it lands on a real decision phase. At a `pre-roll` it first drains `boundaryQueue` — opening a `trade-building` or `managing` phase for the head requester instead of rolling if anyone is queued.
+`turn.phase` is the state machine: `pre-roll` · `post-roll` · `buy-decision` ·
+`raising-cash` · `must-raise-cash` · `auction` · `jail-decision` ·
+`trade-building` · `trade-pending` · `managing` · `game-over`. See `types.ts` for
+the full `TurnState`/`GameState` shape — don't duplicate it here.
 
 ### Debt — one path, may go negative (`must-raise-cash`)
 
-Every charge a player can't cover from cash on hand resolves the same way, whether it's rent, a tax/fine, or the 10% mortgage interest from a trade:
+Every charge a player can't cover (rent, tax/fine, trade mortgage interest)
+resolves the same way: the charge is applied **immediately** (cash can go
+**negative**); if they couldn't recover even after liquidating everything
+(`cash + maxRaisableCash < 0`) it's **bankruptcy**, otherwise the engine parks in
+`must-raise-cash`. The settler is **whoever is below zero in seat order
+(`firstNegativePlayer`) — not necessarily the active player.** So a trade can
+force an *off-turn* player to settle; UI and bot policy key the settler off
+`firstNegativePlayer`, never `turn.playerId`. `turn.raiseCash` records where play
+resumes (`after-landing` vs `pre-roll`).
 
-- The charge is applied **immediately** — the debtor's cash can go **negative**.
-- If `cash + raisable < 0` (raisable = mortgaging building-free properties; later also selling buildings at half), they can't recover → **bankruptcy** at charge time.
-- Otherwise the engine parks in `must-raise-cash` and the **current debtor — whoever is below zero, in seat order (`firstNegativePlayer`), not necessarily the active player** — must mortgage back to ≥ 0. Multiple debtors (from a trade) settle one at a time. `turn.raiseCash` records where play resumes: `after-landing` (rent/tax — continue the active player's landing) or `pre-roll` (a trade — return to the boundary and re-check the queue).
+### Managing, raising-cash, must-raise-cash: one system, three tiers
 
-This is why a trade can put an off-turn player into `must-raise-cash`: the UI (board-tap mortgage, mortgage panel) and the bot policy key the forced settler off `firstNegativePlayer`, not `turn.playerId`.
+All three drive the **same board surface** and the same commit core
+(`applyManageCommit`, raise-first / spend-second, **all-or-nothing**). They differ
+on two knobs: **allowed ops** (full build/sell/mortgage/unmortgage vs cash-in
+only) and **how you leave** (free vs gated-until-solvent).
+
+- **`managing`** (full): a queued boundary intermission for `turn.managerId` (who
+  may be off-turn, like a trade proposer). Build planning is pure in
+  `development.ts` (`planDevelopment`) and enforces the real rules — even-build,
+  full-unmortgaged-monopoly requirement, finite bank supply (32 houses / 12
+  hotels), hotel-breaks-down-through-four-houses, and the shortage liquidation
+  escape — choosing the cheapest legal schedule.
+- **`raising-cash`** (cash-in only, free exit): the buy-time cash-raise. It's a
+  **real phase, not a `buy` payload** — a short buyer submits `raise-cash` to
+  enter, stages sells/mortgages, then commits with a plain `buy` (the engine
+  reads the staged raise from `turn.manageStaged`, applies it raise-first against
+  pre-purchase holdings, gates `cash ≥ price`, buys — one atomic apply, never
+  goes negative). A lot **can never fund its own purchase** (not owned yet, so
+  the ownership check rejects it — structural, not a flag).
+- **`must-raise-cash`** (cash-in only, gated until ≥ 0): the forced settler above.
+
+Shared invariants:
+- Staging lives in **synced `turn.manageStaged`**, edited via
+  `update-manage-staging` snapshots, so **every player watches it take shape**.
+  The phase transition on commit/cancel drops the staging.
+- `isRaiseOnly(state)` (true for `must-raise-cash` *and* `raising-cash`) is the
+  single predicate gating the board to sell/mortgage only. `manageActorId(state)`
+  is the actor. A plain `buy-decision` is **inert** — no staging surface.
+- **Unaffordable-even-after-raising** landings skip the prompt and go straight to
+  auction (no button for a non-choice); the player can still bid up to net worth.
+- **The bot never raises to buy** — it buys only when `cash ≥ price`, else
+  declines.
+- **TODO (v2):** auction scarce houses/hotels when demand exceeds supply; v1
+  approximates with the arm-order FIFO.
 
 ### Trades
 
-Permissive by design: a **proposer (who need not be a party)** reassigns any **owned** (building-free) properties and held Get-Out-of-Jail-Free cards between any players, plus per-player **cash deltas that must net to zero** (money only moves between players; the bank is never a party). Shape is `TradeTerms` (`propertyTo` / `gojfTo` / `cashDelta`, storing only entries that change).
-
-- **The draft lives in synced `GameState`** (`turn.tradeDraft`), edited via `update-trade-draft` snapshots, so **every player watches it take shape in real time** — the same broadcast discipline as a manage intermission's `turn.manageStaged`. The board rows are the property surface (tap to cycle the recipient); cash steppers + card rows live in the trade panel; the log is hidden while a trade is up to make room.
-- `propose-trade` validates (moves something, ≥2 named parties, cash balances, and every resulting debtor could recover) and flips to `trade-pending` with an `approvals` map over the **named** parties (the proposer auto-approves iff named). **All approve → execute; any decline cancels.**
-- **Mortgaged properties transfer still-mortgaged**, and the receiver owes the bank **10% interest** on each (official rule), charged through the `must-raise-cash` path above.
-- **Counters are not built** — decline and re-propose. The `TradeTerms` model + `update-trade-draft` are shaped so a counter can be added later (see the `counter-trade` TODO on `Intent`).
-
-### Managing properties (build / sell / mortgage)
-
-A queued `manage` request opens a **`managing`** intermission at the pre-roll boundary for `turn.managerId` (who may be off-turn, exactly like a trade proposer). The actor stages changes into **synced `GameState`** (`turn.manageStaged`, seeded empty when the intermission opens), edited via `update-manage-staging` snapshots — so, like a trade draft, **every player watches the build/sell/mortgage take shape in real time**. They commit as **one atomic `manage` intent**, or abandon via `cancel-manage`; either returns to the active player's pre-roll (re-checking the queue) and **the phase transition drops the staging**.
-
-- **One commit carries both** a `build` target (`position -> 0-5`, where 5 is a hotel) and `mortgage` flags (`position -> bool`). The engine applies it **raise-first / spend-second, all-or-nothing**, so a single commit can sell a property's houses *then* mortgage the bare lot, or mortgage one property to fund building another. It can never leave the board uneven or half-applied even if the bank shifted underneath.
-- **The build planner is pure, in `development.ts`** (`planDevelopment`). It enforces the real rules: even-build across a color set, the full-unmortgaged-monopoly requirement, finite bank supply (**32 houses / 12 hotels**, derived from the board — no stored counter), the hotel-breaks-down-*through*-four-houses rule, and the official house-shortage **liquidation escape** (a hotel that can't be broken down evenly is sold straight to a bare lot). It returns an ordered, supply-safe step list + net cash, choosing the **cheapest** legal schedule (an exhaustive memoized search over color-group order; liquidation only when genuinely forced). Per-tier `build` / `sell-building` and `mortgage` / `unmortgage` events are emitted so the log replays the transaction.
-- **`must-raise-cash` reuses the same commit core** (forced branch): the current debtor (`firstNegativePlayer`, possibly off-turn) raises by selling buildings and/or mortgaging — no builds, no un-mortgages — and `settleOrRaise` resumes play once they're back to ≥ 0. `maxRaisableCash` counts building sale value so a debtor with only built property settles instead of busting. `settleOrRaise` re-seeds `turn.manageStaged` empty on every entry, so a settled debtor's staged maps never leak into the next debtor's broadcast view.
-- **The commit core is `applyManageCommit`** (raise-first / spend-second, all-or-nothing), shared by both `manage` branches **and the `raising-cash` buy-time cash-raise** (below). It carries no phase/turn concerns — the caller authorizes the actor and decides where play resumes. `isRaiseOnly(state)` (true for `must-raise-cash` *and* `raising-cash`) is the single predicate the client uses to gate the board to sell / mortgage only.
-- **Board UI:** the manage panel uses the board rows as its surface — tapping a property's **color strip** cycles its build level (`square-row.tsx` splits the row into two tap zones), tapping the **row body** toggles its mortgage. The `ManagePanel` summary bar shows the combined net cash, the **remaining bank supply** (houses/hotels — surfaced only in the voluntary `managing` mode, where building is possible), the goal status, and a shortage-liquidation note when one is forced. Staging lives in synced state (`turn.manageStaged`); the store's `cycleBuild` / `toggleMortgage` send `update-manage-staging` snapshots through the optimistic `predict` path, and the pure preview math is in `manage.ts` (`manageSummary` = build plan with staged mortgages applied + the mortgage cash deltas). The panel is **shown to every player** (`prompt-section.tsx`, like the trade/auction panels) as a live view — only the actor gets the action buttons and interactive board zones. The **same panel serves all three tiers** — `managing` (Cancel + Commit), `raising-cash` (Cancel + Buy, gated on `cashAfter ≥ price`), and `must-raise-cash` (forced "Pay" mode: sell down / mortgage only, gated on `cashAfter ≥ 0`) — so a human debtor / buyer can sell buildings, not just mortgage. The log-hiding is **per-viewer** for these manage-style phases (see "Buying short" below).
-- **TODO (building auction — deferred to v2):** the official rule auctions scarce houses/hotels to the highest bidder when demand exceeds supply; v1 approximates with the arm-order FIFO. The agreed v2 design reuses the property-auction sub-game: a **batched build window** (collect all armed managers' commits at the boundary before executing builds) + **returns-first reconciliation** (apply every sell/hotel-upgrade that *adds* to the bank, then compare net house/hotel demand against supply) + the **single-unit auction run in a loop** over the contested tier. The key simplifier — players never contend for *placement* (a monopoly is single-owner, so even-build is independent per player), only for the shared integer house/hotel count — so contention is purely numeric and the auction unit is a fungible house. Collapses to today's FIFO whenever demand ≤ supply or there's ≤1 armed builder.
-
-### Buying short: the cash-raise (`raising-cash`)
-
-The official rules let you mortgage / sell to raise the money for a property you've landed on but can't quite afford — as long as you raise it from assets you **already own** (no buying on credit). This is a **third tier of the one manage system** (full `managing` ⊃ cash-in-only `raising-cash` ⊃ cash-in-only + gated `must-raise-cash`), reusing the same board surface and `applyManageCommit` core. Two independent knobs distinguish the tiers: **allowed ops** (full vs cash-in-only) and **how you leave** (free vs gated-until-solvent).
-
-- **`raising-cash` is a real phase, not a `buy` payload.** A short buyer in `buy-decision` submits **`raise-cash`** to step into `raising-cash` (`applyRaiseCash` seeds an empty `turn.manageStaged`, keeping `pendingBuy`). They stage sells / mortgages on the board (raise-only), then commit with a **plain `buy`** — `applyBuy`, seeing the phase, reads the raise straight from `turn.manageStaged`, runs it through `applyManageCommit` (raise-only) **first** against pre-purchase holdings (which **exclude the landed-on lot**), gates `cash ≥ price`, and buys. One atomic apply: cash never goes negative, so `must-raise-cash` is never involved. **Cancel** (`cancel-manage`) drops the staging and returns to the `buy-decision`.
-- **A lot can never fund its own purchase** — it isn't owned yet, so `applyManageCommit`'s ownership check rejects any raise entry for `pendingBuy`. This is the structural guarantee, not a special-case flag.
-- **Unaffordable-even-raising → forced auction (no prompt).** `openBuyDecision` checks `cash + maxRaisableCash < price`; when true there's no decision to make (buy is impossible even after liquidating everything), so it goes straight to `enterAuction(..., { kind: "landing" })`, skipping the buy-decision entirely (built for pros: no prompt for a non-choice). The player can still bid in that auction up to their net worth, and may win it below face value. A corollary: `BuyPrompt`'s "Raise cash" is always reachable when shown — the impossible case never gets there.
-- **The plain `buy-decision` board is inert** — `manageActorId` / `isRaiseOnly` cover `raising-cash`, NOT `buy-decision`, so nothing lights up until the buyer opts in. `BuyPrompt` shows **Buy** (green, only when affordable) / **Raise cash** (neutral, when short) / **Auction**; green is reserved for the actual commit, neutral for navigational choices (same weight as the jail prompt). `ManagePanel` then drives `raising-cash` exactly like a manage intermission, with Buy enabling once `cashAfter ≥ price`.
-- **Log-hiding is per-viewer for the manage-style phases.** `footer.tsx` hides the log only when this phase turns the board into a staging surface **and `manageActorId(state) === myPlayerId`** — so the actor gets the room while every spectator keeps their log and watches the synced staging fill in. Trade and auction still hide the log for everyone (a tall shared panel / open-outcry bidding). A plain `buy-decision` keeps the log for all (no staging) — it only disappears once the buyer steps into `raising-cash`.
-- **The bot never raises to buy** — its policy buys only when `cash ≥ price`, else declines (it never submits `raise-cash`). A smarter policy can opt in later.
+Permissive by design: a **proposer (who need not be a party)** reassigns owned
+(building-free) properties and held Get-Out-of-Jail-Free cards between any
+players, plus per-player **cash deltas that net to zero** (the bank is never a
+party). The draft lives in synced `turn.tradeDraft` (everyone watches it live).
+`propose-trade` validates and flips to `trade-pending` with an `approvals` map
+over the **named** parties; **all approve → execute, any decline → cancel.**
+Mortgaged properties **transfer still-mortgaged** and the receiver owes the bank
+**10% interest** (charged through `must-raise-cash`). **Counters aren't built** —
+decline and re-propose (the model is shaped to add them later).
 
 ### Auctions
 
-One **shared sub-game** (`engine.ts`: `enterAuction` / `applyBid` / `applyPassBid` / `resolveAuction`), entered from two triggers and resuming via an `AuctionResume` continuation (the same pattern as `RaiseCashResume`):
-
-- **Decline-buy** (`resume: { kind: "landing" }`): the active player declines a landed-on property (`applyDeclineBuy`). The auction resumes their landing through `afterLanding` / `settleOrRaise` when it ends.
-- **Bank bankruptcy** (`resume: { kind: "bank-estate", debtorId, remaining }`): a player busts to the bank, and `goBankrupt` returns their buildings to the bank then auctions each bare lot. The lots resolve through `resumeEstate`, which auctions the next `remaining` lot, and when the estate is empty hands control onward. Skipped when the bust leaves a single survivor (game over) or the debtor owns nothing.
-
-**Bidding is open-outcry — no turn order.** Any still-in player may `bid` at any time. A `bid` carries an **absolute `amount`** (the client sends what the bidder saw + one **+$10** increment). `applyBid` **always records** `bids[playerId] = amount` (capped at what they can pay), and the bid takes the lead only when `amount` tops the current `highBid` — an already-out-high bid still **counts** on that player's bar but leaves `leaderId` / `highBid` untouched. The standing `leaderId` **may bid again** to jam the price up; only thing they can't do is `pass-bid` (no retracting a winning bid). `AuctionState` holds `active` (still-in players, seat-ordered for display — membership is what matters, there's no rotation), `highBid`, `leaderId`, per-player `bids` (for the panel), and `resume`. The auction resolves (`auctionDecided`) once every non-leader has dropped — the **leader wins** — or everyone drops with no bid → **unsold, lot stays with the bank** (`auction` event with `winnerId: null`). Because drops are permanent the active set only shrinks, so it always terminates (the lone AFK-never-acts case is the same as any other phase — out of scope).
-
-**Races are handled by the version-guarded CAS plus client-side REBASE — see "Optimistic reconcile" below.** Concurrent bids/drops are ordinary intents on the single authoritative row: one write wins; a stale write is a `conflict` that hands back the winning state, and the loser **rebases** its optimistic prediction onto it rather than dropping it. Bids/drops are fully **optimistic** (same `submit`→`predict`→pure-`apply` path as buy/trade), so a tap updates the panel instantly. The **absolute amount is what makes a bid safely rebaseable**: re-applying it onto the winning head just re-records the same number (idempotent), so a lost race never snaps the bar to zero and never auto-escalates the price — the bidder simply sees the new high and that their $X still stands on their bar.
-
-**Bid caps = what you can pay** (`auctionBidCap`, enforced in `applyBid`):
-- Decline-buy → **net worth** (`cash + maxRaisableCash`), the binding-bid rule. A winner who bids above cash drops into `must-raise-cash` (resume `after-landing`) and settles, possibly **off-turn** (the winner need not be the active player — exactly like the trade debtor path).
-- Estate → **cash on hand** less the 10% interest on a still-mortgaged lot, so the winner pays immediately and never goes negative. **v1 simplification** (flagged): keeps the multi-lot loop free of nested settlement; a still-mortgaged estate lot transfers mortgaged and charges the receiver the official 10% interest (reusing the trade rule), an unsold one reverts clean.
-
-**Player-to-player bankruptcy is now fully official** (no longer simplified): `goBankrupt`'s player-creditor branch sells the debtor's buildings back to the bank at **half price with that cash to the creditor**, transfers **bare lots** (mortgage status intact), and charges the creditor the **10% interest** on each inherited mortgaged lot — which can rarely tip an (off-turn) creditor into the red, so the rent path advances then `settleOrRaise(..., "pre-roll")`.
-
-**Pacing / bots / UI:** `pacing.ts` `turnOp` lists `auction` among the off-turn decision phases, so any bot bidder is driven (no `driverRole` change). The bot policy bids `+$10` up to `min(printed price, cash)` then passes — a conservative v1 placeholder (TODO: net-worth bidding + real valuation). The **`AuctionPanel`** (`components/auction-panel.tsx`) is synced state shown to **everyone** (like a trade): it renders the lot, every player's standing (leading / bidding / in / out), and gates `Bid $<high+10>` / `Drop` on whether this client is the current bidder. `prompt-section.tsx` renders it before the `myPlayerId` gate; `footer.tsx` hides the log during `auction`. The `auction` event already renders in the log (winner + price, or "unsold").
+One **shared sub-game** entered from two triggers (decline-buy; bank-estate
+bust), resuming via an `AuctionResume` continuation. **Open-outcry — no turn
+order:** any still-in player may `bid` anytime. A bid carries an **absolute
+amount**, which is what makes it safely **rebaseable** through the optimistic
+overlay (re-applying it just re-records the same number — no snap-to-zero, no
+auto-escalation). Drops are permanent, so the active set only shrinks and it
+always terminates. **Bid cap = what you can pay** (`auctionBidCap`): net worth for
+decline-buy (a winner over cash settles via `must-raise-cash`, possibly
+off-turn), cash-on-hand less interest for the estate loop. Player-to-player and
+bank bankruptcy follow the full official rules (buildings sold to the bank at
+half, bare lots transferred, 10% interest on inherited mortgaged lots).
 
 ### Jail
 
-**Three ways in** — landing on the "Go to Jail" tile, rolling three consecutive doubles, and (deferred with the card system) drawing a "Go to Jail" card. All three relocate the player to the Jail cell, set `inJail` + `jailTurns: 1`, log `go-to-jail`, and **end the turn immediately** — going to jail forfeits the rest of the turn even if the move was a double, and never pays GO. `sendToJail` is the single entry helper.
+**Three ways in** (Go-to-Jail tile, three doubles, card) — all relocate, set
+`inJail`, log `go-to-jail`, and **end the turn immediately**. A jailed player's
+turn opens at `jail-decision`. **Four ways out:** roll a double (no extra roll),
+pay $50, play a card (returns to deck bottom), or serve out (a failed third roll
+forces the $50 fine via the debt model). The per-turn **pay/card/roll prompt is
+the v1 exception** to "stance, not a prompt" (see Philosophy). Bots leave ASAP:
+card → cash → roll.
 
-**A jailed player's turn opens at `jail-decision`.** `autoStep` at `pre-roll` resolves the boundary queue first (so others' trade/manage arms still fire), then — if the active player is jailed — flips to `jail-decision` and stops. From there:
+### Chance / Community Chest
 
-- **Human:** the prompt (`prompt-section.tsx` `JailPrompt`) offers **Pay $50 / Use card / Roll** each jail turn. Pay and card are intents; "Roll" fires the mechanical jail roll via the store's `step`. This per-turn prompt is the v1 exception to the "stance, not a prompt" philosophy (see Philosophy above).
-- **Bot:** the policy leaves ASAP — **card → cash → roll**: spend a held Get-Out-of-Jail-Free card first (free), else pay the $50 fine if affordable, else return `null` so the pacer steps the jail roll. `turnOp` drives only a proxied seat here; a human's own jail turn waits for their UI.
+A draw is **mechanical** (inside `autoStep`), never an intent — and **no card
+introduces a new decision phase**; every effect funnels into machinery that
+already exists (bank credit / `chargeToCreditor` / move-then-`resolveTile` /
+`sendToJail`). A card landing on an unowned ownable opens the normal
+`buy-decision`; an unaffordable charge drops into `must-raise-cash`. Decks live
+in state (seed-shuffled once at start); cards are shown by shorthand `name`, not
+flavor text.
 
-**Four ways out:**
-- **Roll a double** (`jailRoll`): leave and move out by the roll. Escaping on a double does **not** grant another roll (official) — `doublesStreak` stays 0, so the turn settles after the landing.
-- **Pay $50** (`pay-to-leave-jail`, only when affordable) or **play a card** (`use-jail-card`, returns the card to the bottom of its deck): leave, then resume at `pre-roll` so the normal auto-roll moves them this turn — a double rolled *after* paying/carding *does* grant another roll (they're a free player again).
-- **Serve the sentence:** a failed roll on jail turns 1–2 advances `jailTurns` and ends the turn; a failed **third** roll forces the $50 fine, then moves out.
-
-**The $50 fine is a bank charge.** Voluntary pay is gated on cash ≥ $50 (no debt path). The forced third-turn fine routes through the unified debt model: `goBankrupt` is generalized to a **null (bank) creditor** — and a bank bust now **auctions the estate lot by lot** (see "Auctions"), with cards returning to their decks. v1 simplification flagged in code: if the forced fine alone pushes the player into the red, they settle (`must-raise-cash`) before the turn ends and the landing's *rent* is skipped for that rare case.
-
-**All three jail entries are live**, including the card path: a "Go to Jail" card routes through `sendToJail(state, "card")`, and a Get-Out-of-Jail-Free card is acquired by drawing the `jail-free` card (held in `jailFreeCards`, returned to its deck bottom when used). `jailStance` is reserved in the type for the future stance toggle. See "Chance / Community Chest decks" below.
-
-### Chance / Community Chest decks
-
-A card draw is **mechanical** — it runs inside `autoStep` via `resolveTile` when a player lands on a card tile, never as an intent. The 32 official cards (`CHANCE` / `COMMUNITY_CHEST` in `data.ts`) are modeled as a `CardEffect` union; the engine resolves each into machinery it already has, so **no card introduces a new decision phase**. Built for pros: a card is shown by its **shorthand `name`** ("Boardwalk", "Chairman", "Nearest RR"), not flavor text. The `card-drawn` event stores only `{ source, cardId, cash? }`; the log maps `cardId` → the shorthand.
-
-- **Piles live in state.** `decks: { chance, communityChest }` are index lists into the static decks (front = next to draw), **seed-shuffled once at game start** (`initialDecks`, fed the injected RNG via the shared `shuffleArray`). A draw pops the front and rotates it to the bottom; a `jail-free` card instead **leaves the pile while held** (tracked in `jailFreeCards`) and is re-appended when used (`use-jail-card`) or when its holder busts to the bank (`goBankrupt`). Adding `decks` was a `GameState` field change → rows were wiped per the pre-launch rule.
-- **Effects funnel into existing helpers.** `collect`/`pay`/`repairs` → a bank credit / `chargeToCreditor` (the same terminal-charge pattern as the tax tile, so debt routes through `must-raise-cash`). `pay-each` (Chairman) / `collect-each` (Birthday) → one `card-transfer` line per opponent through the debt model. `advance-to` / `back-three` → move, then **normal `resolveTile`** (so a card move onto a property charges normal rent, and Chance "back 3" from tile 36 chains a Community Chest draw). `go-to-jail` → `sendToJail`. `jail-free` → set the holder.
-- **The only card-specific rent overrides** are the two "advance to nearest" cards: a railroad pays **2× the owner's normal rent**, a utility pays **10× a fresh dice throw** regardless of how many utilities the owner holds (`advanceNearestCard`).
-- **Card movement that wraps GO** emits a standalone `pass-go` event for the $200 (the roll path encodes it inline on the `roll` event instead; cards have no roll).
-- **Decisions a card can reach** are only the *existing* ones: an `advance`/`back` card that lands on an **unowned ownable opens the normal `buy-decision`** (buy or auction — this is the cards' "you may buy it from the Bank"), and any unaffordable charge drops into `must-raise-cash`. Both are pre-existing flows; the bot pacer and UI handle them unchanged.
-- **v1 simplification (flagged in code):** a Chairman drawer who can't cover the full payout even after liquidating busts to the bank rather than paying each opponent as far as their cash stretches — vanishingly rare at $50/head. Birthday's opponent-can't-pay case is handled fully (they bust to the drawer).
-
-### RNG: always injected, never `Math.random()`
-
-Every randomness call goes through an injected RNG. Engine functions take an `rng` argument; the host advances it. This is non-negotiable — it's what makes deterministic replay, regression tests, and future headless RL training possible.
-
-### Bot interface
+### Bots
 
 ```ts
 type Bot = (state: GameState, playerId: string) => Intent;
 ```
 
-The bot is given the full state (Monopoly is open-information) and returns one intent. The engine handles everything else. The same shape works for the dumb early bot, the rule-based bot, and an eventual learned policy.
-
-The baseline lives in `bots/policy.ts` as `botIntent(state, playerId): Intent | null` — pure, returning the intent bot `playerId` should submit **right now**, or `null` if it isn't this bot's move. It covers the proxy-driven decision phases: `buy-decision` (buy when affordable), `must-raise-cash` (if this bot is the current debtor — `firstNegativePlayer`, possibly off-turn — mortgage the cheapest building-free property, then sell off a built set's buildings via `manage` once nothing's left to mortgage), and `trade-pending` (if this bot is an un-voted named party, **accept** — a permissive v1 placeholder; `TODO` real valuation). The store's auto-pacer **iterates the bot seats** for decision phases and submits the first non-null intent (a human's own decisions are left to their UI); the universal mechanical beats (`pre-roll` → step, `post-roll` → end-turn) run for whoever drives the active seat (`driver.ts`). **Bots never *initiate* trades** — nothing queues a bot, so the proposer is always human. Swap in a smarter policy here without touching the pacer.
+Baseline in `bots/policy.ts` (`botIntent`): pure, returns the intent this bot
+should submit now or `null` if it isn't its move. Covers the proxy-driven
+decision phases (buy, must-raise-cash settling, trade-pending accept). **Bots
+never initiate trades.** Swap in a smarter policy here without touching the
+pacer.
 
 ## Lobby
 
-A game row carries a `GameState.status` of `lobby` | `active` | `finished`. The lifecycle:
-
-- `createLobby(host, rngSeed)` seeds a `lobby` row seating the host alone. Other clients `joinLobby` (auto-assigned the first free color + icon), `addBot`, `removePlayer`, and tweak seats via `setPlayerColor` / `setPlayerIcon` / `setPlayerName`. `startGame` validates the roster (≥2 players, ≥1 human) and flips `status` to `active`.
-- These **lobby ops live in `lobby.ts` and are pure** (same discipline as the engine: no side effects, no `Math.random`/`Date.now` — the rng seed and any ids are injected or derived from the roster). Color/icon uniqueness is enforced on every seat and edit. They are wired through the authoritative route (the `join` … `start` actions in `protocol.ts`, applied version-guarded in `route.ts`) and surfaced by the seat-room UI (`components/seat-room.tsx`).
-- The auto-pacer only runs while `status === "active"`, so a lobby (or a finished game) sits at rest. The immediate-play seed (`freshGame`, used by the local `dev` sandbox and the current online seed) skips the lobby and starts `active`; the engine flips `status` to `finished` when a winner is declared.
+`GameState.status` is `lobby | active | finished`. Lobby ops live in `lobby.ts`
+and are **pure** (no side effects, no `Math.random`/`Date.now` — seeds/ids are
+injected), enforce color/icon uniqueness, and are wired through the route. The
+auto-pacer runs only while `active`. The immediate-play seed (`freshGame`, used
+by `dev` and the current online seed) skips the lobby.
 
 ## Multiplayer / networking
 
-**This project does not use the shared multiplayer stack.** Do **not** import from
-`src/shared/lib/webrtc/` or `src/shared/lib/multiplayer/`, and do not use
-`useLobbyRoom` / `useWorldRoom`. Those are peer-to-peer WebRTC meshes built for
-real-time co-presence; Monopoly is turn-based and runs on a single authoritative
-server row instead. (The shared **profile** helper, `@/shared/lib/profile`, is
-fine — that's just local player identity, not networking.)
+**This project does NOT use the shared multiplayer stack.** Do not import from
+`src/shared/lib/webrtc/` or `src/shared/lib/multiplayer/` — those are P2P meshes;
+Monopoly is turn-based on a single authoritative server row. (`@/shared/lib/profile`
+is fine — local identity, not networking.) There is **no local/in-process mode**;
+every game, including `dev`, runs on the route against a Supabase row.
 
-**There is no local/in-process mode.** Every game — including the `dev` sandbox —
-runs on the authoritative route against a Supabase row. `dev` is just a reserved
-game id that additionally accepts the debug actions (see "Dev sandbox" below);
-it is otherwise a normal backend game.
-
-**How networking actually works here — server-authoritative, one row per game:**
-
-- **State is a single Supabase row** in `monopoly_games` holding the entire
-  authoritative `GameState` plus an optimistic-concurrency `version`. Events
-  live inline in `state.turns` (`TurnGroup[]`); the log is derived, not a
-  separate table. Revisit if rows get fat over very long games.
-- **The only writer is a Next.js Route Handler** — `src/app/api/monopoly/route.ts`
-  — using the service-role client (`@/shared/lib/supabase/server-admin`). RLS
-  locks the table to **read-only** for clients, so the route is structurally the
-  sole writer. It runs the engine itself (`apply` / `autoStep`), so the stored
-  state can never be set to anything illegal. The request/response contract is
-  `protocol.ts`.
+The model — **server-authoritative, one row per game:**
+- **State is one Supabase row** (`monopoly_games`): the whole `GameState` plus an
+  optimistic-concurrency `version`. Events live inline in `state.turns`.
+- **The only writer is the route handler** (`src/app/api/monopoly/route.ts`) via
+  the service-role client. RLS locks the table **read-only** for clients, so the
+  route is structurally the sole writer and runs the engine itself — stored state
+  can never be illegal. Transport contract is `protocol.ts`.
 - **Clients never touch the DB directly.** They POST actions through
-  `sync.ts:submitAction` — `create` (seed a lobby on first open), the lobby ops
-  (`join` / `addBot` / `removePlayer` / `setColor` / `setIcon` / `setName` /
-  `start`), the play ops (`submit` / `step`), and the dev-only `reset` — read
-  the row via `loadGame`, list joinable games via `listGames`, and subscribe to
-  changes via `subscribeGame` (Supabase Realtime postgres-changes on the anon
-  key). Incoming state is folded in through the store's `applyStateUpdate`.
-  There is **no client-to-client channel** — every message is an HTTPS call to
-  the route plus the read-only subscription. The route shares one
-  version-guarded write path (`mutate`) across every lobby and play op; only
-  `create` (insert-only) and `reset` (upsert) seed without a version.
-- **Writes are version-guarded** (optimistic CAS: `update … where version =
-  fromVersion`). A stale write is rejected as a `conflict`; the route hands back
-  the **winning state + version** so the client can rebase immediately (see
-  "Optimistic reconcile" below) instead of waiting for the realtime echo. This is
-  what makes it safe for more than one client to drive the same game at once:
-  duplicate requests collapse to no-ops.
+  `sync.ts:submitAction` and read/subscribe via the anon key (`loadGame`,
+  `listGames`, `subscribeGame`). Incoming state is folded in via
+  `applyStateUpdate`. There is no client-to-client channel.
+- **Writes are version-guarded** (CAS: `update … where version = fromVersion`). A
+  stale write is a `conflict`; the route hands back the **winning state +
+  version** so the client rebases immediately. This is what makes concurrent
+  drivers safe — duplicate writes collapse to no-ops.
+- **No server timer; one unit of progress per call.** Pacing and animation are
+  entirely client-side.
+- **No host.** The active player's client drives its own turn; **bot or
+  disconnected-player turns are driven by any connected client** (the CAS dedupes
+  redundant writes). A disconnected human's turn simply waits. Bot-ness is read
+  from `Player.isBot` — no presence tracking.
 
-**Optimistic reconcile (client) — rebase, never drop.** A local UI intent is
-applied to the display head instantly (`predict`) and queued in an `outbox`,
-then flushed version-guarded. The invariant: **a local action is never silently
-erased on conflict.** The optimistic overlay is a *replay* of the outbox on top
-of the latest authoritative head (`reconcile.ts` `rebuildOverlay`), recomputed
-whenever the head advances. On a conflict the client folds the winning state the
-route returned and **replays the outbox onto it**, dropping only intents that no
-longer apply: an armed `set-queue` re-arms onto the next boundary (the
-Manage-flicker fix), an absolute `bid` re-records on the bidder's bar (the
-auction snap-to-zero fix), a now-moot intent is pruned. There is **no per-intent
-policy** — legality on the current head is the single arbiter, which is why
-absolute bids matter (a relative bid would re-succeed on every replay and
-auto-escalate). The pacer also won't drive a mechanical `step`/`end-turn` while a
-local prediction is outstanding, so the auto-roll can't race the user's own arm.
-A genuine rejection (illegal intent) still drops the overlay and surfaces a
-`syncError`.
-- **No server timer; the backend is delay-agnostic.** The route applies exactly
-  **one unit of progress per call** — an intent `apply` (no auto-drain) or one
-  `autoStep` per `step`. Pacing and animation are entirely client-side; the
-  engine only advances when a client asks it to.
-- **No host.** Every client POSTs actions to the route. The active player's own
-  client drives its turn; **bot or disconnected-player turns are driven by any
-  connected client** (the version guard dedupes the redundant writes). Whether a
-  seat is a bot is read from `Player.isBot` in the state — no presence/online
-  tracking. A turn belonging to a *disconnected human* simply waits until they
-  return (AFK timers are out of scope).
+**Optimistic reconcile (client) — rebase, never drop.** A local intent is applied
+to the display head instantly (`predict`) and queued in an `outbox`, then flushed
+version-guarded. **Invariant: a local action is never silently erased on
+conflict** — the overlay is a *replay* of the outbox on the latest authoritative
+head (`reconcile.ts` `rebuildOverlay`), recomputed whenever the head advances. On
+a conflict the client folds the winner and replays the outbox onto it, dropping
+only intents that no longer apply. Legality on the current head is the single
+arbiter (no per-intent policy) — which is why **absolute** bids/arms matter (a
+relative one would re-apply wrongly on every replay).
 
-**URL / routing** (`components/monopoly.tsx`): no `?game=` param shows the lobby
-browser (`components/lobby-browser.tsx`); `?game=<id>` connects to that row —
-while it's a `lobby` the seat room renders, once it's `active`/`finished` the
-board does. `?game=dev` is the same path: it connects to the `dev` row (seeded
-as an immediate-play game, so it lands on the board). The id is read from the
-URL via `useSyncExternalStore` and changed with `history.pushState`, so browser
-back/forward works. In the store, `gameId` is `null` while parked (the lobby
-browser — the pacer is idle), or the row id (including `"dev"`) once connected.
+**Playback pump (`store.ts`).** The client trails the authoritative head through
+a FIFO `buffer`, animating one snapshot per derived dwell (`pacing.ts`); when
+caught up it drives the backend one more unit — *only if* `driveOp` says it may
+(its own / a bot's turn). Another human's turn returns nothing, so every human
+turn is a **hard sync barrier** where all clients reconverge. The pump won't
+drive a mechanical beat while a local prediction is outstanding, so the auto-roll
+can't race the user. The pump is fully guarded and idempotent, so it is woken on
+**every** store change rather than a hand-picked field list — that list inevitably
+drifts from what the pump actually reads (it once dropped `outbox` and can't see
+the module-local `predictionInFlight` at all), which stalled the pacer when a
+confirmation freed it without touching a watched field.
 
-**Dev sandbox.** The `dev` game accepts debug actions that no other game does:
-the route only applies a `dev`-type action when `gameId === "dev"` (otherwise it
-ignores it). The hotkeys (`dev.ts`) submit these like any move; the route runs
-the pure transforms in `dev-ops.ts` (`restart` N-player, `own-all`,
-`random-own` — randomness from `rngState`, never `Math.random`) and writes the
-result, so they round-trip through the same version-guarded path + subscription.
-`?game=dev`'s seed is `freshGame` (1 human + 3 bots, immediate play).
+**URL / routing** (`components/monopoly.tsx`): no `?game=` shows the lobby
+browser; `?game=<id>` connects (lobby → seat room, active/finished → board);
+`?game=dev` connects the immediate-play dev row. The id is read via
+`useSyncExternalStore` and changed with `history.pushState`.
+
+**Dev sandbox.** The `dev` game accepts debug actions no other game does — the
+route applies a `dev` action only when `gameId === "dev"`. Hotkeys (`dev.ts`)
+submit them; pure transforms live in `dev-ops.ts`. Debug helpers stay in
+`dev.ts` / `dev-ops.ts`, never in components.
+
+## Database / state shape changes
+
+**No legacy / back-fill handling (pre-launch).** Treat stored data as disposable:
+a `GameState` may be assumed to match the *current* type exactly. Don't write
+migration shims or default-fill new fields — **wipe the rows instead** (delete
+from `public.monopoly_games` via the psql one-liner in the root CLAUDE.md, then
+refresh). **Remove this allowance when the game goes live.**
 
 ## File layout
 
 ```
-src/projects/monopoly/
-  CLAUDE.md            ← this file
-  index.tsx            ← re-export of the root component
-  types.ts             ← GameState, Intent, GameEvent, TurnState, GameStatus, PlayerCount, etc.
-  protocol.ts          ← route transport contract (MonopolyAction incl. lobby + dev ops, DevCommand)
-  sync.ts              ← client DB access: submitAction, loadGame, listGames, subscribeGame
-  data.ts              ← static board data (SPACES, cards, PLAYER_COLORS/ICONS palette)
-  theme.ts             ← color tokens, theming
-  logic.ts             ← pure helpers (hasMonopoly, rentAt, isLegal*, ...)
-  lobby.ts             ← pure lobby ops (createLobby, joinLobby, addBot, startGame, ...) + setup constants
-  lobby.test.ts        ← unit tests for lobby ops (uniqueness, start validation)
-  engine.ts            ← apply(intent), autoStep, applyXxx per-intent reducers
-  engine.test.ts       ← unit tests for apply / autoStep
-  logic.test.ts        ← unit tests for pure helpers
-  driver.ts            ← driverRole(state, myId): self | proxy | none
-  driver.test.ts       ← unit tests for driver role
-  store.ts             ← Zustand store, "use client", route client + auto-pacer for the UI
-  reconcile.ts         ← pure rebuildOverlay: replay/rebase the optimistic outbox on the head (+ reconcile.test.ts)
-  mocks.ts             ← MOCK_STATE (test fixture) + freshGame (immediate-play seed)
-  dev-ops.ts           ← pure dev state transforms (own-all, random-own, restart) (+ dev-ops.test.ts)
-  dev.ts               ← debug-only hotkeys that submit dev commands to the route
-  bots/
-    policy.ts          ← botIntent baseline policy (+ policy.test.ts)
-  components/          ← React components (monopoly root, lobby-browser, seat-room, board)
+index.tsx     re-export of the root component
+types.ts      GameState, Intent, GameEvent, TurnState, …
+protocol.ts   route transport contract (MonopolyAction, DevCommand)
+sync.ts       client DB access: submitAction, loadGame, listGames, subscribeGame
+data.ts       static board data (SPACES, cards, color/icon palette)
+logic.ts      pure helpers (hasMonopoly, rentAt, isLegal*, …)
+lobby.ts      pure lobby ops + setup constants
+engine.ts     apply(intent), autoStep, applyXxx reducers
+development.ts pure build planner (planDevelopment)
+manage.ts     manage preview math + manageActorId / isRaiseOnly
+driver.ts     driverRole(state, myId): self | proxy | none
+pacing.ts     playback buffer + drive decision (driveOp, paceTransition)
+reconcile.ts  pure rebuildOverlay: replay/rebase the optimistic outbox
+store.ts      Zustand store, "use client", route client + playback pump
+mocks.ts      MOCK_STATE fixture + freshGame seed
+dev-ops.ts / dev.ts   dev-only state transforms + hotkeys
+bots/policy.ts        botIntent baseline policy
+components/           React board + lobby/seat UI
 ```
-
-**Engine code (`engine.ts`, `logic.ts`) must be pure and free of React, side effects, and `Math.random`.** Components consume state via the store; they do not mutate it.
-
-## Things to keep right
-
-- **No legacy / back-fill handling (pre-launch).** The game is still in dev, so treat all stored data as disposable: a `GameState` may be assumed to match the *current* type exactly. Do **not** write migration shims, default-filling of newly added fields, or any code that tolerates an old row shape — when a field is added, wipe the rows instead (delete from `public.monopoly_games` via the psql one-liner in the root CLAUDE.md, then refresh). **Remove this allowance once the game goes live** — at that point real rows must be migrated, not deleted.
-- **No hidden state in components.** All gameplay state lives in `store` or props derived from it. Local `useState` is fine for transient UI (open menus, hover) only.
-- **Don't add buttons for non-decisions.** A button for "pay rent" or "continue" is a philosophy violation. If you're tempted to add one, the engine probably needs to take that step on its own.
-- **The intent surface is small on purpose.** Resist growing it. New mechanics belong inside `autoStep`.
-- **Events are derived.** Don't write code that synthesizes an event without the corresponding state change — that's how state and log drift apart.
-- **Debug helpers stay in `dev.ts` / `dev-ops.ts`.** Never in the component. The hotkeys (`2`/`4`/`8` restart with N players, `0`/`1` ownership overrides, `n` new game) live in `dev.ts` behind a dev guard and submit `dev` actions; the pure state transforms live in `dev-ops.ts` and are applied server-side, gated to the `dev` game id.
 
 ## Testing
 
-- `logic.test.ts` for pure helpers (`hasMonopoly`, `rentAt`, legality checks).
-- `engine.test.ts` for `apply` and `autoStep` — feed a state + intent, assert the new state and event list. Use a seeded RNG. These tests are the regression net for the rules.
-- E2E tests (Playwright) live in `e2e/`, exercise the multiplayer flow end-to-end, and assume the dev server on :3001.
-
-When fixing a rule bug, add a failing engine test first — and **run it to prove it fails before writing the fix**. A test that was never seen red gives no confidence it exercises the bug. The bug + fix should be one PR.
+- `logic.test.ts` — pure helpers. `engine.test.ts` — `apply`/`autoStep` with a
+  seeded RNG; this is the regression net for the rules.
+- When fixing a rule bug, **add a failing engine test first and run it red before
+  the fix.** The bug + fix is one PR.
+- The playback pump runs only in the browser (`typeof window`), so it isn't unit-
+  tested in the node env; verify pump/pacing behavior by running the app.
+</content>
+</invoke>
