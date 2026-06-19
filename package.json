@@ -14,6 +14,8 @@
     "test:slow": "vitest run --config vitest.slow.config.ts",
     "sim": "tsx src/projects/monopoly/bots/simulate-cli.ts",
     "sim:versus": "tsx src/projects/monopoly/bots/versus-cli.ts",
+    "sim:gauntlet": "tsx src/projects/monopoly/bots/gauntlet-cli.ts",
+    "sim:verify": "tsx src/projects/monopoly/bots/verify-cli.ts",
     "bench": "vitest bench --run",
     "test:e2e": "playwright test",
     "test:all": "vitest run && playwright test"

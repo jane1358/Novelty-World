@@ -203,6 +203,55 @@ On top of that, the guardrails:
   is one fixed game; with 2+2 identical seats there are only 6 distinct seatings
   per seed, so variety comes mostly from **many seeds**.
 
+### What's built (Session A, 2026-06-20)
+
+The ruler above is now real, not a plan. The pieces, all under `bots/`:
+
+- **`parallel.ts` / `worker.ts` — CPU parallelism via `worker_threads`.** A pool
+  of `cpus−2` workers (14 on the 16-core box) runs the pure `simulateGame` and
+  hands back compact outcomes; the main thread owns the game stream and the
+  SPRT/Elo aggregation. **Verified bit-identical to single-threaded** play
+  (`npm run sim:verify -- v3 v1` → 60/60 games match), so the fast path changes
+  nothing about *which* games are played, only how fast. Games are chunked
+  work-stealing across workers so a straggler (a capped game runs the full turn
+  cap) doesn't idle the pool.
+- **`sprt.ts` — SPRT in Elo terms.** **Crucial correction made here:** a single
+  *symmetric* SPRT `[−E, +E]` is the WRONG tool — its boundary sits at ±E/2 net
+  wins, so a true coin flip crosses one side by luck and it would "accept" a
+  win-neutral change ~half the time (it did exactly this in a first cut, calling
+  the v3≈v2 tie "BETTER"). The shipped test is the canonical **fishtest pair of
+  one-sided tests** over the same stream, both `H0: Δ=0`: an *improvement* test
+  vs `H1:Δ=+E` (accept-H1 ⇒ **better**) and a *regression* test vs `H1:Δ=−E`
+  (accept-H1 ⇒ **worse**). A genuine tie pushes both toward their H0 → a
+  confident **even**; running out of games at the cap → **inconclusive**. This is
+  conservative by construction: a change is promoted only on a *confident*
+  improvement, and a win-neutral one is rejected with probability ≥ 1−α. The walk
+  stops at the first crossing in the deterministic stream, so the verdict is
+  **batch-size / pool-size independent** (unit-tested).
+- **`elo.ts` — Elo across the field.** Bradley–Terry MLE by the parameter-free
+  Zermelo/MM iteration, anchored so **v1 = 0**; "champion" = highest Elo, robust
+  to non-transitivity (unit-tested, incl. a non-transitive case the head-to-head
+  would miss).
+- **`gauntlet.ts` / `gauntlet-cli.ts` — the gauntlet.** A candidate plays the
+  whole **field** (`npm run sim:gauntlet -- <cand> [--field …] [--base …]`); each
+  candidate pairing is an SPRT, field-internal pairings are fixed-N just to anchor
+  the Elo fit. Accept iff **improves vs base AND regresses against none**. **Floor
+  is v1; `dumb` is hard-rejected from any field.**
+
+**Validated by reproducing the known results** (all under the shipped dual test):
+
+| Check | Result | Recorded | ✓ |
+|---|---|---|---|
+| parallel == single (`sim:verify v3 v1`, 60) | 60/60 bit-identical | — | ✓ |
+| v2 vs v1 (`gauntlet v2 --field v1`) | **BETTER** 67.9% (106–50), accepted | ~69.8% | ✓ |
+| v3 vs v2 (`gauntlet v3 --base v2`) | **INCONCLUSIVE** 50.1% (752–748/1500) → **REJECT** | win-neutral | ✓ |
+| v3 vs v1 (same run) | **BETTER** 72.7% (88–33) | ~70.2% | ✓ |
+
+Elo from the v3 run: **v3 +161.7, v2 +160.2, v1 0** — v3≈v2 (within noise), both
+~160 above v1. The full v3 gauntlet took **~2.8 min on 14 workers**; the
+v3-vs-v2 pairing (1500 decisive) ran almost cap-free (**5 draws / 1500, 0.3%**),
+while v3-vs-v1 capped ~22% — see the draw decision below.
+
 ## Coexistence & promotion
 
 The production `claude` strategy (`registry.ts`) drives real online and dev
@@ -237,8 +286,49 @@ different* logics can coexist.
    `Math.random`, so replay stays intact. This needs a small `Bot`-contract change
    to thread the rng, made if/when a version wants it.
 
-Still to size when we build the automated loop: the SPRT bounds (Elo0/Elo1, α/β)
-and the practice vs. held-out seed split.
+5. **SPRT bounds — dual one-sided, margin E = 20 Elo, α = β = 0.05** (sized in
+   Session A). The indifference margin **E = 20 Elo** (≈ 52.9% win share) is the
+   "is this a real edge worth promoting" threshold — about the ~3% the loop
+   cares about. It is deliberately **not smaller**: a tighter E (e.g. 10) chases
+   1–2% effects but **overfits seed noise** — the v3-vs-v2 point estimate swung
+   from +12.5 Elo (train) to −5.5 Elo (held-out) at ~240 games, so a 10-Elo bar
+   would flip on which seeds you looked at. E = 20 keeps a near-tie reading
+   *inconclusive* (correct), and the held-out split (below) guards the rest. The
+   test is the **dual one-sided** form (improvement `[0,+E]` + regression
+   `[0,−E]`), **not** a symmetric `[−E,+E]` — see "What's built" for why the
+   symmetric form silently promotes coin flips. Default decisive cap per pairing:
+   **4000** (enough for a true tie to resolve to a confident `even`; a smaller
+   `--max` just yields `inconclusive`, which is treated identically for
+   promotion). Bounds are CLI-overridable (`--margin`, `--alpha`, `--beta`,
+   `--max`) but these are the defaults.
+6. **Draws are DISCARDED from the test** (sized in Session A). A capped game is a
+   no-result for *both* sides — it carries zero win/loss signal — so it never
+   enters the SPRT; it is only reported as the cap-rate health metric. Justified
+   by the data: among real post-v3 bots the cap is ~0% (validated: 5/1500 ≈ 0.3%
+   in v3-vs-v2). Pairings that *include* v1 still cap ~22–26%, but that is v1's
+   trade-veto deadlock, not a property of the test, and discarding is still the
+   right call (a draw tells you nothing about who is stronger). See decision 8.
+7. **Seed split — train vs held-out by prefix** (sized in Session A). Seeds are
+   namespaced strings, so the practice and validation pools are disjoint *by
+   construction*: iterate and tune on `--prefix train` (the default), then
+   **confirm the accept on `--prefix holdout`** (a fresh, unseen stream) before
+   locking a champion. Don't promote on the train run alone — the v3 train/held-out
+   swing above is exactly why.
+8. **v1 may be dropped from the ACTIVE field once it is provably dominated**
+   (raised by Kyle, 2026-06-20; option, not yet taken). v1's hard trade-veto
+   makes ~a quarter of its games deadlock to the turn cap, and a *capped* game
+   runs the **full** 2000 turns — the most expensive game there is — while
+   contributing **nothing** to the SPRT (draws are discarded). So v1 pairings are
+   the slowest *and* the least informative. The floor doctrine ("never go below
+   v1") is about ranking robustness, not about running v1 every time: once every
+   `vN (N≥2)` clears v1 by a wide margin (it does — ~160 Elo), a non-transitive
+   loss to v1 by a bot that beats v2 is implausible, so v1 can be left out of the
+   day-to-day gauntlet field (`--field` already makes this a one-flag choice) and
+   kept only as an archived audit. **This is purely a cost optimization — v1 is a
+   real strategy and the published floor, NOT a null bot like `dumb`** (which
+   measures nothing and is hard-rejected from any field for a different reason).
+   Keep v1 in the field until a future version's dominance is locked in; revisit
+   then.
 
 ## Version log
 
@@ -268,8 +358,11 @@ bot as of this doc.
   decision — *not* a precondition for continuing the loop. Today the live bot is
   still v1.
 
-**As of 2026-06-19:** the loop champion is still **v2**; v3 was built, measured,
-and **rejected** (win-neutral). The live bot is unchanged (v1).
+**As of 2026-06-20:** the loop champion is still **v2**; v3 was built, measured,
+and **rejected** (win-neutral). The live bot is unchanged (v1). **Session A is
+done** — the measurement system (parallelism + gauntlet + SPRT + Elo) is built
+and validated (see "What's built" under Measurement); no new `vX` was created, so
+the version log below is untouched. **Session B (build v4) is the next step.**
 
 **v3 — what was tried and what we learned (a logged negative result):**
 
@@ -304,35 +397,17 @@ The v2-era engine fix (false-bankruptcy / hotel-shortage liquidation escape in
 shared `development.ts`, regression-tested in `development.test.ts`) still stands
 and benefits every version and human play.
 
-**Next — TWO sessions, in order (decided 2026-06-19 with Kyle):**
+**Session A — build the measurement system — ✅ DONE (2026-06-20).** The ruler had
+become the bottleneck (the v3≈v2 tie unresolvable at fixed-N; marginal ±2–3%
+hypotheses ahead; single-core runs painfully slow). It is now fixed: CPU
+parallelism (`worker_threads`, ~14 workers, bit-identical to single-threaded),
+the **gauntlet** (`npm run sim:gauntlet`), the dual one-sided **SPRT** in Elo, and
+**Elo** across the field — all built, unit-tested, and validated by reproducing
+v2≫v1 / v3≈v2 / v3>v1. Full detail, the locked parameters, and the validation
+table are under **"What's built (Session A)"** in Measurement and decisions 5–8.
+No new `vX` was created.
 
-**Session A — build the measurement system FIRST, before any v4 bot change.** The
-loop has reached the point where the *ruler*, not the bot, is the bottleneck: the
-v3≈v2 tie is unresolvable at fixed-N (120 seeds only sees effects >~6%), the next
-hypotheses are marginal (±2–3%), and the v3-vs-v1 run was painfully slow on **one
-core of a 16-core machine**. Fix the ruler before cutting more wood. Scope:
-
-- **CPU parallelism (`worker_threads`).** Games are pure, deterministic functions
-  of (seed, seating), so distribute them across a pool of ~14–15 workers (16
-  logical cores; leave 1–2 for the main thread/OS). Reproducible regardless of
-  worker assignment. This is the listed "parallelize across workers" TODO; it
-  turns the ~30-min run into ~2 min and is what makes SPRT's game volume practical.
-- **Gauntlet runner.** A candidate plays the whole **field** (v1 … latest), not
-  just its predecessor; require *"improves vs base, regresses against none."*
-  **Floor is v1. NEVER gauntlet `dumb`** — null bot, measures nothing.
-- **SPRT** (sequential test) in Elo terms: H0 = Elo0, H1 = Elo1, error rates α/β;
-  stop the instant the log-likelihood ratio crosses accept/reject. Decide how a
-  **draw** (capped, no-result) enters the test — with v3's ~0% cap among real
-  bots, discarding draws is defensible; document the choice.
-- **Elo rating** vs the field, so "champion" = highest Elo (robust to
-  non-transitivity), not "beat the last guy".
-- Still to **size** (per "Measurement" / "Decisions"): SPRT bounds (Elo0/Elo1,
-  α/β) and the practice-vs-held-out seed split. Validate the new tooling by
-  reproducing the known results (v2 ≫ v1, v3 ≈ v2, v3 > v1) before trusting it.
-  This session ships *infrastructure* — it creates no new `vX`, so the version log
-  is untouched; update "Measurement"/"Decisions" here instead.
-
-**Session B — then build v4 from v3**, measured with the new system. v3 is the
+**Session B — build v4 from v3**, measured with the new system. v3 is the
 gauntlet-cleared base (ties v2, beats v1 by v2's margin, decisive games = cleaner
 substrate). **Lead (judge it):** chase **asymmetry / tempo**, since pure
 decisiveness proved win-neutral — strongest is **mortgage-to-fund a

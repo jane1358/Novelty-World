@@ -350,9 +350,17 @@ bots/simulate.ts      headless self-play driver (per-seat Contenders / strategie
 bots/simulate-cli.ts  `npm run sim` — watch one game (roster, seed, --log)
 bots/tournament.ts    head-to-head A/B between versions: win share vs the 50% null
 bots/versus-cli.ts    `npm run sim:versus -- v2 v1` — run the A/B over many seeds
+bots/parallel.ts      worker_threads pool: pure games distributed across cores
+bots/worker.ts        worker entry — runs simulateGame, posts back compact results
+bots/sprt.ts          SPRT in Elo (dual one-sided fishtest test) — pure, tested
+bots/elo.ts           Bradley–Terry Elo fit across the field — pure, tested
+bots/gauntlet.ts      candidate-vs-field gauntlet: parallel + SPRT + Elo + verdict
+bots/gauntlet-cli.ts  `npm run sim:gauntlet -- v3` — run the gauntlet on the pool
+bots/verify-cli.ts    `npm run sim:verify -- v2 v1` — prove parallel == single
 bots/versions/        version archive (EVOLUTION.md): self-contained bot snapshots
-bots/versions/index.ts  VERSIONS map (v1 = live champion, v2, dumb) + versionBot()
+bots/versions/index.ts  VERSIONS map (v1 = live champion, v2, v3, dumb) + versionBot()
 bots/versions/v2/     v2 candidate snapshot (claude/valuation/trades + its tests)
+bots/versions/v3/     v3 candidate snapshot (N-way trades — rejected, archived)
 components/           React board + lobby/seat UI
 ```
 
