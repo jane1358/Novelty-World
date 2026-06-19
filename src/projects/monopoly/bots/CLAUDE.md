@@ -104,7 +104,12 @@ returns an intent + note. The shape to preserve:
   least-essential building-free lot mortgaged first, monopolies and their houses
   protected; sell down the *weakest developed* set only when nothing's left to
   mortgage.
-- **managing** — commit `planBuild`.
+- **managing** — commit `planBuild`. When flush, the plan also **lifts the
+  mortgages on a dead (mortgaged) monopoly and develops it in the same atomic
+  commit** — reclaiming idle capital a set can't earn while mortgaged. Gated on
+  being comfortably above the rent reserve (unmortgaging pays 10% interest); a
+  locked set is worth reclaiming even bare (level 0), which restores its monopoly
+  double-rent and unfreezes it for later building.
 - **trade-building / trade-pending** — propose the best constructed trade; vote via
   `evaluateTrade`.
 - **jail** — leave on safe boards (card → cash → roll); **sit as a haven** when a
@@ -147,29 +152,58 @@ consume `rngState`, not reach for `Math.random`. Doing so keeps replay intact.
 
 Ordered by impact. Each is a place the *current* policy leaves value on the table.
 
-1. **Redeploy idle capital: unmortgage, then develop.** *(highest priority — the
-   gap the 491-turn dev game exposed.)* `planBuild` skips any monopoly with a
-   mortgaged member (`valuation.ts`: `if (positions.some(... mortgaged)) continue;
-   // unmortgage first`) and **nothing ever unmortgages** — the only mortgage-map
-   writers are the cash-*raising* paths. Result: a bot that wins monopolies via
-   trade (often inheriting mortgaged lots) and then sits on a huge cash pile
-   without ever turning it into rent. In the dev game, Jordan held $11k and five
-   monopolies but only the one set it had hotelled *before* mortgaging ever earned.
-   **The engine already supports the fix with no change:** a single `manage` commit
-   can unmortgage *and* build atomically (`manageSummary` previews via
-   `withStagedMortgage`; `applyManageCommit` plans the build against the
-   post-unmortgage state). The work is purely in policy — when flush, stage an
-   unmortgage of a monopoly's members and develop it, prioritized by
-   `positionValue` gain per dollar.
-2. **N-way trade construction.** Construction searches only 2-way deals
+1. **N-way trade construction.** Construction searches only 2-way deals
    (mutual-completion swaps + cash). The engine and `positionValue` model are both
    N-way-ready; the *search* isn't.
-3. **Mortgage-to-fund a build / sweetener.** Raise-to-*buy* is wired, but builds and
-   trade sweeteners are cash-funded only. A pro will mortgage a back-burner lot to
-   hotel a prime set a turn sooner.
+2. **Mortgage-to-fund a build / sweetener.** Raise-to-*buy* is wired, and
+   redeploy mortgages-then-builds an idle set, but a *fresh* build/sweetener is
+   still cash-funded only. A pro will mortgage a back-burner lot to hotel a prime
+   set a turn sooner.
 
 When you close one of these, move it out of this list and fold the resulting
 behavior into the relevant section above.
+
+(Closed: **unmortgage-and-redeploy idle capital** — the gap the 491-turn dev game
+exposed, where the leader held $11k and five monopolies but only the one set it
+had hotelled before mortgaging ever earned. Folded into `planBuild` / the
+**managing** policy above.)
+
+## Considered and rejected
+
+**Cash-/affordability-scaled monopoly value.** A tempting idea from the same dev
+game: discount a completed set's worth by the owner's ability to *develop* it now
+— a broke player can't turn a bare monopoly into houses, so (the argument goes)
+it's worth less to them, and the bot shouldn't accept a set it can't capitalize
+on. We deliberately do **not** do this. The reasoning, for whoever revisits it:
+
+- **Cash is a flow; a monopoly is a durable asset.** Over a full game a player
+  regenerates cash (GO, rent) and will develop a set it holds. `positionValue`
+  already credits *every* undeveloped monopoly — clean or mortgaged — at its full
+  developed potential on exactly that premise, and the redeploy logic makes the
+  premise true: the bot now lights up its sets as soon as it's flush. Discounting
+  by current cash would contradict the behavior we just added.
+- **It would inject losing timidity into foundational decisions.** `positionValue`
+  is the single yardstick — `acquisitionValue` (buy) and the auction bid cap key
+  off it. Cash-scaling would make a poor bot *under-value completing its own
+  monopolies*: declining set-completers and under-bidding for them. Completing a
+  set is correct even when broke (future rent + denial). A super-rational pro is
+  **bold about acquiring sets and patient about developing them**; cash-timid
+  acquisition is a classic blunder.
+- **The magnitude is decision-irrelevant anyway.** Done *consistently* with how
+  clean undeveloped sets are valued, the only honest discount for a mortgaged set
+  is the interest to reactivate it (the principal returns as asset value) — ~$11
+  per lot. That is swamped by `ACCEPT_MARGIN` ($30) and `RIVAL_TOLERANCE` (25%),
+  so it would not flip any real decision. The dev-game trade that prompted this
+  was in fact a *good* trade for the bot; the loss was purely the redeploy gap.
+- **Tempo is real, but cash-scaling is the wrong tool.** Developing first genuinely
+  matters — but that's a turn-order/board effect, addressed by developing ASAP
+  (redeploy), not by discounting a durable asset's worth by a transient balance.
+
+Where cash legitimately belongs in trade logic is **survival, not valuation**: the
+evaluator already vetoes a deal that ends cash-negative unless the gain is
+transformative. A graduated version (don't trade below the rent reserve for a
+marginal gain) is a reasonable future *defensive* hardening — but it is a
+liquidity guard, not a discount on what a monopoly is worth.
 
 ## Testing
 

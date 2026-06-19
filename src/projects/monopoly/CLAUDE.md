@@ -226,9 +226,10 @@ policies and the real default resolver); the `claude` decision logic in
 verify the end-to-end proactive flow (off-turn trades, raise-to-buy) by running
 the app.
 
-The `claude` strategy's own known limits and refinement roadmap (the
-unmortgage-and-redeploy gap, N-way trades, mortgage-to-fund-a-build) live in
-`bots/CLAUDE.md`.
+The `claude` strategy's own known limits and refinement roadmap (N-way trades,
+mortgage-to-fund-a-build) live in `bots/CLAUDE.md`, along with the design
+decisions behind it — including why monopoly value is deliberately *not* scaled
+by cash/affordability.
 
 ## Lobby
 
