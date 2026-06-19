@@ -27,6 +27,14 @@ selection is driven by measurement.** A hypothesis only becomes a locked-in
 version when the simulator says so with statistical confidence — never because
 the narrative was convincing.
 
+**Change granularity:** prefer the *smallest coherent change* per version, so the
+A/B attributes the result to one idea. But "smallest coherent" isn't always
+"single line" — some improvements are synergistic (two mechanisms that are only
+net-positive together; each regresses alone). When a hypothesis genuinely requires
+coupled changes, that's one version — just **state the hypothesis explicitly** so
+the test grades a claim, not a guess, and **bisect** the coupling if it later
+regresses.
+
 ## The loop
 
 ### Near-term (manual, human-in-the-loop)
@@ -71,8 +79,8 @@ So two things must hold before the automated loop is meaningful:
 
 1. The bot must reliably *break the deadlock* — assemble monopolies and develop
    (the trading work).
-2. Every game must yield a **decisive result** even if it hits the turn cap (a
-   tiebreak rule — see "Open decisions").
+2. Every game must yield a **decisive result** even if it hits the turn cap — see
+   "Decisive outcome" below.
 
 ### Why the deadlock (for whoever fixes it)
 
@@ -91,9 +99,34 @@ resolve cleanly, which is why 2-Claude and Claude-vs-dumb already produce
 winners. The fix lives in trade construction: N-way deals, and/or pricing the
 rival-monopoly threat (a big enough cash premium) instead of vetoing it.
 
+### Decisive outcome (the tiebreak)
+
+Official Monopoly tournaments don't cap *turns* — they cap *time* (typically 90
+minutes), and when the clock runs out the **richest player wins**: net worth =
+cash + printed price of unmortgaged property + half-price for mortgaged property +
+buildings at purchase cost. There's no forced-trade or anti-stalemate rule; the
+clock is the resolver.
+
+We mirror that: a **turn cap** is our clock, and at the cap the winner is decided
+by that same **official net-worth** formula — a stable, version-independent
+calculation, *not* a bot's strategic `positionValue` (which is tuned for decisions,
+not for fair scoring). So every game yields a winner, and a deadlock-prone version
+simply tends to win "on net worth at the bell" rather than by bankrupting
+opponents — a weak signal we can still measure while we drive caps toward rare.
+
 ## Measurement — making "v2 is better" trustworthy
 
-The whole scheme rests on the A/B test being sound. Guardrails:
+This is a solved problem in a neighboring field: **computer-chess engine testing**
+(e.g. Stockfish's "fishtest"), and we borrow it wholesale. Each version carries an
+**Elo rating** earned against a **gauntlet** — the field of past champions plus
+`dumb` as a floor — not just its immediate predecessor, which is what makes the
+rating robust to non-transitivity. To decide whether a candidate is actually
+stronger, use a **sequential test (SPRT)**: keep playing until the evidence
+crosses an accept-or-reject boundary at controlled error rates, instead of fixing
+a game count up front. SPRT answers "how many games?" on its own — strong changes
+resolve fast, marginal ones play longer or get rejected.
+
+On top of that, the guardrails:
 
 - **Define the metric precisely.** With 2 v2 seats out of 4, the null hypothesis
   is a **50% win share** for "any v2 seat wins". Test the observed share against
@@ -126,17 +159,28 @@ How versions are represented (separate snapshot modules, a parameterized config,
 or a hybrid) is an open decision — it determines how cleanly two *structurally
 different* logics can coexist.
 
-## Open decisions (to lock before building the automated loop)
+## Decisions (locked 2026-06-19)
 
-1. **Version representation** — snapshot files per version, a parameterized
-   config object, or a hybrid (shared library + thin per-version policy)?
-   Structural changes like N-way search aren't just weights, which argues for
-   real code snapshots.
-2. **Evaluation target** — gauntlet/ladder vs. head-to-head against the immediate
-   predecessor.
-3. **Decisive-outcome rule** — when a game hits the turn cap, score it by final
-   `positionValue` (every game yields a winner), or discard it as no-result.
-4. **Run sizing** — games per A/B test, and the train/validation seed split.
+1. **Version representation — self-contained snapshots.** Each version is a
+   complete copy of the policy code (strategy + its valuation/trades), free to
+   change *anything*. We do **not** pre-extract shared "bot libraries" — that would
+   trap future versions into logic we may want to drop. Only genuinely stable,
+   non-strategic facts (board geometry, space names, the official net-worth
+   calculation) live in shared infrastructure. The live champion in `registry.ts`
+   is promoted from a snapshot **only on a human green light**; the previous
+   champion stays archived so we can always run and branch from it.
+2. **Evaluation target — gauntlet + Elo, decided by SPRT** (see Measurement), not
+   head-to-head-with-predecessor only.
+3. **Decisive-outcome rule — official net-worth tiebreak at a turn cap** (see
+   "Decisive outcome"). We also keep driving the bot so natural bankruptcies
+   happen well before the cap.
+4. **Controlled randomness is in scope.** A version may use randomness to break
+   symmetric deadlocks or mix strategies — drawn from the seeded `rngState`, never
+   `Math.random`, so replay stays intact. This needs a small `Bot`-contract change
+   to thread the rng, made if/when a version wants it.
+
+Still to size when we build the automated loop: the SPRT bounds (Elo0/Elo1, α/β)
+and the practice vs. held-out seed split.
 
 ## Version log
 
