@@ -23,10 +23,11 @@ Consequences:
   reserved for a future jail toggle — v1 ships a per-turn jail prompt as a
   deliberate, owner-approved exception).
 - **Trades and property management happen at a turn boundary, not mid-turn.** A
-  player arms "trade" or "manage"; the game pauses at the next **pre-roll** and
-  opens their builder/intermission. Arms form one FIFO `boundaryQueue`
-  (`{ playerId, kind }`), each resolved before the roll. This is the official
-  "act between turns" window.
+  player arms "trade" or "manage"; the game pauses at the next **pre-roll** — or,
+  for a jailed player, at their **jail decision** — and opens their
+  builder/intermission. Arms form one FIFO `boundaryQueue` (`{ playerId, kind }`),
+  each resolved before play continues. This is the official "act between turns"
+  window.
 
 ## Engine model: hybrid, state-authoritative
 
@@ -44,10 +45,13 @@ autoStep(state, rng): { state, newEvents }
 ```
 
 The authoritative route applies **one unit per call** — one `apply` for an
-intent (no auto-drain) or one `autoStep` per `step` request. `autoStep` only
-progresses at `pre-roll`, where it first **drains `boundaryQueue`** (opening a
-trade/manage intermission for the head requester) before rolling; it exits the
-moment it hits a real decision phase.
+intent (no auto-drain) or one `autoStep` per `step` request. `autoStep`
+progresses at `pre-roll` **and at a jailed player's `jail-decision`**, where it
+first **drains `boundaryQueue`** (opening a trade/manage intermission for the
+head requester) before rolling; it exits the moment it hits a real decision
+phase. A boundary opened from `jail-decision` resolves back to `pre-roll`, which
+re-enters the same jail decision while the player is still jailed — so no
+separate resume target is stored.
 
 **Keep the intent surface small** (`engine.ts` `apply` dispatches them). New
 mechanics belong inside `autoStep`, not as new intents. The line: if a player
@@ -150,6 +154,14 @@ pay $50, play a card (returns to deck bottom), or serve out (a failed third roll
 forces the $50 fine via the debt model). The per-turn **pay/card/roll prompt is
 the v1 exception** to "stance, not a prompt" (see Philosophy). Bots leave ASAP:
 card → cash → roll.
+
+The jail decision is **also a turn boundary**: the jailed player — or an off-turn
+player — may arm trade/manage and open that intermission before the jail roll (the
+same `boundaryQueue` drain as `pre-roll`), then return to the jail decision once it
+commits/cancels, since the player is still jailed. This gives a human the "act
+between turns" window at the jail prompt that they'd otherwise only get at a normal
+turn start. A bot doesn't need it — it already arms at the `pre-roll` a beat earlier
+— so a *staying* bot simply notes its reasoning as a `bot-note`, then rolls.
 
 ### Chance / Community Chest
 
