@@ -8,13 +8,20 @@ import {
   CYCLE_PX,
   MAX_SLIDE_ROWS,
   anchorNear,
+  forwardRows,
   signedRows,
   slideGeometry,
+  slideGeometryBy,
   followTarget,
 } from "../camera";
 import { SPACES } from "../data";
 import { LANE_TOKEN_PX, STRIP_LEFT_PX, lanePitch, laneOffset } from "../lanes";
-import { glideAnimMs, slideAnimMs } from "../pacing";
+import {
+  classifyRedirect,
+  glideAnimMs,
+  redirectPauseMs,
+  slideAnimMs,
+} from "../pacing";
 import { useMonopolyStore } from "../store";
 import { PLAYER_COLOR_VAR } from "../theme";
 import { useTokenAnim } from "../token-anim-store";
@@ -72,6 +79,37 @@ interface MovingToken {
   // Whether the camera should follow this slide off the bottom edge. Captured
   // at move time so a mid-slide follow toggle doesn't change an in-flight hop.
   follow: boolean;
+  // What plays once this slide finishes, for a redirect turn (a card / Go-to-
+  // Jail relocation animated as two beats). null = a plain move that just ends.
+  next: RedirectStep | null;
+}
+
+// A redirect's second beat, played after the rolled-landing slide and a pause:
+// either another slide (an "advance to" / "back 3" card's relocation) or the
+// Go-to-Jail finish. A Go-to-Jail snaps the token into the cell — "do not pass
+// GO", no slide — but the camera glides to `jailPos` to reveal it there before
+// gliding on to the next player at `nextPos`. See the move-detection effect.
+type RedirectStep =
+  | { kind: "leg"; leg: PendingLeg }
+  | { kind: "jail"; jailPos: number; nextPos: number; follow: boolean };
+
+// One slide of a redirect, laid out lazily: its on-screen geometry is computed
+// in `startLeg` from the live scroll position when it actually starts, so the
+// second leg continues from exactly where the first left the token.
+interface PendingLeg {
+  player: Player;
+  laneX: number;
+  fromPos: number;
+  // Explicit signed row delta (forward positive / backward negative) so a leg
+  // can slide forward the long way instead of the short way back.
+  signed: number;
+  // Static board copy of the token to keep hidden while this leg animates —
+  // always the turn's final resolved square (the only square the mover's static
+  // token occupies), so both legs hide the same one.
+  hidePos: number;
+  durationMs: number;
+  follow: boolean;
+  next: RedirectStep | null;
 }
 
 const easeInOut = (t: number) =>
@@ -122,6 +160,14 @@ export function Squares() {
   // scroll or handoff anchor.
   const suppressSnap = useRef(false);
   const scrollRaf = useRef<number | null>(null);
+  // The hold between a redirect's two legs (see the move-detection effect). Kept
+  // in a ref so a new move / the slide's end can cancel a pending second leg.
+  const pauseTimer = useRef<number | null>(null);
+  // True for the whole duration of a redirect sequence. The board's invisible
+  // copy snap-back (`handleScroll`) is held off while it's set: a redirect's
+  // forward-wrapping legs cross the copy seam, and a ±CYCLE snap mid-sequence
+  // would jump the overlay token (which lives in absolute scroll-content coords).
+  const redirectActive = useRef(false);
 
   // Park a given board square just under the header (instant). Used for the
   // non-sliding cases (mount, follow toggle, teleports).
@@ -223,15 +269,126 @@ export function Squares() {
   // player has rolled — and needs a smooth camera glide, not an instant snap.
   const lastActiveId = useRef<string | null>(null);
 
+  const clearPause = useCallback(() => {
+    if (pauseTimer.current !== null) {
+      clearTimeout(pauseTimer.current);
+      pauseTimer.current = null;
+    }
+  }, []);
+
+  // Park the camera in the middle board copy without moving it on screen — the
+  // three copies are identical, so a ±CYCLE shift is invisible. Run before a
+  // redirect's first leg so its forward-wrapping slides start from a copy with
+  // room ahead, keeping the overlay token within the rendered copies (a leg that
+  // ended past the last copy would push the absolute token — and the camera that
+  // follows it — into the empty space below the board).
+  const recenterCamera = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    while (el.scrollTop >= CYCLE_PX * 1.5) el.scrollTop -= CYCLE_PX;
+    while (el.scrollTop < CYCLE_PX * 0.5) el.scrollTop += CYCLE_PX;
+  }, []);
+
   const endAnim = useCallback(() => {
     if (scrollRaf.current !== null) {
       cancelAnimationFrame(scrollRaf.current);
       scrollRaf.current = null;
     }
+    clearPause();
     suppressSnap.current = false;
     setMoving(null);
     useTokenAnim.getState().clear();
+  }, [clearPause]);
+
+  // Lay out and play one leg from the live scroll position. Reading the geometry
+  // here (not when the redirect was detected) is what lets the second leg pick up
+  // exactly where the first left the token, even after a follow scroll. Hides the
+  // mover's static copy at the resolved square so the overlay isn't drawn twice.
+  const startLeg = useCallback((leg: PendingLeg) => {
+    const el = ref.current;
+    if (!el) return;
+    const { startCenter, endCenter } = slideGeometryBy(
+      el.scrollTop,
+      el.clientHeight,
+      leg.fromPos,
+      leg.signed,
+    );
+    setMoving({
+      player: leg.player,
+      laneX: leg.laneX,
+      fromTop: startCenter - LANE_TOKEN_PX / 2,
+      toTop: endCenter - LANE_TOKEN_PX / 2,
+      trailTop: Math.min(startCenter, endCenter),
+      trailHeight: Math.abs(leg.signed) * ROW_PX,
+      durationMs: leg.durationMs,
+      endCenter,
+      viewportHeight: el.clientHeight,
+      follow: leg.follow,
+      next: leg.next,
+    });
+    useTokenAnim.getState().hide(leg.player.id, leg.hidePos);
   }, []);
+
+  // Called when a slide finishes. A plain move just ends; a redirect holds on the
+  // rolled square for the pause, then plays its second beat — the redirecting
+  // slide, or (for a Go-to-Jail) the snap into the cell plus a glide to the next
+  // player. The pause length is the same `redirectPauseMs` the store budgets the
+  // dwell around, so the motion always finishes inside the held snapshot.
+  const advanceFrom = useCallback(
+    (current: MovingToken) => {
+      const next = current.next;
+      if (!next) {
+        // End of the move — a plain slide, or a redirect's final leg.
+        endAnim();
+        redirectActive.current = false;
+        return;
+      }
+      const pauseMs = redirectPauseMs(useMonopolyStore.getState().turnMs);
+      if (next.kind === "leg") {
+        pauseTimer.current = window.setTimeout(() => {
+          pauseTimer.current = null;
+          startLeg(next.leg);
+        }, pauseMs);
+        return;
+      }
+      // Go-to-Jail: after the hold on the Go-to-Jail square, the token snaps into
+      // the cell (no slide — "do not pass GO"), so clear the overlay and let the
+      // static Jail token take over. The camera then glides to the Jail cell to
+      // reveal where they landed; once that settles it holds, then glides on to
+      // the next player. In free view we move neither camera (the Follow pill
+      // re-centers).
+      pauseTimer.current = window.setTimeout(() => {
+        pauseTimer.current = null;
+        endAnim();
+        const el = ref.current;
+        if (!el || !next.follow) {
+          redirectActive.current = false;
+          return;
+        }
+        const turnMs = useMonopolyStore.getState().turnMs;
+        const jailTarget = anchorNear(next.jailPos, el.scrollTop);
+        animateScroll(
+          el,
+          jailTarget,
+          glideAnimMs(turnMs, Math.abs(jailTarget - el.scrollTop)),
+          () => {
+            // The token is now revealed in the Jail cell — hold on it, then move
+            // the camera on to whoever's turn is next. The overlay is already
+            // gone, so the sequence can release the snap-back as it heads off.
+            pauseTimer.current = window.setTimeout(() => {
+              pauseTimer.current = null;
+              redirectActive.current = false;
+              const onward = ref.current;
+              if (onward) {
+                glideToAnchor(onward, anchorNear(next.nextPos, onward.scrollTop));
+              }
+            }, pauseMs);
+          },
+        );
+      }, pauseMs);
+    },
+    [endAnim, startLeg, glideToAnchor, animateScroll],
+  );
 
   useEffect(() => {
     if (!active) return;
@@ -250,12 +407,89 @@ export function Squares() {
       );
     }
     const map = prevPos.current;
-    // Read the active player's prior position BEFORE refreshing the map, so its
-    // own slide diff is preserved; then bring every entry up to date (see the
-    // `prevPos` note above on off-subject relocations like jail).
+    // Read prior positions BEFORE refreshing the map, so the slide diffs are
+    // preserved; then bring every entry up to date (see the `prevPos` note above
+    // on off-subject relocations like jail). The MOVER is whoever held the dice
+    // this beat — the previous active player (a Go-to-Jail ends their turn and
+    // hands off in the same snapshot, so the mover isn't always the new active
+    // one). `from` is the new active player's prior square for the plain path.
     const from = map.get(active.id);
+    const moverId = prevActiveId ?? active.id;
+    const moverStart = map.get(moverId);
     for (const p of useMonopolyStore.getState().state.players) {
       map.set(p.id, p.position);
+    }
+
+    // A redirect: the dice rolled the mover onto one square but a card / Go-to-
+    // Jail moved them on to another. Play the rolled landing first, hold, then
+    // the redirect — rather than darting straight to the resolved square (which
+    // reads as a backward jump or an out-of-reach leap). Three-doubles is not a
+    // redirect (the token never moved) and falls through to the plain glide.
+    const toState = useMonopolyStore.getState().state;
+    const redirect =
+      prevActiveId !== null && moverStart !== undefined
+        ? classifyRedirect(toState, moverId, moverStart)
+        : null;
+    if (redirect && moverStart !== undefined) {
+      clearPause();
+      // Hold off the snap-back, then park in the middle copy (invisible) so the
+      // legs' forward wraps stay within the rendered board. Arm the flag first so
+      // recenter's own scroll write can't trip the snap-back.
+      redirectActive.current = true;
+      recenterCamera();
+      // classifyRedirect only returns non-null for a mover present in `toState`,
+      // so the seat lookup always resolves.
+      const seat = toState.players.findIndex((p) => p.id === moverId);
+      const moverPlayer = toState.players[seat];
+      const { turnMs } = useMonopolyStore.getState();
+      const laneX =
+        STRIP_LEFT_PX + laneOffset(seat, useTokenAnim.getState().lanePitch);
+      const follow = following;
+
+      // The redirecting second leg. A Go-to-Jail snaps into the cell (camera
+      // reveals it at the Jail square, then moves to the next player) rather than
+      // sliding; a card slides forward (the long way past GO when needed) or, for
+      // "back 3", backward.
+      const finish: RedirectStep =
+        redirect.finish === "jail"
+          ? {
+              kind: "jail",
+              jailPos: redirect.resolved,
+              nextPos: active.position,
+              follow,
+            }
+          : (() => {
+              const legSigned =
+                redirect.finish === "back"
+                  ? -forwardRows(redirect.resolved, redirect.rolledTo)
+                  : forwardRows(redirect.rolledTo, redirect.resolved);
+              return {
+                kind: "leg",
+                leg: {
+                  player: moverPlayer,
+                  laneX,
+                  fromPos: redirect.rolledTo,
+                  signed: legSigned,
+                  hidePos: redirect.resolved,
+                  durationMs: slideAnimMs(turnMs, Math.abs(legSigned)),
+                  follow,
+                  next: null,
+                },
+              };
+            })();
+
+      const leg1Signed = forwardRows(moverStart, redirect.rolledTo);
+      startLeg({
+        player: moverPlayer,
+        laneX,
+        fromPos: moverStart,
+        signed: leg1Signed,
+        hidePos: redirect.resolved,
+        durationMs: slideAnimMs(turnMs, leg1Signed),
+        follow,
+        next: finish,
+      });
+      return;
     }
 
     const signed = from === undefined ? 0 : signedRows(from, active.position);
@@ -294,6 +528,9 @@ export function Squares() {
     const laneX =
       STRIP_LEFT_PX + laneOffset(active.seat, useTokenAnim.getState().lanePitch);
 
+    // A plain slide supersedes any pending redirect leg from a prior turn.
+    clearPause();
+    redirectActive.current = false;
     // Package the hop; the slide effect below plays it.
     setMoving({
       player,
@@ -306,11 +543,20 @@ export function Squares() {
       endCenter,
       viewportHeight: el.clientHeight,
       follow: following,
+      next: null,
     });
     // Hide the static copy of the token at its destination row so it isn't
     // drawn twice while the overlay slides; the slide effect reveals it again.
     useTokenAnim.getState().hide(active.id, active.position);
-  }, [active, following, anchorActiveTop, glideToAnchor]);
+  }, [
+    active,
+    following,
+    anchorActiveTop,
+    glideToAnchor,
+    startLeg,
+    clearPause,
+    recenterCamera,
+  ]);
 
   // Play a slide transition: move the token to its landing, following the
   // camera only if the hop would carry it past the bottom margin. The orient
@@ -338,7 +584,11 @@ export function Squares() {
       ],
       { duration: durationMs, easing: "ease-in-out", fill: "forwards" },
     );
-    slide.onfinish = endAnim;
+    // On finish, advance the turn: a plain move just ends; a redirect plays its
+    // next beat (second leg, or snap-to-jail + glide). Captured `moving` is the
+    // leg that just finished.
+    const finished = moving;
+    slide.onfinish = () => advanceFrom(finished);
     // Follow only if the landing would fall past the bottom margin; otherwise
     // hold the camera still and let the token slide down into view.
     if (follow) {
@@ -349,14 +599,14 @@ export function Squares() {
     return () => {
       slide.cancel();
     };
-  }, [moving, endAnim, animateScroll]);
+  }, [moving, advanceFrom, animateScroll]);
 
   // When the user crosses into the prev/next copy, silently snap back into
   // the middle copy. The jump is invisible because all three copies render
   // identical content at identical offsets (mod CYCLE_PX).
   const handleScroll = () => {
     const el = ref.current;
-    if (!el || suppressSnap.current) return;
+    if (!el || suppressSnap.current || redirectActive.current) return;
     if (el.scrollTop < CYCLE_PX * 0.5) {
       el.scrollTop += CYCLE_PX;
     } else if (el.scrollTop >= CYCLE_PX * 1.5) {

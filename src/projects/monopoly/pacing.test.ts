@@ -2,15 +2,17 @@ import { describe, expect, it } from "vitest";
 import { freshGame } from "./mocks";
 import {
   DEFAULT_TURN_MS,
+  classifyRedirect,
   driveOp,
   glideAnimMs,
   ingestSnapshot,
   paceTransition,
+  redirectPauseMs,
   slideAnimMs,
   type Snapshot,
 } from "./pacing";
 import type { Bot } from "./bots/registry";
-import type { GameState, Player } from "./types";
+import type { GameEvent, GameState, Player, TurnGroup } from "./types";
 
 // freshGame seats p1 as the human and p2..p4 as bots, p1 active at pre-roll.
 // Pin the bots to the `dumb` baseline so the pacer's default-resolver tests
@@ -335,6 +337,168 @@ describe("paceTransition", () => {
     const handoff = paceTransition(base, withTurn(base, { playerId: "p2" }), DEFAULT_TURN_MS);
     const move = paceTransition(base, mapPlayer(base, "p1", { position: 6 }), DEFAULT_TURN_MS);
     expect(handoff.durationMs + move.durationMs).toBe(DEFAULT_TURN_MS);
+  });
+});
+
+describe("classifyRedirect", () => {
+  const roll = (toPosition: number, doublesStreak = 0): GameEvent => ({
+    kind: "roll",
+    dice: [1, 1],
+    doublesStreak,
+    toPosition,
+    passedGo: false,
+  });
+
+  // A destination snapshot where p1 rolled this beat and ended at `resolved`,
+  // with `events` recording the beat. A handoff (Go-to-Jail ends the turn) puts
+  // the next player's empty group after p1's, exactly as the engine leaves it.
+  const dest = (
+    resolved: number,
+    events: GameEvent[],
+    handoff = false,
+  ): GameState => {
+    const moved = mapPlayer(base, "p1", { position: resolved });
+    const groups: TurnGroup[] = [{ turn: 1, playerId: "p1", events }];
+    if (handoff) groups.push({ turn: 2, playerId: "p2", events: [] });
+    return {
+      ...withTurn(moved, { playerId: handoff ? "p2" : "p1" }),
+      turns: groups,
+    };
+  };
+
+  it("reads an 'advance to' card as a forward redirect", () => {
+    // Rolled onto Chance (22), the card advances forward to Illinois (24).
+    const to = dest(24, [
+      roll(22),
+      { kind: "card-drawn", source: "chance", cardId: "chance-illinois" },
+    ]);
+    expect(classifyRedirect(to, "p1", 18)).toEqual({
+      rolledTo: 22,
+      resolved: 24,
+      finish: "forward",
+      handoff: false,
+    });
+  });
+
+  it("reads 'back 3' as a backward redirect", () => {
+    // Rolled onto Chance (36), the card steps back to 33.
+    const to = dest(33, [
+      roll(36),
+      { kind: "card-drawn", source: "chance", cardId: "chance-back-3" },
+    ]);
+    expect(classifyRedirect(to, "p1", 30)).toEqual({
+      rolledTo: 36,
+      resolved: 33,
+      finish: "back",
+      handoff: false,
+    });
+  });
+
+  it("reads a Go-to-Jail tile as a jail redirect that hands off", () => {
+    // Rolled onto Go-to-Jail (30), sent to the Jail cell (10); turn ends.
+    const to = dest(10, [roll(30), { kind: "go-to-jail", reason: "tile" }], true);
+    expect(classifyRedirect(to, "p1", 27)).toEqual({
+      rolledTo: 30,
+      resolved: 10,
+      finish: "jail",
+      handoff: true,
+    });
+  });
+
+  it("reads a Go-to-Jail card as a jail redirect that hands off", () => {
+    const to = dest(
+      10,
+      [
+        roll(22),
+        { kind: "card-drawn", source: "chance", cardId: "chance-jail" },
+        { kind: "go-to-jail", reason: "card" },
+      ],
+      true,
+    );
+    expect(classifyRedirect(to, "p1", 18)).toMatchObject({
+      finish: "jail",
+      handoff: true,
+    });
+  });
+
+  it("is NOT a redirect on three doubles — the token never moved", () => {
+    // The would-be square (31) is recorded on the roll, but the engine jails
+    // straight from the pre-roll square, so this stays a plain snap + glide.
+    const to = dest(
+      10,
+      [roll(31, 3), { kind: "go-to-jail", reason: "three-doubles" }],
+      true,
+    );
+    expect(classifyRedirect(to, "p1", 25)).toBeNull();
+  });
+
+  it("is null for a plain move (dice landed where they ended)", () => {
+    const to = dest(24, [roll(24)]);
+    expect(classifyRedirect(to, "p1", 18)).toBeNull();
+  });
+
+  it("is null when the mover did not move this beat", () => {
+    // A later beat (e.g. a buy) with a stale earlier roll: same start + end.
+    const to = dest(24, [roll(22), { kind: "buy", position: 24, price: 100 }]);
+    expect(classifyRedirect(to, "p1", 24)).toBeNull();
+  });
+});
+
+describe("paceTransition — redirect dwell", () => {
+  const roll = (toPosition: number): GameEvent => ({
+    kind: "roll",
+    dice: [1, 1],
+    doublesStreak: 0,
+    toPosition,
+    passedGo: false,
+  });
+
+  it("budgets a card redirect as two slides plus the pause", () => {
+    const from = mapPlayer(base, "p1", { position: 18 });
+    const to: GameState = {
+      ...mapPlayer(base, "p1", { position: 24 }),
+      turns: [
+        {
+          turn: 1,
+          playerId: "p1",
+          events: [
+            roll(22),
+            { kind: "card-drawn", source: "chance", cardId: "chance-illinois" },
+          ],
+        },
+      ],
+    };
+    const pace = paceTransition(from, to, DEFAULT_TURN_MS);
+    expect(pace.phase).toBe("redirect");
+    expect(pace.durationMs).toBe(Math.round(DEFAULT_TURN_MS * (0.65 * 2 + 0.3)));
+  });
+
+  it("budgets a Go-to-Jail redirect as a slide, the pause, the reveal + hold, and the handoff glide", () => {
+    const from = mapPlayer(base, "p1", { position: 27 });
+    const to: GameState = {
+      ...withTurn(mapPlayer(base, "p1", { position: 10 }), { playerId: "p2" }),
+      turns: [
+        {
+          turn: 1,
+          playerId: "p1",
+          events: [roll(30), { kind: "go-to-jail", reason: "tile" }],
+        },
+        { turn: 2, playerId: "p2", events: [] },
+      ],
+    };
+    const pace = paceTransition(from, to, DEFAULT_TURN_MS);
+    expect(pace.phase).toBe("redirect");
+    // slide + 2 glides (reveal-jail, hand-off) + 2 pauses (on-tile, jail-hold).
+    expect(pace.durationMs).toBe(
+      Math.round(DEFAULT_TURN_MS * (0.65 + 0.35 * 2 + 0.3 * 2)),
+    );
+  });
+
+  it("scales the inter-leg pause with turnMs", () => {
+    expect(redirectPauseMs(DEFAULT_TURN_MS)).toBe(Math.round(DEFAULT_TURN_MS * 0.3));
+    expect(redirectPauseMs(DEFAULT_TURN_MS * 2)).toBe(
+      redirectPauseMs(DEFAULT_TURN_MS) * 2,
+    );
   });
 });
 

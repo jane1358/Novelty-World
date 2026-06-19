@@ -41,22 +41,34 @@ export const signedRows = (from: number, to: number) => {
   return forward <= SPACES.length / 2 ? forward : forward - SPACES.length;
 };
 
+// Always-forward row distance from `from` to `to` (0..len-1) — how many rows
+// DOWN the board the token travels going forward, never the short way back. A
+// redirect's slide legs use this (a roll and most "advance to" cards move
+// forward, even when the destination is more than half a board ahead, which
+// `signedRows` would otherwise read as a short backward cut). See `pacing.ts`.
+export const forwardRows = (from: number, to: number) =>
+  (to - from + SPACES.length) % SPACES.length;
+
 export interface SlideGeometry {
   signed: number;
   startCenter: number;
   endCenter: number;
 }
 
-// Geometry of a token hop, starting from wherever the token currently sits on
-// screen. Finds the nearest board copy of `from` to the viewport center, then
-// the hop's start and end row centers in content coords.
-export const slideGeometry = (
+// Geometry of a token hop given an explicit signed row delta (positive = forward
+// down the board, negative = backward up it). Finds the nearest board copy of
+// `from` to the viewport center, then the hop's start and end row centers in
+// content coords. Taking `signed` directly — rather than deriving it from a
+// destination via `signedRows` — lets a caller force the FORWARD direction even
+// when the destination is more than half a board ahead (an "advance to" card
+// that wraps the long way forward), which `signedRows` would read as a short
+// backward cut. See the redirect legs in `components/squares.tsx`.
+export const slideGeometryBy = (
   scrollTop: number,
   clientHeight: number,
   from: number,
-  to: number,
+  signed: number,
 ): SlideGeometry => {
-  const signed = signedRows(from, to);
   const viewCenter = scrollTop + clientHeight / 2;
   const copy = clampCopy(
     Math.round((viewCenter - (from * ROW_PX + ROW_PX / 2)) / CYCLE_PX),
@@ -65,6 +77,18 @@ export const slideGeometry = (
   const endCenter = startCenter + signed * ROW_PX;
   return { signed, startCenter, endCenter };
 };
+
+// Geometry of a token hop to a destination, taking the natural short-way
+// direction (`signedRows`): a die roll reads as a small forward hop, a teleport
+// more than half a board away as the short backward cut. The default for plain
+// moves; redirect legs use `slideGeometryBy` with an explicit signed delta.
+export const slideGeometry = (
+  scrollTop: number,
+  clientHeight: number,
+  from: number,
+  to: number,
+): SlideGeometry =>
+  slideGeometryBy(scrollTop, clientHeight, from, signedRows(from, to));
 
 // Down-only follow: the scrollTop the camera should animate to so the landing
 // clears the bottom margin, or null if it already fits (camera holds still).

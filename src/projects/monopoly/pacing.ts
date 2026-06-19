@@ -1,7 +1,8 @@
 import { BOTS, type Bot, type BotDecision } from "./bots/registry";
+import { deckFor } from "./data";
 import { driverRole } from "./driver";
 import { hasPendingBoundary } from "./engine";
-import type { GameState, Intent } from "./types";
+import type { CardSource, GameEvent, GameState, Intent } from "./types";
 
 /** Default per-client turn budget. One whole turn — glide to the active
  *  player, slide their token, hold on the landing — plays out over roughly
@@ -19,6 +20,20 @@ export const DEFAULT_TURN_MS = 2500;
  *  fold into the preceding landing hold. */
 const GLIDE_FRACTION = 0.35;
 const SLIDE_FRACTION = 0.65;
+
+// A `redirect` turn — a roll that relocated the mover after they landed (an
+// "advance to" / "back 3" card, or a Go-to-Jail tile / card) — plays in two
+// visible beats: the rolled landing, a pause, then the redirect. Each beat is a
+// slide phase, so the pause is the held breath between them and is budgeted as
+// its own fraction on top. A non-jail redirect is two slides + a pause (~2× a
+// plain turn, matching how a doubles re-roll reads — roll, move, pause, roll,
+// move). A jail redirect is one slide onto the square, the pause, then — because
+// "do not pass GO" forbids sliding the token there — a SNAP into the cell with
+// the camera gliding to follow it (so the viewer still sees where they went),
+// a hold, and finally the hand-off glide to the next player. Three-doubles is
+// NOT a redirect — the engine never moves the token, so its existing
+// snap-to-jail + glide is already right.
+const REDIRECT_PAUSE_FRACTION = 0.3;
 
 // Distance scaling for the in-phase animations. The camera glide and token
 // slide each run distance-proportionally and are capped *below* their phase
@@ -248,8 +263,107 @@ export function driveOp(
   return turnOp(playHead, myPlayerId, botFor);
 }
 
-/** Which animation a snapshot-to-snapshot transition reads as on screen. */
-export type Phase = "glide" | "slide" | "settle";
+/** Which animation a snapshot-to-snapshot transition reads as on screen. A
+ *  `redirect` is a roll that relocated the mover (card / Go-to-Jail tile): it
+ *  plays the rolled landing, a pause, then the redirect — see `classifyRedirect`
+ *  and the legs in `components/squares.tsx`. */
+export type Phase = "glide" | "slide" | "settle" | "redirect";
+
+/** How the mover reaches their resolved square from the square the dice rolled
+ *  them onto:
+ *  - `forward` / `back`: a second slide that way ("advance to" wraps forward the
+ *    long way; "back 3" steps backward).
+ *  - `jail`: a snap, not a slide — "go directly to Jail, do not pass GO". The
+ *    token never travels the board to the Jail cell. */
+export type RedirectFinish = "forward" | "back" | "jail";
+
+/** A roll that moved the mover somewhere other than where the dice landed —
+ *  the second, redirecting leg of the turn. Classified from the destination
+ *  snapshot's event log + the mover's pre-roll square. */
+export interface RedirectMove {
+  /** The square the dice rolled the mover onto (the first leg's landing). */
+  rolledTo: number;
+  /** The square they ended the beat on (the second leg's landing). */
+  resolved: number;
+  /** How the second leg reaches `resolved`. */
+  finish: RedirectFinish;
+  /** True when the beat also ended the mover's turn (a Go-to-Jail), so the
+   *  camera glides on to the next active player once the legs finish. */
+  handoff: boolean;
+}
+
+/** The mover's current-turn event group in a destination snapshot — the last
+ *  group that is theirs (a Go-to-Jail ends the turn and opens the next player's
+ *  empty group after it, so it isn't always the trailing one). */
+function currentTurnEvents(
+  to: GameState,
+  moverId: string,
+): readonly GameEvent[] | null {
+  for (let i = to.turns.length - 1; i >= 0; i--) {
+    if (to.turns[i].playerId === moverId) return to.turns[i].events;
+  }
+  return null;
+}
+
+function lastRollTo(events: readonly GameEvent[]): number | null {
+  let toPos: number | null = null;
+  for (const e of events) if (e.kind === "roll") toPos = e.toPosition;
+  return toPos;
+}
+
+function cardEffectKind(source: CardSource, cardId: string): string | null {
+  return deckFor(source).find((c) => c.id === cardId)?.effect.kind ?? null;
+}
+
+/** Classify the mover's move in a transition as a redirect, or null when it's a
+ *  plain move (or no move at all). The mover is the player who held the dice —
+ *  `from.turn.playerId` for the caller — and `startPos` is their pre-roll
+ *  square. A redirect is exactly: the mover moved this beat (`startPos` differs
+ *  from where they ended), and the dice landed them somewhere other than that
+ *  end square. Three-doubles is deliberately excluded: the engine jails without
+ *  ever moving the token, so its plain snap-to-jail + hand-off glide already
+ *  reads correctly and needs no two-leg playback. Pure — reads only the
+ *  destination snapshot + the supplied pre-roll square. */
+export function classifyRedirect(
+  to: GameState,
+  moverId: string,
+  startPos: number,
+): RedirectMove | null {
+  const resolved = to.players.find((p) => p.id === moverId)?.position;
+  if (resolved === undefined || resolved === startPos) return null;
+
+  const events = currentTurnEvents(to, moverId);
+  if (!events) return null;
+  const rolledTo = lastRollTo(events);
+  if (rolledTo === null || rolledTo === resolved) return null;
+
+  const jail = events.find(
+    (e): e is Extract<GameEvent, { kind: "go-to-jail" }> =>
+      e.kind === "go-to-jail",
+  );
+  if (jail) {
+    // The would-be-moved-then-jailed cases. Three-doubles never moved the
+    // token, so it's not a redirect — leave it to the plain glide path.
+    if (jail.reason === "three-doubles") return null;
+    return { rolledTo, resolved, finish: "jail", handoff: true };
+  }
+
+  // A relocating card (advance-to / advance-nearest / back-three). Back-three is
+  // the lone backward move; everything else advances forward (wrapping past GO
+  // the long way when needed). The drawn card's effect is the reliable signal —
+  // a forward "advance to" can span the same row distance as "back 3".
+  const card = events.find(
+    (e): e is Extract<GameEvent, { kind: "card-drawn" }> =>
+      e.kind === "card-drawn",
+  );
+  const kind = card ? cardEffectKind(card.source, card.cardId) : null;
+  return {
+    rolledTo,
+    resolved,
+    finish: kind === "back-three" ? "back" : "forward",
+    handoff: false,
+  };
+}
 
 /** A classified transition: the phase it animates as and how long the
  *  playback head should dwell on it before advancing, derived from the
@@ -281,6 +395,18 @@ export function paceTransition(
   to: GameState,
   turnMs: number,
 ): Pace {
+  // A redirect (card / Go-to-Jail relocation) is budgeted first: it can present
+  // either as a same-player two-slide or, for a Go-to-Jail, as a hand-off — so
+  // it has to be recognised before the plain glide / slide split below.
+  const mover = from.turn.playerId;
+  const startPos = activePosition(from, mover);
+  if (startPos !== undefined) {
+    const redirect = classifyRedirect(to, mover, startPos);
+    if (redirect) {
+      return { phase: "redirect", durationMs: redirectDwell(turnMs, redirect) };
+    }
+  }
+
   const activeTo = to.turn.playerId;
   if (activeTo !== from.turn.playerId) {
     return { phase: "glide", durationMs: Math.round(turnMs * GLIDE_FRACTION) };
@@ -289,6 +415,28 @@ export function paceTransition(
     return { phase: "slide", durationMs: Math.round(turnMs * SLIDE_FRACTION) };
   }
   return { phase: "settle", durationMs: 0 };
+}
+
+/** The playback dwell a redirect turn earns. A non-jail relocation is two slides
+ *  plus the inter-leg pause. A Go-to-Jail is one slide onto the square, the
+ *  pause, the camera glide that reveals the snapped token in the Jail cell with
+ *  its own hold, then the hand-off glide to the next player (the snap itself
+ *  claims no slide). Both scale with the viewer's `turnMs`, the same as every
+ *  other transition's budget. */
+function redirectDwell(turnMs: number, redirect: RedirectMove): number {
+  const fraction = redirect.handoff
+    ? SLIDE_FRACTION + GLIDE_FRACTION * 2 + REDIRECT_PAUSE_FRACTION * 2
+    : SLIDE_FRACTION * 2 + REDIRECT_PAUSE_FRACTION;
+  return Math.round(turnMs * fraction);
+}
+
+/** How long the board holds the token on the rolled square between a redirect's
+ *  two legs (the "do not pass GO" beat before a Go-to-Jail, or before the second
+ *  slide of a card move). Scales with `turnMs` so the pause stays proportional
+ *  to the viewer's pace. The board reads it so its pause matches the dwell
+ *  `redirectDwell` budgeted. */
+export function redirectPauseMs(turnMs: number): number {
+  return Math.round(turnMs * REDIRECT_PAUSE_FRACTION);
 }
 
 /** How long the camera glide runs within a `glide` transition — scaled by both
