@@ -10,7 +10,8 @@ import {
   type ManageStaged,
 } from "../manage";
 import { useMonopolyStore } from "../store";
-import type { GameState } from "../types";
+import { PLAYER_COLOR_VAR } from "../theme";
+import type { GameState, Player } from "../types";
 
 interface Props {
   state: GameState;
@@ -84,12 +85,20 @@ export function ManagePanel({ state, playerId }: Props) {
         }}
       >
         <Header
+          player={player}
+          isActor={isActor}
           text={
-            isForced
-              ? `Raise $${Math.max(0, -player.cash).toLocaleString("en-US")} — sell or mortgage`
-              : isBuy && buyPosition !== undefined
-                ? `Raise cash → Buy ${ownableName(buyPosition)} ($${price.toLocaleString("en-US")})`
-                : "Manage"
+            isActor
+              ? isForced
+                ? `Raise $${Math.max(0, -player.cash).toLocaleString("en-US")} — sell or mortgage`
+                : isBuy && buyPosition !== undefined
+                  ? `Raise cash → Buy ${ownableName(buyPosition)} ($${price.toLocaleString("en-US")})`
+                  : "Manage"
+              : isForced
+                ? `must raise $${Math.max(0, -player.cash).toLocaleString("en-US")}`
+                : isBuy && buyPosition !== undefined
+                  ? `is raising cash to buy ${ownableName(buyPosition)} ($${price.toLocaleString("en-US")})`
+                  : "is managing their properties"
           }
           alarm={isForced}
         />
@@ -165,13 +174,39 @@ const SECTION_STYLE: CSSProperties = {
   boxShadow: "inset 0 1px 0 var(--mono-frame)",
 };
 
-function Header({ text, alarm }: { text: string; alarm: boolean }) {
+/** When the local client is the actor, `text` is an imperative instruction
+ *  ("Manage", "Raise cash → Buy …") and stands alone. When watching someone
+ *  else act, the actor's color dot + name are prepended and `text` reads as a
+ *  third-person predicate ("Alice is managing their properties") so spectators
+ *  can't mistake the live staging for their own turn. */
+function Header({
+  player,
+  isActor,
+  text,
+  alarm,
+}: {
+  player: Player;
+  isActor: boolean;
+  text: string;
+  alarm: boolean;
+}) {
   return (
     <span
-      className="truncate font-semibold uppercase tracking-wide"
+      className="inline-flex min-w-0 items-center gap-1.5 truncate font-semibold uppercase tracking-wide"
       style={alarm ? { color: "var(--mono-red)" } : undefined}
     >
-      {text}
+      {!isActor && (
+        <span
+          className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
+          style={{
+            backgroundColor: PLAYER_COLOR_VAR[player.color],
+            boxShadow: "0 0 0 1px var(--mono-frame)",
+          }}
+        />
+      )}
+      <span className="truncate">
+        {isActor ? text : `${player.name} ${text}`}
+      </span>
     </span>
   );
 }
