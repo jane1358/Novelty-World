@@ -25,15 +25,19 @@ interface Props {
 // only re-renders the SquareRows whose contents really changed.
 export function SquareRow({ position }: Props) {
   const space = SPACES[position];
-  // Owner hue reflects the trade-in-progress: while a draft is open, a
-  // reassigned square paints with its STAGED recipient's color so everyone
-  // watching sees the proposal take shape, not just the proposer.
+  // Owner hue reflects the trade-in-progress: while a draft is being built — or
+  // a proposal is pending a vote — a reassigned square paints with its STAGED
+  // recipient's color, so everyone watching reads the proposed board (not the
+  // pre-trade one) for as long as the trade is on the table.
   const ownerColor = useMonopolyStore((s) => {
-    const draft = s.state.turn.tradeDraft;
-    const stagedTarget =
-      draft && s.state.turn.phase === "trade-building"
-        ? draft.propertyTo[position]
-        : undefined;
+    const turn = s.state.turn;
+    const terms =
+      turn.phase === "trade-building"
+        ? turn.tradeDraft
+        : turn.phase === "trade-pending"
+          ? turn.pendingTrade
+          : undefined;
+    const stagedTarget = terms?.propertyTo[position];
     const id = stagedTarget ?? s.state.ownership[position];
     const owner = id ? s.state.players.find((p) => p.id === id) : undefined;
     return owner?.color ?? null;
@@ -82,10 +86,24 @@ export function SquareRow({ position }: Props) {
   const stagedMortgage = useMonopolyStore(
     (s) => s.state.turn.manageStaged?.mortgage[position] ?? null,
   );
-  const tradeStaged = useMonopolyStore((s) => {
-    const draft = s.state.turn.tradeDraft;
-    if (s.state.turn.phase !== "trade-building" || !draft) return false;
-    return position in draft.propertyTo;
+  // Whether this square is reassigned by the open trade, and in which phase:
+  //  - "building": still being edited → static orange staged ring (below).
+  //  - "pending": finalized, awaiting votes → pulsing ring, so the proposed
+  //    board reads as "this is what's on the table, look here" rather than
+  //    snapping back to the pre-trade ownership.
+  const tradeMove = useMonopolyStore((s) => {
+    const turn = s.state.turn;
+    if (turn.phase === "trade-building") {
+      return turn.tradeDraft && position in turn.tradeDraft.propertyTo
+        ? "building"
+        : null;
+    }
+    if (turn.phase === "trade-pending") {
+      return turn.pendingTrade && position in turn.pendingTrade.propertyTo
+        ? "pending"
+        : null;
+    }
+    return null;
   });
   // Trade building: the whole row is one button cycling the recipient.
   const tradeClickable = useMonopolyStore((s) => {
@@ -167,17 +185,26 @@ export function SquareRow({ position }: Props) {
   const mortgageIsStaged = stagedMortgage !== null && stagedMortgage !== mortgaged;
 
   // Inline stage indicator: an orange ring around the row when this square is
-  // staged — a build change, a mortgage flip, or a trade reassignment — so the
-  // staged set reads at a glance on the board itself (the panel shows it too,
-  // but the board is the spatial map). 2px inset ring overlay rather than a
-  // border to avoid shifting the row's content edges.
-  const isStaged = buildIsStaged || mortgageIsStaged || tradeStaged;
-  const stageOverlay: ReactNode = isStaged && (
+  // staged — a build change, a mortgage flip, or a trade reassignment still
+  // being built — so the staged set reads at a glance on the board itself (the
+  // panel shows it too, but the board is the spatial map). A *pending* trade
+  // (proposed, awaiting votes) instead pulses its ring between white and the
+  // frame — reusing the traded-chip emphasis (`mono-chip-pulse`) — to draw the
+  // eye to what's on the table. 2px inset ring overlay rather than a border to
+  // avoid shifting the row's content edges.
+  const isStaged = buildIsStaged || mortgageIsStaged || tradeMove === "building";
+  const pulsePending = tradeMove === "pending";
+  const stageOverlay: ReactNode = (isStaged || pulsePending) && (
     <div
       className="pointer-events-none absolute inset-0"
-      style={{
-        boxShadow: "inset 0 0 0 2px var(--mono-orange)",
-      }}
+      style={
+        pulsePending
+          ? {
+              boxShadow: "inset 0 0 0 2px var(--mono-ink)",
+              animation: "mono-chip-pulse 1.1s ease-in-out infinite",
+            }
+          : { boxShadow: "inset 0 0 0 2px var(--mono-orange)" }
+      }
       aria-hidden="true"
     />
   );
