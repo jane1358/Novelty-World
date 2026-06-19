@@ -122,6 +122,35 @@ describe("driveOp — jail decision", () => {
     });
     expect(driveOp(otherJail, true, "p1")).toBeNull();
   });
+
+  it("steps to open the local human's own arm from their jail decision", () => {
+    // The jailed player may trade / manage before deciding: an armed intent makes
+    // the jail decision a pre-roll-like boundary the player's own client drives.
+    const armed: GameState = {
+      ...withTurn(base, { phase: "jail-decision" }),
+      boundaryQueue: [{ playerId: "p1", kind: "manage" }],
+    };
+    expect(driveOp(armed, true, "p1")).toEqual({ kind: "step" });
+  });
+
+  it("steps to open an off-turn player's arm while the jailed player still decides", () => {
+    const armed: GameState = {
+      ...withTurn(base, { playerId: "p1", phase: "jail-decision" }),
+      boundaryQueue: [{ playerId: "p3", kind: "trade" }],
+    };
+    expect(driveOp(armed, true, "p1")).toEqual({ kind: "step" });
+  });
+
+  it("holds the barrier: never drives another human's jail decision, even with an arm", () => {
+    const armed: GameState = {
+      ...withTurn(mapPlayer(base, "p2", { botStrategy: null }), {
+        playerId: "p2",
+        phase: "jail-decision",
+      }),
+      boundaryQueue: [{ playerId: "p1", kind: "trade" }],
+    };
+    expect(driveOp(armed, true, "p1")).toBeNull();
+  });
 });
 
 // The proactive path lets a bot INITIATE — arm a boundary action at its own

@@ -1,5 +1,6 @@
 import { BOTS, type Bot, type BotDecision } from "./bots/registry";
 import { driverRole } from "./driver";
+import { hasPendingBoundary } from "./engine";
 import type { GameState, Intent } from "./types";
 
 /** Default per-client turn budget. One whole turn — glide to the active
@@ -149,9 +150,18 @@ function turnOp(
       : { kind: "intent", intent: { kind: "end-turn", playerId } };
   }
   if (phase === "jail-decision") {
-    // A human in jail decides via their own UI (pay / card / roll), so only a
-    // proxied (bot / disconnected) seat is driven here: pay or use a card per
-    // the policy, else step the jail roll (the policy returns null for "roll").
+    // The jail decision is a pre-roll-like boundary: if anyone has armed a trade
+    // / manage (the jailed player choosing to act before rolling, or an off-turn
+    // player), drive the step that opens it — the active player's own client
+    // drives this boundary, so it's gated like pre-roll (skip when another
+    // connected human is active). The intermission resolves back to the jail
+    // decision since the player is still jailed.
+    if (driverRole(state, myPlayerId) !== "none" && hasPendingBoundary(state)) {
+      return { kind: "step" };
+    }
+    // Otherwise a human decides via their own UI (pay / card / roll); only a
+    // proxied (bot / disconnected) seat is driven: pay or use a card per the
+    // policy, else step the jail roll (the policy returns null for "roll").
     if (driverRole(state, myPlayerId) !== "proxy") return null;
     const bot = botFor(state, playerId);
     const decision = bot ? bot(state, playerId) : null;

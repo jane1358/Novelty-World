@@ -287,7 +287,25 @@ function jailDecision(state: GameState, pid: string): BotDecision | null {
   // turn-owner check is the only gate needed.
   if (state.turn.playerId !== pid) return null;
   const choice = jailChoice(state, pid, heldJailCard(state, pid));
-  return choice.intent === null ? null : { intent: choice.intent, note: choice.reason };
+  if (choice.intent !== null) return { intent: choice.intent, note: choice.reason };
+  // Staying in jail is a roll — a mechanical step, not an intent — so it can't
+  // carry a `note` the way the leave choices do. Surface the reasoning as a
+  // one-time `bot-note` instead, then return null so the pacer rolls. Dedup
+  // against the current turn group: without it, every re-consult would re-emit
+  // the note and spin the phase instead of ever rolling.
+  if (jailStayNoted(state, pid, choice.reason)) return null;
+  return { intent: { kind: "bot-note", playerId: pid, text: choice.reason } };
+}
+
+/** Has `pid` already logged this exact stay-in-jail note in the current turn
+ *  group? A turn group holds at most one jail deliberation, so an exact match
+ *  means the note was just emitted and the next beat should roll. */
+function jailStayNoted(state: GameState, pid: string, text: string): boolean {
+  // Active play always has at least one turn group (the current player's).
+  const turn = state.turns[state.turns.length - 1];
+  return turn.events.some(
+    (e) => e.kind === "bot-note" && e.playerId === pid && e.text === text,
+  );
 }
 
 // ---------------------------------------------------------------------------

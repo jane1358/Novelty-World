@@ -2126,6 +2126,65 @@ describe("jail entry", () => {
   });
 });
 
+describe("jail decision — arm trade / manage", () => {
+  // While the jailed active player is still deciding (hasn't rolled), an armed
+  // trade / manage opens immediately — the jail decision is a pre-roll-like
+  // boundary. Whoever armed it (the jailed player OR an off-turn player) gets
+  // their intermission; when it resolves, play returns to the jail decision
+  // because the player is still jailed.
+  it("opens the jailed player's own armed manage from the jail decision", () => {
+    const start = freshGame("test-jail-arm-self");
+    const jailed: GameState = {
+      ...inJailDecision(start, 1),
+      boundaryQueue: [{ playerId: "p1", kind: "manage" }],
+    };
+    const { state: next, newEvents } = autoStep(jailed);
+    expect(next.turn.phase).toBe("managing");
+    expect(next.turn.managerId).toBe("p1");
+    expect(next.boundaryQueue).toEqual([]);
+    expect(newEvents).toHaveLength(0);
+    expect(next.rngState).toBe(jailed.rngState); // no jail roll consumed
+  });
+
+  it("opens an off-turn player's armed trade during the jailed player's decision", () => {
+    const start = freshGame("test-jail-arm-offturn");
+    const jailed: GameState = {
+      ...inJailDecision(start, 1),
+      boundaryQueue: [{ playerId: "p3", kind: "trade" }],
+    };
+    const { state: next } = autoStep(jailed);
+    expect(next.turn.phase).toBe("trade-building");
+    expect(next.turn.tradeDraft?.proposerId).toBe("p3");
+    expect(next.turn.playerId).toBe("p1"); // still the jailed player's turn
+  });
+
+  it("returns to the jail decision once the intermission resolves (still jailed)", () => {
+    const start = freshGame("test-jail-arm-resume");
+    const managingFromJail: GameState = {
+      ...inJailDecision(start, 1),
+      turn: {
+        playerId: "p1",
+        phase: "managing",
+        managerId: "p1",
+        doublesStreak: 0,
+        manageStaged: { build: {}, mortgage: {} },
+      },
+    };
+    const cancelled = applyOk(managingFromJail, { kind: "cancel-manage", playerId: "p1" });
+    expect(cancelled.turn.phase).toBe("pre-roll");
+    const { state: next } = autoStep(cancelled);
+    expect(next.turn.phase).toBe("jail-decision");
+    expect(next.turn.playerId).toBe("p1");
+    expect(next.players[0].inJail).toBe(true);
+  });
+
+  it("still rolls from the jail decision when nobody has armed anything", () => {
+    const start = inJailDecision(freshGame("test-doubles-roll-10"), 1);
+    const { newEvents } = autoStep(start);
+    expect(newEvents[0]?.kind).toBe("jail-roll");
+  });
+});
+
 describe("jail roll", () => {
   it("escapes on a double and moves out by the roll, no bonus roll", () => {
     const start = inJailDecision(freshGame("test-doubles-roll-10"), 1); // [4,4]

@@ -159,10 +159,26 @@ describe("claudeBot — jail as a haven", () => {
     };
   }
 
-  it("stays in jail (rolls) when developed boards make leaving dangerous", () => {
-    // p2 has 3 houses on New York Avenue → ~$600 rent out there.
+  it("notes why it stays in jail, then rolls (null) once the note is logged", () => {
+    // p2 has 3 houses on New York Avenue → ~$600 rent out there. Staying is a
+    // roll (a mechanical step, not an intent), so the reasoning rides as a
+    // one-time bot-note before the pacer rolls.
     const state = jailed({ ownership: { 19: "p2" }, houses: { 19: 3 } });
-    expect(claudeBot(state, "p1")).toBeNull(); // null → the pacer rolls
+    const d = claudeBot(state, "p1");
+    if (d?.intent.kind !== "bot-note") throw new Error("expected a stay bot-note");
+    expect(d.intent.playerId).toBe("p1");
+    expect(d.intent.text.toLowerCase()).toContain("jail");
+    // Dedup: once the note is in the current turn group, it must NOT re-note
+    // (which would spin) — it returns null so the pacer rolls.
+    const lastTurn = state.turns[state.turns.length - 1];
+    const noted: GameState = {
+      ...state,
+      turns: [
+        ...state.turns.slice(0, -1),
+        { ...lastTurn, events: [...lastTurn.events, d.intent] },
+      ],
+    };
+    expect(claudeBot(noted, "p1")).toBeNull();
   });
 
   it("leaves with a free card on a safe board", () => {

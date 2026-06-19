@@ -1469,6 +1469,14 @@ function returnToPreRoll(state: GameState): GameState {
   };
 }
 
+/** Is a boundary intermission ready to open — has any still-eligible (non-bankrupt)
+ *  player armed a trade / manage? Mirrors `tryEnterBoundary`'s eligibility so a
+ *  caller (the pacer) can decide to drive the step that drains it without doing
+ *  the dequeue itself. */
+export function hasPendingBoundary(state: GameState): boolean {
+  return state.boundaryQueue.some((entry) => isActivePlayer(state, entry.playerId));
+}
+
 /** If anyone has armed a boundary intermission, dequeue the first still-eligible
  *  entry and open it: `trade` opens an empty trade-building draft, `manage` sets
  *  the managing phase for that player. Returns null when nobody valid is queued,
@@ -2485,9 +2493,17 @@ function applyUseJailCard(
 export function autoStep(
   state: GameState,
 ): { state: GameState; newEvents: readonly GameEvent[] } {
-  // A jailed player's turn: roll for doubles. Only reached when neither the
-  // human prompt nor the bot policy resolved the jail decision with pay / card.
-  if (state.turn.phase === "jail-decision") return jailRoll(state);
+  // A jailed player's turn: the jail decision is a pre-roll-like boundary. If
+  // anyone has armed a trade / manage (the jailed player acting before they
+  // roll, or an off-turn player), open that intermission first — it resolves
+  // back to pre-roll, which re-enters this jail-decision because the player is
+  // still jailed. Only once nothing is queued do we roll for doubles (reached
+  // when neither the human prompt nor the bot policy chose pay / card).
+  if (state.turn.phase === "jail-decision") {
+    const boundary = tryEnterBoundary(state);
+    if (boundary) return { state: boundary, newEvents: [] };
+    return jailRoll(state);
+  }
 
   if (state.turn.phase !== "pre-roll") {
     return { state, newEvents: [] };

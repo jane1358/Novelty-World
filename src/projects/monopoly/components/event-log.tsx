@@ -262,7 +262,11 @@ function EventCells({
     <Fragment>
       <VerbCell verb={verbFor(event)} />
       <BodyCell>
-        <EventBody event={event} playersById={playersById} />
+        <EventBody
+          event={event}
+          playersById={playersById}
+          turnPlayerId={turnPlayerId}
+        />
       </BodyCell>
       <NumericCell>
         <EventNumeric event={event} myId={myId} turnPlayerId={turnPlayerId} />
@@ -389,9 +393,11 @@ function cardName(source: CardSource, cardId: string): string {
 function EventBody({
   event,
   playersById,
+  turnPlayerId,
 }: {
   event: GameEvent;
   playersById: ReadonlyMap<string, Player>;
+  turnPlayerId: string;
 }) {
   switch (event.kind) {
     case "roll":
@@ -423,6 +429,11 @@ function EventBody({
       const piece = event.toLevel === 5 ? "hotel" : "house";
       return (
         <>
+          <OffTurnActor
+            actorId={event.playerId}
+            turnPlayerId={turnPlayerId}
+            playersById={playersById}
+          />
           <span>+1 {piece}</span>
           <SpaceLabel position={event.position} />
         </>
@@ -432,6 +443,11 @@ function EventBody({
       const piece = event.toLevel === 4 ? "hotel" : "house";
       return (
         <>
+          <OffTurnActor
+            actorId={event.playerId}
+            turnPlayerId={turnPlayerId}
+            playersById={playersById}
+          />
           <span>−1 {piece}</span>
           <SpaceLabel position={event.position} />
         </>
@@ -439,7 +455,16 @@ function EventBody({
     }
     case "mortgage":
     case "unmortgage":
-      return <SpaceLabel position={event.position} />;
+      return (
+        <>
+          <OffTurnActor
+            actorId={event.playerId}
+            turnPlayerId={turnPlayerId}
+            playersById={playersById}
+          />
+          <SpaceLabel position={event.position} />
+        </>
+      );
     case "trade":
     case "trade-declined":
       // Trades render as one row per move via `tradeRows` (see `TurnFragment`),
@@ -903,6 +928,27 @@ function SpaceLabel({ position }: { position: number }) {
     case "tax":
       return <span className="font-medium">{space.name}</span>;
   }
+}
+
+/** Names the actor on a manage event (build / sell / mortgage / unmortgage) only
+ *  when they aren't the turn's active player. A manage intermission can be driven
+ *  by an OFF-TURN player (Player B armed "manage", so it opens during Player A's
+ *  pre-roll); those events fold into A's turn group, whose divider names A — so
+ *  without this chip B's builds read as A's. On-turn manages stay chip-free; the
+ *  divider already attributes them. */
+function OffTurnActor({
+  actorId,
+  turnPlayerId,
+  playersById,
+}: {
+  actorId: string;
+  turnPlayerId: string;
+  playersById: ReadonlyMap<string, Player>;
+}) {
+  if (actorId === turnPlayerId) return null;
+  const actor = playersById.get(actorId);
+  if (!actor) return null;
+  return <PlayerChip player={actor} />;
 }
 
 function PlayerChip({ player }: { player: Player }) {
