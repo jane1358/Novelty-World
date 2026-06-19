@@ -1,0 +1,148 @@
+# Evolving the Claude Bot
+
+A long-running, multi-session initiative: make the Monopoly Claude Bot as strong
+as possible through an iterative loop, not a one-shot rewrite. This doc is the
+durable home for the plan, the methodology, and the honest list of things that
+can go wrong — so anyone (human or Claude) can pick it up cold.
+
+Read `bots/CLAUDE.md` first for the bot's charter and current strategy. This doc
+is about the *process* of improving it.
+
+## The core idea
+
+A genetic algorithm, but the mutation operator is **Claude Code reasoning**, not
+random perturbation. Claude studies how a game played out, forms a hypothesis
+about why the winner won, and proposes a *targeted, structural* change to the
+logic (not just a weight nudge). Nothing is off-limits as long as the result is
+**game-legal** — the bot only ever emits `Intent`s the engine validates, so it
+is structurally incapable of cheating.
+
+Why this can beat a vanilla GA: random mutation famously stalls in **local
+maxima**. Claude can deliberately accept a *short-term regression* to explore
+toward a better global maximum, because it reasons about the shape of the
+strategy space instead of hill-climbing blindly.
+
+The discipline that keeps this honest: **exploration is driven by reasoning, but
+selection is driven by measurement.** A hypothesis only becomes a locked-in
+version when the simulator says so with statistical confidence — never because
+the narrative was convincing.
+
+## The loop
+
+### Near-term (manual, human-in-the-loop)
+
+1. Claude refines the bot's logic toward a specific hypothesis.
+2. Run `npm run sim` (the headless self-play harness — `simulate.ts` /
+   `simulate-cli.ts`) to watch behavior and check the change does what was
+   intended.
+3. Review together; keep the change if it's clearly better, revert if not.
+4. Repeat until the bot feels strong.
+
+**First target:** better trading, including **N-way trades** (roadmap #1 in
+`bots/CLAUDE.md`). See "Prerequisite" below — this is also what unblocks the
+tournament.
+
+### Long-term (automated A/B tournament)
+
+Pit two logic versions against each other at scale:
+
+- **4 bots per game: 2 on v1, 2 on the candidate v2.**
+- **Randomized seats and seeds** every game, so seat order and dice luck can't
+  hand either version an unfair edge.
+- Run **enough games for statistical significance** (see "Measurement").
+- Parallelize across **worker processes** — games are pure CPU and embarrassingly
+  parallel — so a run finishes as fast as the machine allows.
+- If v2 is genuinely better, **lock it in** as the new champion; then start the
+  next cycle (v3 vs v2).
+
+Keep a **versioned archive** of every bot. That lets us branch from any past
+version, track progress over time, and — eventually — expose chosen versions to
+human players as **difficulty levels**.
+
+## Prerequisite: games must be decisive
+
+The harness already surfaced the blocker: **four symmetric Claude bots never
+terminate.** They buy out the board, then never trade or build (a no-trade
+deadlock — see "Why the deadlock" below), so no monopolies form, no rent
+escalates, and nobody goes bankrupt. A tournament can't measure a win rate if
+games don't end.
+
+So two things must hold before the automated loop is meaningful:
+
+1. The bot must reliably *break the deadlock* — assemble monopolies and develop
+   (the trading work).
+2. Every game must yield a **decisive result** even if it hits the turn cap (a
+   tiebreak rule — see "Open decisions").
+
+### Why the deadlock (for whoever fixes it)
+
+Once the board is owned, `proposeBestTrade` (`trades.ts`) can't construct an
+agreeable deal in 3+-handed play:
+
+- it only considers a color where the proposer is *exactly one lot short*;
+- its counterparty model correctly predicts the seller will **veto** any deal
+  that hands a rival a monopoly while giving the seller none
+  (`rivalMono > myMono · RIVAL_TOLERANCE`, with `myMono = 0`);
+- clean *mutual-completion* 2-way swaps — the one shape that survives that veto —
+  almost never exist across three opponents.
+
+Heads-up (2 players) the mutual-completion shape is common enough that games
+resolve cleanly, which is why 2-Claude and Claude-vs-dumb already produce
+winners. The fix lives in trade construction: N-way deals, and/or pricing the
+rival-monopoly threat (a big enough cash premium) instead of vetoing it.
+
+## Measurement — making "v2 is better" trustworthy
+
+The whole scheme rests on the A/B test being sound. Guardrails:
+
+- **Define the metric precisely.** With 2 v2 seats out of 4, the null hypothesis
+  is a **50% win share** for "any v2 seat wins". Test the observed share against
+  50% with a binomial/proportion test; report the confidence interval, not just
+  the point estimate.
+- **Hold out a validation seed set.** Tweak and explore on a training pool of
+  seeds, but confirm an improvement on **fresh, unseen seeds** before locking it
+  in — otherwise we overfit to the specific games we looked at.
+- **Beware multiple comparisons.** Try enough tweaks and one will look good by
+  chance. Require a real margin, and re-validate winners.
+- **Evaluate against a field, not just the predecessor.** Strategy strength is
+  **non-transitive** (v3 can beat v2, v2 beat v1, yet v3 lose to v1). Score a
+  candidate against a *gauntlet* of past champions (plus `dumb` as a floor), so
+  "champion" means generally strong, not just "exploits the last guy".
+- **Mind the sample geometry.** Deterministic bots mean a given (seed, seating)
+  is one fixed game; with 2+2 identical seats there are only 6 distinct seatings
+  per seed, so variety comes mostly from **many seeds**.
+
+## Coexistence & promotion
+
+The production `claude` strategy (`registry.ts`) drives real online and dev
+games. So:
+
+- experimental versions must be able to **run side-by-side** with the champion in
+  one process (the tournament needs both loaded at once);
+- a candidate is only **promoted** to the production `claude` once it's validated;
+- the version archive must let us reconstruct and run any past version.
+
+How versions are represented (separate snapshot modules, a parameterized config,
+or a hybrid) is an open decision — it determines how cleanly two *structurally
+different* logics can coexist.
+
+## Open decisions (to lock before building the automated loop)
+
+1. **Version representation** — snapshot files per version, a parameterized
+   config object, or a hybrid (shared library + thin per-version policy)?
+   Structural changes like N-way search aren't just weights, which argues for
+   real code snapshots.
+2. **Evaluation target** — gauntlet/ladder vs. head-to-head against the immediate
+   predecessor.
+3. **Decisive-outcome rule** — when a game hits the turn cap, score it by final
+   `positionValue` (every game yields a winner), or discard it as no-result.
+4. **Run sizing** — games per A/B test, and the train/validation seed split.
+
+## Version log
+
+The running record of bot versions and how each fared against the field. (To be
+filled in as versions are locked; v1 = the bot as of this doc.)
+
+| Version | Date | Hypothesis / change | Result vs. field | Status |
+|---------|------|---------------------|------------------|--------|
+| v1 | 2026-06-19 | Baseline (current `claude`) | — | champion |
