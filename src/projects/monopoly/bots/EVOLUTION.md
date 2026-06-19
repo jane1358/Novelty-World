@@ -355,6 +355,7 @@ bot as of this doc.
 | v2 | 2026-06-19 | **Price the rival-monopoly threat instead of vetoing it** (`versions/v2/trades.ts`): handing a rival a new monopoly costs the seller `DENY_FACTOR`×bonus, folded into their valuation, so "cash for the completer" clears when the cash outweighs it. | **v2 win share 69.8%** of decisive games (139–60) over 240 fresh held-out seeds, two independent families (74.0% / 66.0%), z≈5.6 vs the 50% null. Cap rate 40%→~17%; 4×v2 resolves 16/16 previously-deadlocked seeds. | **loop champion** (current best; not yet the live bot) |
 | v3 | 2026-06-19 | **N-way / multi-short trade construction** (`versions/v3/trades.ts`): generalize the search from "exactly one lot short, 2-way" to "any number short, N-way" — buy EVERY missing lot of a near-monopoly in one N-party deal — **plus the coupled fix that makes it viable:** price a new monopoly as ONE rival-threat premium *apportioned* across its contributors (`rivalThreatCost`), so a buyer assembling from two holdouts isn't charged the denial premium twice for one set (reduces to v2's full premium for a single seller). | **Eliminates the cap entirely: 0.0% draws in both held-out families** (v2 still caps ~17–26%); trades executed ~93→~800/run. **But win-neutral vs v2: 49.2% win share** over 240 fresh seeds (v3eval 46.7% [56–64], v3eval2 51.7% [62–58]), z≈−0.26 — does **not** clear the >50% bar. The residual deadlock was costing *draws, not losses*, so breaking it splits former draws ~50/50 instead of winning them. | **rejected** as champion (win-neutral); champion stays **v2**. N-way+apportionment archived in `versions/v3/` as a proven, reusable building block. **Later shipped LIVE** (`LIVE_VERSION = v3`) as the more engaging substrate, and used as the **base** for v4 — a win-safe branch point even though it didn't beat v2. |
 | v4 | 2026-06-20 | **Tempo via mortgage-funded development** (`versions/v4/valuation.ts`, `planBuild`): when cash above the liquidity floor can't reach a prize set's desired level, mortgage idle, **non-monopoly** back-burner lots to fund the build a level *sooner* — turning idle equity into rent pressure ahead of rivals. Gated to real sets (`TEMPO_PRIZE_BONUS`, excludes brown) and real builds (`TEMPO_MIN_LEVEL = 3`); never cannibalizes a monopoly; the funded commit still clears the **same** liquidity floor (it redeploys idle capital, it does *not* lower the reserve). First version measured on the Session-A gauntlet. | **Win-neutral vs v3: 50.1% (1006–1000), confident EVEN over 2006 decisive (train).** No regressions: beats **v2 53.6%** (638–552) and **v1 67.9%** (106–50); Elo **v4 +149.3 ≈ v3 +147.4** (within noise), v2 +127.7, v1 0. Does **not** clear the improve-vs-base bar. | **rejected** as champion (win-neutral); base/substrate stays **v3**. Snapshot kept in `versions/v4/` as a win-safe building block (a tempo knob to pair with an asymmetry lever later); `v4/build.test.ts` pins the mechanism. |
+| v5 | 2026-06-20 | **Trade-to-deny** (`versions/v5/trades.ts`): extend v3's N-way trade CONSTRUCTION with a NEGATIVE-SUM move — when a rival is one lot short of a set and the completer sits with a third-party **holdout** (not me, not the rival, building-free), buy that lot to ME purely to **block** the completion, even though it doesn't complete my own set. Priced off the existing `DENY_FACTOR` lever (which `acquisitionValue` already applies on a landing/auction denial but construction never did): a new `denyBonus` candidate type with its own go/no-go gate `plainDelta + DENY_FACTOR×bonus > ACCEPT_MIN`. `evaluateTrade` is **unchanged** (completion + counterparty model + incoming vote all intact); the holdout judges by plain `evaluateTrade`; **the denied rival is NOT a party, so it can't veto its own denial — the asymmetry.** Weak sets self-gate (a small bonus rarely clears the holdout's sweetener). | **BETTER vs v3 (base): 54.0% (537–457, 994 decisive, train), confident.** No regressions — sweeps the whole field both streams: **train** v2 64.0%, v4 54.6%, v1 71.7%; **holdout** v3 54.2%, v2 65.1%, v4 61.8%, v1 80.0%. Elo (holdout) **v5 +216.3** > v3 +175.3 > v4 +149.3 > v2 +141.4 > v1 0 — clear top of the field. | **ACCEPTED — new loop champion.** The first non-neutral structural win since v2: a negative-sum, rival-specific move transfers win share where two positive-sum self-improvements (v3, v4) did not. Base for v6. `v5/trades.test.ts` pins the denial construction. |
 
 ## Status & next step
 
@@ -372,15 +373,18 @@ bot as of this doc.
   decision, *not* a precondition for continuing the loop, and **orthogonal to the
   gauntlet floor**.
 
-**As of 2026-06-20:** the loop champion is still **v2** (v3 measured win-neutral
-vs v2). **The live bot is `v3`** — greenlit by Kyle as the more *engaging*
-opponent for humans (decisive games, real trading, no deadlock), an explicit
-**product call, not a strength claim** over v2, which it ties. The floor stays
-**v1**, now a materialized frozen snapshot (`versions/v1/`). **Sessions A and B are
-done.** Session A built the measurement system; **Session B built `v4` (tempo via
-mortgage-funded development) and the gauntlet REJECTED it as win-neutral vs v3** —
-a second logged negative result, below. The base/substrate stays **v3**; the next
-attempt (Session C) is **v5 from v3**.
+**As of 2026-06-20:** the loop champion is now **v5** (trade-to-deny) — the first
+change to beat its base since v2, validated on both seed streams against the whole
+field (see the v5 row and note below). **The live bot is `v3`** — greenlit by Kyle
+as the more *engaging* opponent for humans (decisive games, real trading, no
+deadlock), an explicit **product call, not a strength claim**; promoting v5 live is
+a separate human call (v5 is strictly stronger, so it's a reasonable future
+greenlight). The floor stays **v1**, a materialized frozen snapshot (`versions/v1/`).
+**Sessions A–C are done.** Session A built the measurement system; Session B built
+`v4` (tempo) and the gauntlet REJECTED it as win-neutral; **Session C built `v5`
+(trade-to-deny) and the gauntlet ACCEPTED it** — the negative-sum lever the two
+prior rejects pointed to. The base/substrate is now **v5**; the next attempt is
+**v6 from v5** (denial coupled with tempo, or denial pushed harder — see below).
 
 **v3 — what was tried and what we learned (a logged negative result):**
 
@@ -445,6 +449,41 @@ attempt (Session C) is **v5 from v3**.
    v4 snapshot is win-safe and kept as a building block — tempo may yet pay off
    *coupled* with denial (deny a rival their set, then out-develop the field with
    the freed leverage), which is the synergy a future version could test.
+
+**v5 — what was tried and what we learned (the first ACCEPTED win since v2):**
+
+1. **v5 isolated** in `bots/versions/v5/` (self-contained snapshot from v3;
+   registered in `versions/index.ts`; `v5/trades.test.ts` pins the new denial
+   construction — buys a rival's completer from a holdout where v3 proposes
+   nothing, doesn't fire when the completer is unowned or already mine, refuses a
+   denial it can't fund in cash, and prefers completing my own strong set over
+   denying a rival's).
+2. **The change** acts on the lead Session B sharpened: the only lever left was a
+   **negative-sum move against a specific rival**. `proposeBestTrade` now scans, per
+   rival one lot short of a set whose last lot sits with a **third-party holdout**,
+   a denial buy of that lot to me — credited the `DENY_FACTOR` premium on the set I
+   block (the *same* credit `acquisitionValue` applies on a landing/auction denial,
+   which construction never did). It is surgically isolated: `evaluateTrade` is
+   untouched, so completion, the counterparty model, and the incoming-offer vote are
+   exactly v3; the denial credit lives ONLY in the proposer's go/no-go on the new
+   candidate type. **The denied rival is not a party to the deal** (only the holdout
+   and I are), so it never gets a vote — the asymmetry a symmetric capability lacks.
+3. **The result confirms the meta-lesson.** v5 is **BETTER vs v3** (54.0% train,
+   54.2% holdout) and sweeps the entire field on both seed streams with no
+   regression, topping the Elo table (+216 holdout). Where v3 (complete sooner) and
+   v4 (develop sooner) — both positive-sum self-improvements — washed out even
+   against opponents that lacked them, v5's negative-sum denial **transfers win
+   share**: taking a rival's prize set off the board before they complete it is a
+   loss *they* eat and can't reciprocate, so it doesn't average out over seats and
+   seeds. **The shape of a winning change is now empirically clear: deny, don't
+   merely out-build.**
+4. **Why it doesn't just cost me cash for nothing.** A denial buy spends real cash
+   (the holdout's sweetener) on a lot that doesn't complete my own set — a cost the
+   `DENY_FACTOR` gate justifies only when the blocked set is valuable enough. Weak
+   sets self-gate (brown's tiny bonus barely clears the sweetener), strong sets
+   clear easily, and a genuine completion for *me* always outranks an equal denial
+   (the ranking is the denial-augmented delta for both). So the bot denies a rival's
+   orange/red but won't burn cash blocking a brown it could ignore.
 
 The v2-era engine fix (false-bankruptcy / hotel-shortage liquidation escape in
 shared `development.ts`, regression-tested in `development.test.ts`) still stands
