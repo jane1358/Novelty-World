@@ -78,11 +78,13 @@ convincing story. The session structure that keeps this honest and resumable:
    beat `vN` is a result, not a waste**: log it as **rejected** in the version log
    (a negative result others shouldn't re-walk) and carry a *different* lead
    forward. Never ratchet in a regression because the narrative was good.
-5. **End by emitting the next handoff.** The session closes by printing a short,
-   copy-pasteable **handoff prompt** for the next one — "continue the loop, build
-   `v(N+1)` from `vN`, suggested hypothesis = … because …". A human pastes it into
-   a fresh session. (A session can't write the clipboard itself; it prints the
-   block. It can pipe to `Set-Clipboard` on request.)
+5. **End by handing off via the clipboard.** The session closes by writing a
+   short **handoff prompt** for the next one — "continue the loop, build
+   `v(N+1)` from `vN`, suggested hypothesis = … because …" — **straight onto the
+   clipboard** with `Set-Clipboard` (Windows), and also printing it. The human
+   just opens a fresh session and pastes — no copy step, one less thing to keep
+   the loop turning. (If the clipboard isn't writable, the printed block is the
+   fallback copy source.)
 
 This is the genetic loop with Claude as the mutation operator: **reasoning
 proposes, measurement selects.** Bumping the loop champion needs **no human
