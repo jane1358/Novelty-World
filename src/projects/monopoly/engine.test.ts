@@ -1354,11 +1354,20 @@ describe("bankruptcy", () => {
     const creditor = next.players.find((p) => p.id === "p2");
     expect(creditor?.cash).toBe(1500 + 100);
 
-    // The rent event in the log still reflects the FULL debt, not the
-    // partial transfer — readers see what was owed, then the bust.
+    // The rent line shows the cash that ACTUALLY moved (p1's $100 purse), not
+    // the moot $2000 debt, so the log's money sums to the header balances.
     const rentEvent = newEvents.find((e) => e.kind === "rent");
     if (!rentEvent) throw new Error("expected a rent event");
-    expect(rentEvent.amount).toBe(2000);
+    expect(rentEvent.amount).toBe(100);
+
+    // The bankrupt event carries the full estate breakdown for the log: the
+    // debtor, the bare lots that transferred, and the GOJF card.
+    expect(bustEvent.debtorId).toBe("p1");
+    expect(bustEvent.estateProperties).toEqual([5, 12]);
+    expect(bustEvent.estateGojf).toEqual(["chance"]);
+    // p1 had no buildings and no mortgaged lots, so the creditor netted nothing
+    // from the estate itself (all their gain was the $100 rent above).
+    expect(bustEvent.estateCash).toBe(0);
   });
 
   it("sells the debtor's buildings back at half price to the creditor and transfers bare lots", () => {
@@ -1373,7 +1382,7 @@ describe("bankruptcy", () => {
     };
     state = setCash(setCash(state, "p1", 0), "p2", 1500);
 
-    const { state: next } = autoStep(state);
+    const { state: next, newEvents } = autoStep(state);
 
     expect(next.players.find((p) => p.id === "p1")?.bankrupt).toBe(true);
     for (const pos of [16, 18, 19]) {
@@ -1382,6 +1391,12 @@ describe("bankruptcy", () => {
     }
     // 3 houses × $50 refund = $150 (p1 had no cash to add).
     expect(next.players.find((p) => p.id === "p2")?.cash).toBe(1500 + 150);
+
+    // The estate cash on the bankrupt event is exactly that $150 building
+    // refund (no mortgaged lots), so the log line audits to the header gain.
+    const bustEvent = newEvents.find((e) => e.kind === "bankrupt");
+    if (!bustEvent) throw new Error("expected a bankrupt event");
+    expect(bustEvent.estateCash).toBe(150);
   });
 
   it("charges the creditor 10% interest on each still-mortgaged lot inherited", () => {
@@ -1611,10 +1626,11 @@ describe("must-raise-cash phase", () => {
     expect(next.turn.phase).not.toBe("must-raise-cash");
     expect(next.players.find((p) => p.id === "p1")?.bankrupt).toBe(true);
     expect(newEvents.find((e) => e.kind === "bankrupt")).toBeDefined();
-    // Rent event still logged with the FULL debt.
+    // The rent line shows the cash that actually moved: p1 had $0, so $0 — the
+    // log suppresses the zero amount, and the estate transfer follows.
     const rentEvent = newEvents.find((e) => e.kind === "rent");
     if (!rentEvent) throw new Error("expected rent event");
-    expect(rentEvent.amount).toBe(2000);
+    expect(rentEvent.amount).toBe(0);
   });
 
   it("ignores buildings + mortgaged squares when computing max raisable", () => {
@@ -2703,7 +2719,15 @@ describe("auction (bank-estate bankruptcy)", () => {
 
   it("auctions the estate lot among the survivors when a player busts to the bank", () => {
     const { state, newEvents } = bustToBankOwning("auc-estate", { 1: "p1" });
-    expect(newEvents.some((e) => e.kind === "bankrupt" && e.creditorId === null)).toBe(true);
+    const bust = newEvents.find((e) => e.kind === "bankrupt");
+    if (!bust) throw new Error("expected a bankrupt event");
+    expect(bust.creditorId).toBe(null);
+    // A bank bust carries no in-kind estate: the lots are auctioned (their own
+    // AUCT lines) and GOJF cards return to the deck, so the log shows only the
+    // BUST headline.
+    expect(bust.estateProperties).toEqual([]);
+    expect(bust.estateGojf).toEqual([]);
+    expect(bust.estateCash).toBe(0);
     expect(state.turn.phase).toBe("auction");
     expect(state.players.find((p) => p.id === "p1")?.bankrupt).toBe(true);
     const a = state.turn.auction;

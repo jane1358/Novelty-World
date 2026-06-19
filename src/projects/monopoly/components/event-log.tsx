@@ -163,6 +163,13 @@ function TurnFragment({
         if (event.kind === "trade" || event.kind === "trade-declined") {
           return tradeRows({ event, playersById, myId, keyBase: key });
         }
+        // A bust eliminates a player and hands over their whole estate at once.
+        // Like a trade, each asset and cash move gets its own line (under a BUST
+        // headline naming the debtor) so readers can follow exactly what went
+        // where. See `bankruptRows`.
+        if (event.kind === "bankrupt") {
+          return bankruptRows({ event, playersById, myId, keyBase: key });
+        }
         const cells: ReactNode[] = [
           <EventCells
             key={key}
@@ -526,19 +533,10 @@ function EventBody({
         </>
       );
     }
-    case "bankrupt": {
-      const creditor = event.creditorId
-        ? (playersById.get(event.creditorId) ?? null)
-        : null;
-      return creditor ? (
-        <>
-          <span style={{ opacity: 0.6 }}>→ estate to</span>
-          <PlayerChip player={creditor} />
-        </>
-      ) : (
-        <span style={{ opacity: 0.6 }}>(to bank)</span>
-      );
-    }
+    case "bankrupt":
+      // Busts render as a headline + one row per asset/cash move via
+      // `bankruptRows` (see `TurnFragment`), never as a single EventCells body.
+      return null;
     case "winner": {
       const winner = playersById.get(event.winnerId);
       if (!winner) return null;
@@ -560,7 +558,9 @@ function EventNumeric({
   turnPlayerId: string;
 }) {
   const cash = cashFor(event, myId, turnPlayerId);
-  if (!cash) return null;
+  // A zero amount carries no information and would render an ugly "−$0" — e.g. a
+  // charge that busts a debtor with an empty purse (the real cash moved is $0).
+  if (!cash || cash.amount === 0) return null;
   return <Money amount={cash.amount} sign={cash.sign} mine={cash.mine} />;
 }
 
@@ -761,6 +761,102 @@ function tradeRows({
     );
   }
 
+  return rows;
+}
+
+// A bankruptcy hands a player's whole estate over in one beat. Rather than the
+// old single cramped line, it renders like a trade: a BUST headline naming the
+// debtor and where the estate goes, then one indented row per asset moved and a
+// final cash row for what the creditor netted from the estate (buildings sold
+// to the bank at half, less inherited mortgage interest). The debtor's own cash
+// already moved on the triggering charge line, so it isn't repeated here — every
+// number across the bust still sums exactly to the header balances.
+//
+// A bank bust (no creditor) shows only the headline: its lots are auctioned and
+// surface as their own AUCT lines, and GOJF cards return to the deck.
+function bankruptRows({
+  event,
+  playersById,
+  myId,
+  keyBase,
+}: {
+  event: Extract<GameEvent, { kind: "bankrupt" }>;
+  playersById: ReadonlyMap<string, Player>;
+  myId: string | null;
+  keyBase: string;
+}): ReactNode[] {
+  const debtor = playersById.get(event.debtorId);
+  if (!debtor) return [];
+  const creditor = event.creditorId
+    ? (playersById.get(event.creditorId) ?? undefined)
+    : undefined;
+
+  const rows: ReactNode[] = [
+    <Fragment key={`${keyBase}-head`}>
+      <VerbCell verb="BUST" />
+      <BodyCell>
+        <PlayerChip player={debtor} />
+        <span style={{ color: "var(--mono-red)", fontWeight: 600 }}>bankrupt</span>
+        <Arrow />
+        {creditor ? (
+          <PlayerChip player={creditor} />
+        ) : (
+          <span style={{ opacity: 0.6 }}>bank</span>
+        )}
+      </BodyCell>
+      <NumericCell>{null}</NumericCell>
+    </Fragment>,
+  ];
+
+  // Detail lines exist only for a player creditor (a bank bust auctions the
+  // lots separately). The verb column is blank so they read as an indented
+  // breakdown under the headline.
+  if (!creditor) return rows;
+
+  for (const pos of event.estateProperties) {
+    rows.push(
+      <Fragment key={`${keyBase}-p-${pos}`}>
+        <VerbCell verb="" />
+        <BodyCell>
+          <SetContextChips position={pos} />
+          <Arrow />
+          <PlayerChip player={creditor} />
+        </BodyCell>
+        <NumericCell>{null}</NumericCell>
+      </Fragment>,
+    );
+  }
+  for (const src of event.estateGojf) {
+    rows.push(
+      <Fragment key={`${keyBase}-g-${src}`}>
+        <VerbCell verb="" />
+        <BodyCell>
+          <GojfTag source={src} />
+          <Arrow />
+          <PlayerChip player={creditor} />
+        </BodyCell>
+        <NumericCell>{null}</NumericCell>
+      </Fragment>,
+    );
+  }
+  if (event.estateCash !== 0) {
+    rows.push(
+      <Fragment key={`${keyBase}-cash`}>
+        <VerbCell verb="" />
+        <BodyCell>
+          <PlayerChip player={creditor} />
+          <span style={{ opacity: 0.6 }}>estate</span>
+        </BodyCell>
+        <NumericCell>
+          <Money
+            amount={Math.abs(event.estateCash)}
+            sign={event.estateCash > 0 ? "+" : "-"}
+            mine={myId !== null && event.creditorId === myId}
+          />
+        </NumericCell>
+      </Fragment>,
+    );
+  }
   return rows;
 }
 

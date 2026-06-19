@@ -6,10 +6,13 @@ interface Props {
 }
 
 export function Header({ state }: Props) {
+  // A bankrupt player is out of the game — drop their row entirely (their estate
+  // has already moved to the creditor or the bank).
+  const players = state.players.filter((p) => !p.bankrupt);
   // When five or more players are present the header would crowd the board
   // off-screen, so cap it at 4.5 rows (each row is h-11) and scroll the
   // overflow. The half-row peek signals there's more below.
-  const scrollable = state.players.length > 4;
+  const scrollable = players.length > 4;
   return (
     <div
       className={`relative z-10 flex shrink-0 flex-col ${
@@ -24,7 +27,7 @@ export function Header({ state }: Props) {
       }}
     >
       <HoldingsGrid
-        players={state.players}
+        players={players}
         groups={SLOT_GROUPS}
         ownership={state.ownership}
         mortgaged={state.mortgaged}

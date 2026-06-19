@@ -288,9 +288,24 @@ export type GameEvent =
     }
   | {
       kind: "bankrupt";
+      /** The eliminated player. Carried explicitly because a bust can be
+       *  off-turn (a trade-forced debtor), so it isn't always the turn's actor. */
+      debtorId: string;
       /** Null if the player went bankrupt to the bank (no single creditor),
        *  otherwise the creditor who receives the estate. */
       creditorId: string | null;
+      /** Lots that transferred in-kind to a player creditor (bare, keeping their
+       *  mortgage status), so the log can show one transfer line each. Empty for
+       *  a bank bust — those lots are auctioned and surface as `auction` events. */
+      estateProperties: readonly number[];
+      /** Get-Out-of-Jail-Free cards that transferred to a player creditor. Empty
+       *  for a bank bust (they return to their decks). */
+      estateGojf: readonly CardSource[];
+      /** Net cash the creditor realized FROM THE ESTATE: the debtor's buildings
+       *  sold back to the bank at half price, minus the 10% interest owed on each
+       *  still-mortgaged lot inherited. Zero for a bank bust. The debtor's own
+       *  remaining cash is NOT counted here — it moves on the charge line. */
+      estateCash: number;
     }
   | { kind: "winner"; winnerId: string }
   /** A bot's reasoning, surfaced in the log under a "BOT" verb so players (and

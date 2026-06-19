@@ -313,15 +313,34 @@ function settleOrRaise(state: GameState, resume: RaiseCashResume): GameState {
   };
 }
 
+/** Re-stamp a charge event with the cash that actually changed hands. On a bust
+ *  the debtor pays only their purse, not the nominal debt, so the log must show
+ *  the real figure for balances to audit against the header. The charge kinds
+ *  store their money differently (`rent`/`tax` in `amount`, a `pay`-card in the
+ *  signed `card-drawn.cash`); anything else passes through unchanged. */
+function chargeEventWithCash(event: GameEvent, cash: number): GameEvent {
+  switch (event.kind) {
+    case "rent":
+    case "tax":
+      return { ...event, amount: cash };
+    case "card-drawn":
+      return { ...event, cash: -cash };
+    default:
+      return event;
+  }
+}
+
 /** Charge `payerId` an `amount` owed to `creditorId` — a **player** (rent) or
  *  the **bank** (`creditorId === null`, e.g. tax). `event` is the already-built
  *  log entry for the charge (`rent` / `tax`). Two branches:
  *
  *  1. Cash + raisable < amount: they can't cover it even after mortgaging
  *     everything. Transfer whatever cash they have (to a player creditor; the
- *     bank keeps nothing), log the FULL debt (so the log reads "owed $1100 →
- *     bust → estate to Jordan"), bust to the creditor, and hand control onward
- *     (or end at game-over).
+ *     bank keeps nothing), log the charge at the cash that ACTUALLY changed
+ *     hands (their whole purse, not the moot full debt — so a reader can add the
+ *     log's money up to the header balances), bust to the creditor, and hand
+ *     control onward (or end at game-over). The estate breakdown follows on the
+ *     bankrupt event.
  *  2. Otherwise: deduct the amount immediately — cash may go negative — log it,
  *     then `settleOrRaise`. If they had the cash, play continues at once; if
  *     not, they drop into `must-raise-cash` and mortgage back to ≥ 0. The log
@@ -341,6 +360,7 @@ function chargeToCreditor(
 
   // Can't cover even after mortgaging everything: partial transfer + bust.
   if (payer.cash + maxRaisableCash(state, payerId) < amount) {
+    const transferred = Math.max(0, payer.cash);
     const players = state.players.map((p, i) => {
       if (i === payerIdx) return { ...p, cash: 0 };
       if (creditorId !== null && p.id === creditorId) {
@@ -348,7 +368,9 @@ function chargeToCreditor(
       }
       return p;
     });
-    const turns = appendEventToActiveTurn(state.turns, event);
+    // Re-stamp the charge line with the cash that really moved, not the debt.
+    const logged = chargeEventWithCash(event, transferred);
+    const turns = appendEventToActiveTurn(state.turns, logged);
     const bust = goBankrupt({ ...state, players, turns }, payerId, creditorId);
     // Hand control onward unless the bust already sequenced what's next (the
     // game ended, or a bank estate auction is now under way). The debtor's turn
@@ -357,7 +379,7 @@ function chargeToCreditor(
     const resolved = bustSequenced(bust.state)
       ? bust.state
       : settleOrRaise(advanceToNextPlayer(bust.state, payerId), "pre-roll");
-    return { state: resolved, newEvents: [event, ...bust.newEvents] };
+    return { state: resolved, newEvents: [logged, ...bust.newEvents] };
   }
 
   // Pay now (cash may dip below zero), log it, then settle or raise.
@@ -480,17 +502,29 @@ function goBankrupt(
     chance: [...state.decks.chance],
     communityChest: [...state.decks.communityChest],
   };
+  const estateGojf: CardSource[] = [];
   for (const src of ["chance", "communityChest"] as const) {
     if (jailFreeCards[src] !== debtorId) continue;
     if (creditorId !== null) {
       jailFreeCards[src] = creditorId;
+      estateGojf.push(src);
     } else {
       delete jailFreeCards[src];
       decks[src] = [...decks[src], gojfIndex(src)];
     }
   }
 
-  const bankruptEvent: GameEvent = { kind: "bankrupt", creditorId };
+  const bankruptEvent: GameEvent = {
+    kind: "bankrupt",
+    debtorId,
+    creditorId,
+    // A player creditor inherits the bare lots in-kind (the log shows a line
+    // each); a bank bust auctions them — they surface as their own `auction`
+    // events instead, so the estate lines stay empty here.
+    estateProperties: creditorId !== null ? [...debtorLots].sort((a, b) => a - b) : [],
+    estateGojf,
+    estateCash: creditorId !== null ? creditorNet : 0,
+  };
   let turns = appendEventToActiveTurn(state.turns, bankruptEvent);
   const newEvents: GameEvent[] = [bankruptEvent];
   let next: GameState = {
@@ -2110,18 +2144,21 @@ function collectEach(
     if (cur.turn.phase === "game-over") break;
     const opp = cur.players.find((p) => p.id === oppId);
     if (!opp || opp.bankrupt) continue;
-    const transfer: GameEvent = {
-      kind: "card-transfer",
-      fromId: oppId,
-      toId: drawerId,
-      amount,
-    };
     const oppIdx = cur.players.findIndex((p) => p.id === oppId);
     const drawerIdx = cur.players.findIndex((p) => p.id === drawerId);
 
     if (opp.cash + maxRaisableCash(cur, oppId) < amount) {
       // Can't cover even by liquidating → hand over remaining cash, then bust
-      // to the drawer (their estate transfers; may end the game).
+      // to the drawer (their estate transfers; may end the game). The transfer
+      // line shows the cash that actually moved (their purse), not the full
+      // birthday amount, so balances audit against the header.
+      const transferred = Math.max(0, opp.cash);
+      const transfer: GameEvent = {
+        kind: "card-transfer",
+        fromId: oppId,
+        toId: drawerId,
+        amount: transferred,
+      };
       const players = cur.players.map((p, i) => {
         if (i === oppIdx) return { ...p, cash: 0 };
         if (i === drawerIdx) return { ...p, cash: p.cash + opp.cash };
@@ -2132,6 +2169,12 @@ function collectEach(
       cur = bust.state;
       newEvents.push(transfer, ...bust.newEvents);
     } else {
+      const transfer: GameEvent = {
+        kind: "card-transfer",
+        fromId: oppId,
+        toId: drawerId,
+        amount,
+      };
       const players = cur.players.map((p, i) => {
         if (i === oppIdx) return { ...p, cash: p.cash - amount };
         if (i === drawerIdx) return { ...p, cash: p.cash + amount };

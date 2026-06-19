@@ -42,8 +42,13 @@ export function SquareRow({ position }: Props) {
     (s) => s.state.mortgaged[position] ?? false,
   );
   const houses = useMonopolyStore((s) => s.state.houses[position] ?? 0);
+  // A bankrupt player is eliminated — their token leaves the board. Lanes still
+  // key off the full seat `order` below, so survivors keep their fixed columns
+  // (the busted player's lane simply goes empty).
   const tokens = useMonopolyStore(
-    useShallow((s) => s.state.players.filter((p) => p.position === position)),
+    useShallow((s) =>
+      s.state.players.filter((p) => p.position === position && !p.bankrupt),
+    ),
   );
   // Seat order (stable element-wise) drives each token's fixed lane, and the
   // pitch is published by Squares from the measured board width. Subscribing to
