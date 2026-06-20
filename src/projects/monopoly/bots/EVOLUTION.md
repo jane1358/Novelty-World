@@ -601,6 +601,37 @@ confident-worse — raising it is −EV at every magnitude; the published "#2 de
 doesn't translate to win-accuracy because dark-blue's low landing traffic makes self-valuation
 −EV; the rest of the value table was research-VALIDATED) — all logged dead ends.
 
+**v28 — DESPERATION-PRICING ACQUISITION — ✅ CROWNED (2026-06-20).** Built the
+top lead from the v19–v27 sweep: model seller distress (liquid resources near/below
+the worst board rent) and reduce the cash sweetening a distressed seller needs to
+clear their break-even — buying their set-completers at a DISCOUNT. Two changes:
+`sellerDistress(state, pid)` in valuation.ts (ramps 0→1 as liquid resources fall
+from 1.5× worst rent to worst rent), and `SURVIVAL_FACTOR = 0.4` in trades.ts (each
+dollar of cash is worth up to $1.40 to a fully distressed seller, so construction
+divides the sweetening gap by that relief factor). `evaluateTrade` also credits
+the survival bonus on the sell-side delta.
+
+**Result: v28 beats v17 on BOTH seed families.** Training seeds (vs-1..200):
+57.8% win share (115–84, z≈4.4). Fresh held-out seeds (holdout-1..200): **62.0%
+win share (124–76, z≈6.8)** — STRONGER on held-out, zero draws (0.0%). Spot gauntlet:
+v28 beats v5 70% (7–3 on 10 games). No non-transitivity observed. The desperation
+discount is asymmetric (the buyer constructs; the seller only reacts) and UNDERPRICED
+(fair-price acquisition washed in v24; the win is in buying CHEAP) — the two
+conditions every prior win shared. **v28 is the new loop champion.**
+
+**Promotion status:** `CHAMPION_VERSION = v28` in roles.ts. `LIVE_VERSION` stays
+v17 (separate product call).
+
+**Lead for the next session (from v28):** The desperation-pricing mechanism opened a
+new axis — seller-side valuation modeling. Possible follow-ups: (a) tune
+`SURVIVAL_FACTOR` (0.4 may be conservative — try 0.3 or 0.5); (b) extend the distress
+model to the BUY side too — a buyer who is flush should pay LESS premium for a
+set-completer because their cash has lower marginal utility; (c) the phantom-denial
+gate could also account for seller distress (a distressed holder is more likely to
+sell to the rival, making denial more urgent). But v28 is a strong champion — expect
+rejects on marginal tuning.
+
+
 **v3 — what was tried and what we learned (a logged negative result):**
 
 1. **v3 isolated** in `bots/versions/v3/` (self-contained snapshot from v2;

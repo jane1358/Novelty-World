@@ -29,7 +29,7 @@ import { VERSIONS } from "./versions";
 
 /** The strongest version by measurement (highest gauntlet Elo). Bump this when
  *  the loop crowns a new champion — see EVOLUTION.md "Coexistence & promotion". */
-export const CHAMPION_VERSION = "v17";
+export const CHAMPION_VERSION = "v28";
 
 /** The newest snapshot in the archive — derived, so registering a new version
  *  in `versions/index.ts` is the only action needed; this follows it. */
