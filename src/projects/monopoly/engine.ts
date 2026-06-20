@@ -303,20 +303,26 @@ function settleOrRaise(state: GameState, resume: RaiseCashResume): GameState {
     turn: { ...state.turn, raiseCash: undefined, manageStaged: undefined },
   };
   if (resume === "after-landing") return afterLanding(cleared);
+  if (resume === "pre-roll") {
+    return {
+      ...cleared,
+      turn: {
+        ...cleared.turn,
+        phase: "pre-roll",
+        managerId: undefined,
+        pendingBuy: undefined,
+        tradeDraft: undefined,
+        pendingTrade: undefined,
+      },
+    };
+  }
+  // A resolve-tile continuation finishes a landing deferred until the player was
+  // solvent (the forced jail fine put them under). Now that they're back to ≥ 0,
+  // resolve the square they moved onto; its own events fold into the turn log.
+  if (resume.kind === "resolve-tile") return resolveTile(cleared, resume.total).state;
   // A bank-estate continuation resumes the multi-lot estate auction loop; the
-  // string checks above narrow `resume` to that object here.
-  if (resume !== "pre-roll") return resumeEstate(cleared, resume);
-  return {
-    ...cleared,
-    turn: {
-      ...cleared.turn,
-      phase: "pre-roll",
-      managerId: undefined,
-      pendingBuy: undefined,
-      tradeDraft: undefined,
-      pendingTrade: undefined,
-    },
-  };
+  // checks above narrow `resume` to that object here.
+  return resumeEstate(cleared, resume);
 }
 
 /** Re-stamp a charge event with the cash that actually changed hands. On a bust
@@ -2409,10 +2415,12 @@ function jailRoll(
 
   const moved = moveActivePlayer(paid, total);
   if (moved.players[idx].cash < 0) {
-    // The fine alone put them in the red: settle before play continues. The
-    // landing's own rent is skipped in this rare case (they raise cash first) —
-    // a deliberate v1 simplification noted in monopoly/CLAUDE.md.
-    return { state: settleOrRaise(moved, "after-landing"), newEvents: events };
+    // The fine alone put them in the red. Settle it FIRST (raise back to ≥ 0),
+    // THEN resolve the landing via a resolve-tile continuation — so the square's
+    // own charge (rent / tax / card) always sees a solvent player. Resolving
+    // while still negative would credit a rent creditor `cash + (negative)`,
+    // cheating them; deferring the landing dodged that, but skipped the rent owed.
+    return { state: settleOrRaise(moved, { kind: "resolve-tile", total }), newEvents: events };
   }
   const resolved = resolveTile(moved, total);
   return { state: resolved.state, newEvents: [...events, ...resolved.newEvents] };

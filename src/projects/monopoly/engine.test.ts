@@ -2257,6 +2257,36 @@ describe("jail roll", () => {
     expect(p1?.bankrupt).toBe(true);
     expect(next.turn.playerId).toBe("p2");
   });
+
+  it("still resolves the landing when the forced fine drove the player negative", () => {
+    // p1 serves out on jail turn 3 with only $30, so the $50 fine alone tips
+    // them to -$20 — recoverable, but negative. Their forced move lands on p2's
+    // Tennessee Avenue: they owe the fine AND the rent, and must settle both.
+    // The landing must NOT be skipped just because the fine went into the red.
+    let start = inJailDecision(freshGame("jailrent-0"), 3); // rolls [3,5] = 8 -> tile 18
+    start = setCash(start, "p1", 30);
+    // p2 owns the destination; p1 holds Boardwalk to mortgage back to >= 0.
+    start = withOwnership(start, { 18: "p2", 39: "p1" });
+    const p2Before = cashOf(start, "p2");
+
+    // Forced jail roll: pay the fine, move to tile 18, then park to raise cash
+    // (the fine alone put them under) before the landing resolves.
+    const { state: afterRoll } = autoStep(start);
+    expect(afterRoll.turn.phase).toBe("must-raise-cash");
+    expect(firstNegativePlayer(afterRoll)).toBe("p1");
+    const p1AfterRoll = afterRoll.players.find((p) => p.id === "p1");
+    expect(p1AfterRoll?.cash).toBe(30 - 50); // -$20: fine paid, landing pending
+    expect(p1AfterRoll?.position).toBe(18); // moved out by the roll
+
+    // Mortgage Boardwalk (+$200) to climb back to >= 0; settling the fine lets
+    // the landing finally resolve and charge the rent the old code skipped.
+    const settled = applyOk(afterRoll, { kind: "mortgage", playerId: "p1", position: 39 });
+
+    expect(cashOf(settled, "p2")).toBe(p2Before + 14); // Tennessee base rent
+    const p1 = settled.players.find((p) => p.id === "p1");
+    expect(p1?.cash).toBe(30 - 50 + 200 - 14); // fine, mortgage, then rent
+    expect(settled.turn.phase).toBe("post-roll"); // landing resolved, turn winds down
+  });
 });
 
 describe("apply pay-to-leave-jail", () => {

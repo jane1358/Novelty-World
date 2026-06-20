@@ -365,6 +365,11 @@ export type TurnPhase =
  *    queue, then rolls). Used when a trade's settlement — cash deltas or
  *    mortgage interest — put one or more players (possibly out of turn) in the
  *    red.
+ *  - a **resolve-tile continuation** (`{ kind: "resolve-tile", total }`): once
+ *    solvent, resolve the square the active player just moved onto (rent / tax /
+ *    card / buy), carrying the dice `total` that rent depends on. Used when the
+ *    forced jail fine alone tipped a served-out player negative *before* their
+ *    landing was resolved — settle the fine first, then charge the square.
  *  - a **bank-estate continuation** (`{ kind: "bank-estate", … }`, reused from
  *    `AuctionResume`): resume the estate-liquidation auction loop — auction the
  *    next lot, or hand off when the estate is exhausted. Used when an estate-lot
@@ -376,6 +381,7 @@ export type TurnPhase =
 export type RaiseCashResume =
   | "after-landing"
   | "pre-roll"
+  | { kind: "resolve-tile"; total: number }
   | Extract<AuctionResume, { kind: "bank-estate" }>;
 
 /** What play resumes into once an auction resolves — the auction sub-game is

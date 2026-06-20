@@ -12,42 +12,6 @@ Per the project's testing rule, a rules fix starts with a failing
 These produce an incorrect result (a player cheated of money they're owed), not
 just a missing convenience. Prioritize by stakes.
 
-### Forced jail-fine landing skips the whole tile resolution
-
-**Stakes: high** (an opponent can be cheated of full rent — potentially thousands).
-
-`jailRoll` (`engine.ts:2410-2415`). When a player fails their third jail roll,
-they're forced to pay the $50 fine and move out by the roll. If the $50 fine
-*alone* tips them below $0 — but they can still recover by liquidating (so they
-don't simply go bankrupt, which is handled correctly just above at
-`engine.ts:2401`) — the engine calls `settleOrRaise(moved, "after-landing")` and
-**skips `resolveTile` entirely**.
-
-- **Rules:** pay the $50, move, then resolve the destination square normally —
-  pay rent if owned, buy/auction if unowned, pay tax, draw a card, or go to jail.
-  Paying the fine into the red doesn't waive the landing; you owe the fine **and**
-  whatever the square costs, settling both through liquidation (or going bankrupt
-  to the rent creditor if you can't cover both).
-- **Engine:** the player teleports onto the square and **nothing about it is
-  applied** — no rent paid to the owner, no tax, no card, no buy/auction, and they
-  even **dodge the "Go to Jail" tile**. They settle only the $50 fine and the turn
-  ends.
-- **Root cause:** rent flows through `chargeToCreditor`, whose bankruptcy branch
-  (`transferred = Math.max(0, payer.cash)`, credits the creditor `cash + payer.cash`)
-  assumes the payer's cash is **non-negative** when the charge lands. Calling
-  `resolveTile` while the player is already negative from the fine would credit a
-  rent creditor `creditor.cash + (negative)` — i.e. the *creditor* loses money. The
-  skip was the cheap way to dodge that broken interaction.
-- **Fix shape:** settle the fine **first** (raise back to ≥ 0), **then** resolve
-  the tile, so `resolveTile`/`chargeToCreditor` always see a solvent player. That
-  means a new `RaiseCashResume` continuation that re-enters `resolveTile` with the
-  dice total once the fine is settled — structurally the **same pattern as the
-  bank-estate auction continuation** (a resume target carrying what to do next),
-  carrying the dice total instead of remaining lots.
-- **Frequency:** not exotic. Reaching the forced fine is ~58% of full jail stays
-  ((5/6)³ failed-doubles); the binding constraint is just "< $50 cash but
-  mortgageable assets at that moment," an ordinary mid-game squeeze.
-
 ### Chairman of the Board sends the estate to the bank instead of the owed players
 
 **Stakes: low** (only fires near-broke; amounts are $50/head).
