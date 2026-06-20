@@ -448,6 +448,41 @@ streams). TWO acquisition wins in a row on the same lead. The floor stays **v1**
 bot is whatever `bots/live.ts` → `LIVE_VERSION` points to** (currently **v17** — v28/v29 are
 a product call not yet greenlit).
 
+**Lead landscape for the next session (after Batch 4 closed the mortgage-to-fund lead):**
+
+The search space is now very thoroughly explored (v1–v32). The ONE structural win shape proven
+across the whole run is **ASYMMETRIC + UNDERPRICED transfers** (v5 denial, v28/v29 distress
+discount); every "deploy / press / grab / hold MORE" lever has washed or regressed. What remains:
+
+- **CLOSED dead ends (do not re-walk):** all the do-not-re-walk items below, PLUS now —
+  mortgage-to-fund / roadmap #2 sweetener half (v32, washed — leverage cost ≈ tempo gain), the
+  whole-set distress grab (v31, −EV by construction), the distress GATE width (v30) and DISCOUNT
+  ceiling (v29, both at their optimum), and the distress lever's surrounding corners (Batch-3
+  audit: multi-lot already in v29, dip-below-reserve non-applicable, distressed-denial inert).
+  The desperation/distress lead (b) is **fully mined** — its productive surface is exactly v29's
+  Offer B.
+- **NOT cleanly built, but strong PRIOR toward washing (a future session could still A/B, but
+  reason first):** *heads-up / endgame closing theory.* The bot has NO 2-player-specific code
+  (verified) — a genuine structural gap. BUT every concrete hypothesis in it maps onto an
+  already-closed result: deadlock-breaking completion (v3, win-neutral — split former draws
+  50/50), asymmetric-swap refusal / standings-weighting (v13/v15 possessiveness, regressed),
+  endgame development pressure (v19, regressed), information/first-mover (v12, the field has no
+  predictive model), auction precision (v10, regressed). The likely reason it washes: by the time
+  a game reaches heads-up it is usually already DECIDED (the leader snowballs after the first
+  bankruptcy), so a closing-SPEED lever transfers no win share (busting a turn sooner doesn't
+  change WHO wins) — the same reason v19 washed. If a future session tries it, the only shape
+  with any hope is a NEW asymmetric+underpriced TRADE edge specific to the 2-player threat
+  calculus, not a closing-speed or possessiveness knob.
+- **Web research surfaced NO concrete new quantitative edge** (Batch 4): searches returned only
+  generic strategy the bot already encodes (refuse rival-completing trades = the threat veto;
+  cash-vs-property by phase; block monopolies = v5). No academic/simulation data with a testable
+  dial the bot doesn't have.
+
+**Honest assessment:** the bot is strongly tuned and the obvious structural edges are captured.
+v29 is a robust champion (vs v17 holdout 54.7%, +32.6 Elo per Batch 3). Further gains, if any,
+are likely small and hard to separate from E=20 noise — the next session should set a high bar
+and expect rejects, or judge the loop effectively converged.
+
 **The v28 → v29 run (2026-06-21), lead (b) — desperation/underpriced acquisition — TWO CHAMPIONS:**
 
 - **v29** push `DISTRESS_DISCOUNT` 0.75→1.0 (the maximal discount — a distressed seller prices
