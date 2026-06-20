@@ -43,7 +43,10 @@ export interface BotDecision {
  *  illegal or game-breaking one.** Return the strongest move you can compute;
  *  return `null` wherever you have no improvement on the default. Legality is the
  *  engine's job, not yours — so a strategy can be reasoned out from this contract
- *  alone, with no need to mirror the engine's validation.
+ *  alone, with no need to mirror the engine's validation. Termination is handled
+ *  too: if you proactively arm builds / trades, you get one window of each per
+ *  turn-group, so a policy that keeps proposing can never freeze a turn — you
+ *  owe no guards against your own re-pitch loops.
  *
  *  The same shape works for the dumb baseline, a strong rule-based policy, and a
  *  future learned policy. See `monopoly/CLAUDE.md` "Bots".
