@@ -326,21 +326,24 @@ independent selectors over it.
    **confirm the accept on `--prefix holdout`** (a fresh, unseen stream) before
    locking a champion. Don't promote on the train run alone — the v3 train/held-out
    swing above is exactly why.
-8. **v1 may be dropped from the ACTIVE field once it is provably dominated**
-   (raised by Kyle, 2026-06-20; option, not yet taken). v1's hard trade-veto
-   makes ~a quarter of its games deadlock to the turn cap, and a *capped* game
-   runs the **full** 2000 turns — the most expensive game there is — while
-   contributing **nothing** to the SPRT (draws are discarded). So v1 pairings are
-   the slowest *and* the least informative. The floor doctrine ("never go below
-   v1") is about ranking robustness, not about running v1 every time: once every
-   `vN (N≥2)` clears v1 by a wide margin (it does — ~160 Elo), a non-transitive
-   loss to v1 by a bot that beats v2 is implausible, so v1 can be left out of the
-   day-to-day gauntlet field (`--field` already makes this a one-flag choice) and
-   kept only as an archived audit. **This is purely a cost optimization — v1 is a
-   real strategy and the published floor, NOT a null bot like `dumb`** (which
-   measures nothing and is hard-rejected from any field for a different reason).
-   Keep v1 in the field until a future version's dominance is locked in; revisit
-   then.
+8. **v1 is DROPPED from the default field — ✅ TAKEN (2026-06-20, by Kyle).** v1's
+   hard trade-veto makes ~a quarter of its games deadlock to the turn cap, and a
+   *capped* game runs the **full** 2000 turns — the most expensive game there is —
+   while contributing **nothing** to the SPRT (draws are discarded). So v1 pairings
+   are the slowest *and* the least informative. The floor doctrine ("never go below
+   v1") is about ranking robustness, not about running v1 every time: every
+   `vN (N≥2)` clears v1 by a wide margin (~160 Elo; v5 beat it 72–80%, the whole
+   field +110–216 Elo above it), so a non-transitive loss to v1 by a bot that beats
+   v2 is implausible. The condition this decision waited on — *"keep v1 until a
+   future version's dominance is locked in"* — was met when **v5 locked in** (it
+   dominates v1 on both seed streams), so v1 is now **out of the gauntlet's default
+   field**: `npm run sim:gauntlet` excludes it automatically; re-include it for an
+   occasional archived floor audit with **`--with-v1`** (or an explicit `--field`).
+   When v1 is absent the Elo fit **anchors at the base** instead of v1=0 (the report
+   prints `Elo (<base> = 0)`), so ratings stay interpretable. **This is purely a cost
+   optimization — v1 is a real strategy and the published floor, NOT a null bot like
+   `dumb`** (which measures nothing and is hard-rejected from any field). v1 remains
+   in `VERSIONS` and fully runnable; only the *default* field changed.
 
 ## Version log
 
@@ -355,6 +358,7 @@ bot as of this doc.
 | v2 | 2026-06-19 | **Price the rival-monopoly threat instead of vetoing it** (`versions/v2/trades.ts`): handing a rival a new monopoly costs the seller `DENY_FACTOR`×bonus, folded into their valuation, so "cash for the completer" clears when the cash outweighs it. | **v2 win share 69.8%** of decisive games (139–60) over 240 fresh held-out seeds, two independent families (74.0% / 66.0%), z≈5.6 vs the 50% null. Cap rate 40%→~17%; 4×v2 resolves 16/16 previously-deadlocked seeds. | **loop champion** (current best; not yet the live bot) |
 | v3 | 2026-06-19 | **N-way / multi-short trade construction** (`versions/v3/trades.ts`): generalize the search from "exactly one lot short, 2-way" to "any number short, N-way" — buy EVERY missing lot of a near-monopoly in one N-party deal — **plus the coupled fix that makes it viable:** price a new monopoly as ONE rival-threat premium *apportioned* across its contributors (`rivalThreatCost`), so a buyer assembling from two holdouts isn't charged the denial premium twice for one set (reduces to v2's full premium for a single seller). | **Eliminates the cap entirely: 0.0% draws in both held-out families** (v2 still caps ~17–26%); trades executed ~93→~800/run. **But win-neutral vs v2: 49.2% win share** over 240 fresh seeds (v3eval 46.7% [56–64], v3eval2 51.7% [62–58]), z≈−0.26 — does **not** clear the >50% bar. The residual deadlock was costing *draws, not losses*, so breaking it splits former draws ~50/50 instead of winning them. | **rejected** as champion (win-neutral); champion stays **v2**. N-way+apportionment archived in `versions/v3/` as a proven, reusable building block. **Later shipped LIVE** (`LIVE_VERSION = v3`) as the more engaging substrate, and used as the **base** for v4 — a win-safe branch point even though it didn't beat v2. |
 | v4 | 2026-06-20 | **Tempo via mortgage-funded development** (`versions/v4/valuation.ts`, `planBuild`): when cash above the liquidity floor can't reach a prize set's desired level, mortgage idle, **non-monopoly** back-burner lots to fund the build a level *sooner* — turning idle equity into rent pressure ahead of rivals. Gated to real sets (`TEMPO_PRIZE_BONUS`, excludes brown) and real builds (`TEMPO_MIN_LEVEL = 3`); never cannibalizes a monopoly; the funded commit still clears the **same** liquidity floor (it redeploys idle capital, it does *not* lower the reserve). First version measured on the Session-A gauntlet. | **Win-neutral vs v3: 50.1% (1006–1000), confident EVEN over 2006 decisive (train).** No regressions: beats **v2 53.6%** (638–552) and **v1 67.9%** (106–50); Elo **v4 +149.3 ≈ v3 +147.4** (within noise), v2 +127.7, v1 0. Does **not** clear the improve-vs-base bar. | **rejected** as champion (win-neutral); base/substrate stays **v3**. Snapshot kept in `versions/v4/` as a win-safe building block (a tempo knob to pair with an asymmetry lever later); `v4/build.test.ts` pins the mechanism. |
+| v8 | 2026-06-20 | **Denial + tempo (coupled)** (`versions/v8/`): the marquee synergy the v4 building block was kept for. Carry v5's trade-to-deny engine VERBATIM (`v8/trades.ts`) and fold v4's mortgage-funded TEMPO `planBuild` back in (`v8/valuation.ts`) — so after denying a rival their set, the bot mortgages idle non-monopoly back-burner lots to out-develop the field with the freed leverage. ONE coupled hypothesis: denial alone (v5) won and tempo alone (v4) was win-neutral, but together they compound — deny, then press the advantage faster than rivals recover. Dispatcher verbatim; both changes live in the called modules. | **TRAIN said BETTER, HOLDOUT said EVEN — an overfit caught.** Train: BETTER vs v5 52.9% (942–839, 1781 decisive). Holdout: **EVEN vs v5 50.7% (1744–1697, 3441 decisive, confident),** also EVEN vs v6 (49.8%); BETTER vs v2/v3/v4/v7. Elo (holdout, v5=0): v8 +4.2 ≈ v5 0. The improve-vs-base bar fails on held-out seeds. | **rejected** as champion (win-neutral on holdout); base stays **v5**. The train accept was seed luck — Decision 7's train/holdout split did its job. Tempo adds no robust win share **even coupled with denial**, falsifying v4's "tempo may pay off coupled with denial" caveat. `v8/build.test.ts` + `v8/trades.test.ts` archived. |
 | v7 | 2026-06-20 | **Early (two-short) denial** (`versions/v7/trades.ts`): branched from v5 (NOT v6). After v6 showed denial's *funding reach* isn't the lever, push its *scope* instead: block a rival while still TWO lots short of a 3-lot set, taking one of the two missing lots from a holdout (holding one needed lot makes the set impossible). Hypothesis: at two-short the lots are still distributed/cheap, so early denial catches prize sets that become unblockable once the rival goes one-short and grabs the completer itself. Credit discounted by `TWO_SHORT_DISCOUNT = 0.5` (a two-short rival is further from completing); 2-lot sets excluded (their "two short" is "owns none"). `evaluateTrade` untouched; Offer D mirrors v5's go/no-go. | **WORSE vs v5 (base): 47.8% (1520–1663, 3183 decisive, confident REGRESSION, train).** Still beats the older field (v3 56.1%, v2 60.1%) but loses to v5; Elo v7 −13.6 < v5 0. | **rejected** (regresses the champion); base stays **v5**. Early denial is premature: it spends cash/assets on speculative blocks the rival might never have completed, and tying up capital early costs more than the rare unblockable-later set it saves. **v5's one-short timing — block exactly when the threat is imminent and the completer is pinpointed — is near-optimal for the denial lever.** `v7/trades.test.ts` pins Offer D. |
 | v6 | 2026-06-20 | **Deny-via-swap** (`versions/v6/trades.ts`): push the proven v5 denial harder by removing its CASH gate. v5 could only block a rival when it could fund the holdout's sweetener in cash (`sweetenFor` returns null otherwise), so a denial it wanted but couldn't afford never happened. v6 adds a SWAP variant — pay the holdout with a junk lot (`junkLotForSwap`: a lone color lot in a set neither I nor the holdout have a stake in) plus minimal cash. Same block, fundable on a thinner bankroll. Both variants constructed; selection takes the higher denial-augmented delta. `evaluateTrade` untouched; the junk-lot filter + unchanged rival-threat pricing keep the in-kind sweetener from advancing the holdout. | **Win-neutral vs v5 (base): 50.4% (1222–1204, 2426 decisive, confident EVEN, train).** No regressions: beats v3 59.0% (203–141), v2 66.3% (116–59); Elo v6 +5.6 ≈ v5 0 (within noise), v3 −52.3, v2 −77.2. Does **not** clear the improve-vs-base bar (triage; no holdout run — triage already EVEN). | **rejected** as champion (win-neutral); base stays **v5**. The cash gate wasn't the binding constraint — cash-fundable denials already capture the value; in-kind funding adds reach but no win share. `v6/trades.test.ts` pins the swap construction; archived as a building block. |
 | v5 | 2026-06-20 | **Trade-to-deny** (`versions/v5/trades.ts`): extend v3's N-way trade CONSTRUCTION with a NEGATIVE-SUM move — when a rival is one lot short of a set and the completer sits with a third-party **holdout** (not me, not the rival, building-free), buy that lot to ME purely to **block** the completion, even though it doesn't complete my own set. Priced off the existing `DENY_FACTOR` lever (which `acquisitionValue` already applies on a landing/auction denial but construction never did): a new `denyBonus` candidate type with its own go/no-go gate `plainDelta + DENY_FACTOR×bonus > ACCEPT_MIN`. `evaluateTrade` is **unchanged** (completion + counterparty model + incoming vote all intact); the holdout judges by plain `evaluateTrade`; **the denied rival is NOT a party, so it can't veto its own denial — the asymmetry.** Weak sets self-gate (a small bonus rarely clears the holdout's sweetener). | **BETTER vs v3 (base): 54.0% (537–457, 994 decisive, train), confident.** No regressions — sweeps the whole field both streams: **train** v2 64.0%, v4 54.6%, v1 71.7%; **holdout** v3 54.2%, v2 65.1%, v4 61.8%, v1 80.0%. Elo (holdout) **v5 +216.3** > v3 +175.3 > v4 +149.3 > v2 +141.4 > v1 0 — clear top of the field. | **ACCEPTED — new loop champion.** The first non-neutral structural win since v2: a negative-sum, rival-specific move transfers win share where two positive-sum self-improvements (v3, v4) did not. Base for v6. `v5/trades.test.ts` pins the denial construction. |
@@ -558,6 +562,35 @@ denial scope (v7) — both are logged dead ends.
    funding) and v7 (two-short, more scope) both **failed** — funding reach is
    irrelevant and earlier scope is harmful. The denial lever appears **tuned at v5**:
    block one-short, in cash, exactly when the completer is reachable.
+
+**v8 — what was tried and what we learned (an OVERFIT caught by the holdout):**
+
+1. **v8 assembled** in `bots/versions/v8/` from two existing building blocks: v5's
+   trade-to-deny (`trades.ts`, verbatim) + v4's mortgage-funded tempo (`valuation.ts`
+   `planBuild`). `v8/trades.test.ts` and `v8/build.test.ts` pin both mechanisms are
+   intact. ONE coupled hypothesis: deny a rival their set, then out-develop the field
+   with the freed leverage — the synergy v4's caveat hoped for.
+2. **The result is a methodology win as much as a bot result.** Triage (train seeds)
+   said **BETTER vs v5 (52.9%, confident)** — and it would have been tempting to
+   crown it. But the **holdout** run said **EVEN (50.7% over 3441 decisive,
+   confident)**: v8's edge over v5 evaporates on seeds it wasn't measured on. This is
+   exactly the train→holdout swing Decision 5/7 warned about (v3-vs-v2 swung +12.5 →
+   −5.5 the same way), and the split caught it. **Always confirm on holdout before
+   ratcheting — a confident train BETTER is not enough.**
+3. **The substantive lesson.** Tempo adds **no robust win share even coupled with
+   denial.** v4 (tempo alone) was win-neutral; the hope was that denial's freed
+   leverage would let tempo convert. It doesn't — over held-out seeds the coupled
+   bot ties v5. Combined with v6 (funding) and v7 (scope), the picture is firm:
+   **v5's one-short, cash-funded denial is the whole edge; surrounding it with tempo,
+   in-kind funding, or earlier blocks adds nothing or hurts.** The next lever must be
+   a genuinely different axis, not another tweak to the development/denial machinery.
+4. **Process note (tooling).** This run also exposed two infrastructure gaps, now
+   fixed: (a) `npm run sim:gauntlet` had no progress output, so a long run was a
+   black box — added a live per-pairing progress line (games/cap bar + win% + SPRT
+   LLR); the bar filling toward the cap is the visible "drifting to inconclusive"
+   signal. (b) Decision 8 (drop v1 from the default field) was finally **taken** —
+   v1 is dominated and its deadlock-capped games are the slowest, least-informative
+   pairing; it's now excluded by default (re-add with `--with-v1`).
 
 The v2-era engine fix (false-bankruptcy / hotel-shortage liquidation escape in
 shared `development.ts`, regression-tested in `development.test.ts`) still stands
