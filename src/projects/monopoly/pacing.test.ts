@@ -96,7 +96,13 @@ describe("driveOp — human-turn sync barrier", () => {
 
 describe("driveOp — jail decision", () => {
   it("proxies a bot's jail pay when it can afford the fine", () => {
-    const botJail = withTurn(base, { playerId: "p2", phase: "jail-decision" });
+    // p2 is actually jailed — `pay-to-leave-jail` is only legal in jail, and the
+    // pacer now vets legality before forwarding.
+    const botJail = mapPlayer(
+      withTurn(base, { playerId: "p2", phase: "jail-decision" }),
+      "p2",
+      { inJail: true },
+    );
     expect(driveOp(botJail, true, "p1")).toEqual({
       kind: "intent",
       intent: { kind: "pay-to-leave-jail", playerId: "p2" },
@@ -259,7 +265,12 @@ describe("driveOp — proactive bot infrastructure", () => {
     const buildBot: Bot = () => ({
       intent: { kind: "manage", playerId: "p2", build: { 16: 1 }, mortgage: {} },
     });
-    const state = botTurn({ phase: "managing", managerId: "p2" });
+    // p2 owns the full orange monopoly (16/18/19), so building one house on 16
+    // is a legal commit the pacer forwards.
+    const state: GameState = {
+      ...botTurn({ phase: "managing", managerId: "p2" }),
+      ownership: { 16: "p2", 18: "p2", 19: "p2" },
+    };
     expect(driveOp(state, true, "p1", onlyP2(buildBot))).toEqual({
       kind: "intent",
       intent: { kind: "manage", playerId: "p2", build: { 16: 1 }, mortgage: {} },
@@ -277,10 +288,15 @@ describe("driveOp — proactive bot infrastructure", () => {
 
   it("drives a bot proposer's trade-building to its draft/propose intents", () => {
     const proposeBot: Bot = () => ({ intent: { kind: "propose-trade", playerId: "p2" } });
-    const state = botTurn({
-      phase: "trade-building",
-      tradeDraft: { proposerId: "p2", propertyTo: { 1: "p3" }, gojfTo: {}, cashDelta: {} },
-    });
+    // p2 owns property 1, so a draft handing it to p3 is a proposable trade the
+    // pacer forwards.
+    const state: GameState = {
+      ...botTurn({
+        phase: "trade-building",
+        tradeDraft: { proposerId: "p2", propertyTo: { 1: "p3" }, gojfTo: {}, cashDelta: {} },
+      }),
+      ownership: { 1: "p2" },
+    };
     expect(driveOp(state, true, "p1", onlyP2(proposeBot))).toEqual({
       kind: "intent",
       intent: { kind: "propose-trade", playerId: "p2" },
@@ -305,6 +321,107 @@ describe("driveOp — proactive bot infrastructure", () => {
     const anyBot: Bot = () => ({ intent: { kind: "cancel-manage", playerId: "p1" } });
     const state = withTurn(base, { phase: "managing", managerId: "p1" });
     expect(driveOp(state, true, "p1", onlyP2(anyBot))).toBeNull();
+  });
+});
+
+// The contract's central promise: a bot can be a BAD player but never an
+// ILLEGAL or game-breaking one. Whatever a policy returns — null, a wrong-phase
+// intent, or a move the engine would reject — the pacer substitutes the phase's
+// guaranteed-legal default instead of forwarding something that would stall the
+// phase (a route rejection latches the once-per-version drive guard) or crash
+// the headless sim (`applyOrThrow`). Each case here is a stall mode that the
+// vet-and-default in `legalOp` + `turnOp` closes.
+describe("driveOp — misbehaving bot safety net", () => {
+  const onlyP2 = (bot: Bot) => (_s: GameState, id: string): Bot | null =>
+    id === "p2" ? bot : null;
+  const botTurn = (turn: Partial<GameState["turn"]>): GameState =>
+    withTurn(base, { playerId: "p2", ...turn });
+  const idle: Bot = () => null;
+
+  it("declines the buy when the bot returns null", () => {
+    const state = botTurn({ phase: "buy-decision", pendingBuy: 1 });
+    expect(driveOp(state, true, "p1", onlyP2(idle))).toEqual({
+      kind: "intent",
+      intent: { kind: "decline-buy", playerId: "p2" },
+    });
+  });
+
+  it("declines the buy when the bot returns an unaffordable (illegal) buy", () => {
+    // Boardwalk (39) is $400; with $100 the `buy` is illegal — vetted and
+    // replaced by decline rather than route-rejected.
+    const greedy: Bot = () => ({ intent: { kind: "buy", playerId: "p2" } });
+    const broke = mapPlayer(
+      botTurn({ phase: "buy-decision", pendingBuy: 39 }),
+      "p2",
+      { cash: 100 },
+    );
+    expect(driveOp(broke, true, "p1", onlyP2(greedy))).toEqual({
+      kind: "intent",
+      intent: { kind: "decline-buy", playerId: "p2" },
+    });
+  });
+
+  it("drops from the auction when the bot returns null (so it always resolves)", () => {
+    const state = botTurn({
+      phase: "auction",
+      auction: {
+        position: 1,
+        active: ["p2", "p3"],
+        highBid: 0,
+        leaderId: null,
+        bids: {},
+        resume: { kind: "landing" },
+      },
+    });
+    expect(driveOp(state, true, "p1", onlyP2(idle))).toEqual({
+      kind: "intent",
+      intent: { kind: "pass-bid", playerId: "p2" },
+    });
+  });
+
+  it("liquidates a forced debtor when its bot returns null", () => {
+    // p2 is below zero and owns a mortgageable lot; a silent policy falls back to
+    // the canonical mortgage step rather than stalling must-raise-cash forever.
+    const state: GameState = {
+      ...mapPlayer(
+        botTurn({ phase: "must-raise-cash", raiseCash: "pre-roll" }),
+        "p2",
+        { cash: -50 },
+      ),
+      ownership: { 1: "p2" },
+    };
+    expect(driveOp(state, true, "p1", onlyP2(idle))).toEqual({
+      kind: "intent",
+      intent: { kind: "mortgage", playerId: "p2", position: 1 },
+    });
+  });
+
+  it("declines a pending trade when an un-voted bot party returns null", () => {
+    const state = botTurn({
+      phase: "trade-pending",
+      pendingTrade: {
+        id: "t1",
+        proposerId: "p3",
+        propertyTo: { 1: "p2" },
+        gojfTo: {},
+        cashDelta: {},
+        approvals: { p2: false, p3: true },
+      },
+    });
+    expect(driveOp(state, true, "p1", onlyP2(idle))).toEqual({
+      kind: "intent",
+      intent: { kind: "decline-trade", playerId: "p2", tradeId: "t1" },
+    });
+  });
+
+  it("rolls when a jailed bot returns an illegal jail intent", () => {
+    // p2 is NOT jailed here, so `pay-to-leave-jail` is illegal; the pacer rolls
+    // instead of forwarding a rejectable intent.
+    const wrongJail: Bot = () => ({
+      intent: { kind: "pay-to-leave-jail", playerId: "p2" },
+    });
+    const state = botTurn({ phase: "jail-decision" });
+    expect(driveOp(state, true, "p1", onlyP2(wrongJail))).toEqual({ kind: "step" });
   });
 });
 

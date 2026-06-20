@@ -1,7 +1,8 @@
+import { forcedRaiseStep } from "./bots/fallback";
 import { BOTS, type Bot, type BotDecision } from "./bots/registry";
 import { deckFor } from "./data";
 import { driverRole } from "./driver";
-import { hasPendingBoundary } from "./engine";
+import { firstNegativePlayer, hasPendingBoundary, isLegal } from "./engine";
 import type { CardSource, GameEvent, GameState, Intent } from "./types";
 
 /** Default per-client turn budget. One whole turn — glide to the active
@@ -109,6 +110,19 @@ function opFor(decision: BotDecision): DriveOp {
   return { kind: "intent", intent: decision.intent, note: decision.note };
 }
 
+/** Consult a bot for the seat that owes a decision, returning a LEGAL drive op
+ *  or null. A decision the engine would reject (`isLegal`) is treated as no
+ *  decision, so the caller substitutes the phase's guaranteed-legal default.
+ *  This is what makes a bot unable to break the game: a null, a wrong-phase
+ *  intent, or any illegal move never reaches the route (where a rejection would
+ *  strand the once-per-version drive guard and stall the phase) nor the headless
+ *  sim's `applyOrThrow` (where it would throw) — at worst the seat plays the
+ *  default and is a bad, but legal, player. */
+function legalOp(state: GameState, seat: string, bot: Bot): DriveOp | null {
+  const decision = bot(state, seat);
+  return decision && isLegal(state, decision.intent) ? opFor(decision) : null;
+}
+
 /** The bare turn op for a state, ignoring playback position: the mechanical
  *  beat for the active seat (`pre-roll` → step, `post-roll` → end-turn) when
  *  this client drives it, or the decision a proxied BOT seat owes. A bot policy
@@ -152,7 +166,8 @@ function turnOp(
       if (
         decision &&
         decision.intent.kind === "set-queue" &&
-        !isNoOpArm(state, decision.intent)
+        !isNoOpArm(state, decision.intent) &&
+        isLegal(state, decision.intent)
       ) {
         return opFor(decision);
       }
@@ -176,38 +191,87 @@ function turnOp(
     }
     // Otherwise a human decides via their own UI (pay / card / roll); only a
     // proxied (bot / disconnected) seat is driven: pay or use a card per the
-    // policy, else step the jail roll (the policy returns null for "roll").
+    // policy, else step the jail roll (a null — or any illegal decision —
+    // becomes the roll).
     if (driverRole(state, myPlayerId) !== "proxy") return null;
     const bot = botFor(state, playerId);
-    const decision = bot ? bot(state, playerId) : null;
-    return decision ? opFor(decision) : { kind: "step" };
+    const op = bot ? legalOp(state, playerId, bot) : null;
+    return op ?? { kind: "step" };
   }
   if (phase === "raising-cash") {
     // The active buyer staging a cash-raise to afford a landed-on property. Only
     // a bot buyer is driven (a human uses their own raise-cash UI); the buyer is
-    // always the active player, so gate on proxy. A stalled policy cancels back
-    // to the buy-decision (where it then declines) rather than wedging the phase.
+    // always the active player, so gate on proxy. A stalled or illegal policy
+    // cancels back to the buy-decision (where it then declines) rather than
+    // wedging the phase.
     if (driverRole(state, myPlayerId) !== "proxy") return null;
     const bot = botFor(state, playerId);
-    const decision = bot ? bot(state, playerId) : null;
-    return decision
-      ? opFor(decision)
-      : { kind: "intent", intent: { kind: "cancel-manage", playerId } };
+    const op = bot ? legalOp(state, playerId, bot) : null;
+    return (
+      op ?? { kind: "intent", intent: { kind: "cancel-manage", playerId } }
+    );
   }
-  if (
-    phase === "buy-decision" ||
-    phase === "must-raise-cash" ||
-    phase === "trade-pending" ||
-    phase === "auction"
-  ) {
-    // These phases can wait on an OFF-turn seat (the current bidder, a debtor
-    // after a trade, a vote), so iterate every bot rather than only the active
-    // one. A bot policy returns null unless this bot is the one being waited on.
+  if (phase === "buy-decision") {
+    // Always the active player's landing. Drive a bot buyer; a null or illegal
+    // decision declines (the safe, no-commitment default — never buy on a silent
+    // bot's behalf). A human's buy is left to their UI.
+    const bot = botFor(state, playerId);
+    if (!bot) return null;
+    return (
+      legalOp(state, playerId, bot) ??
+      { kind: "intent", intent: { kind: "decline-buy", playerId } }
+    );
+  }
+  if (phase === "must-raise-cash") {
+    // The debtor is whoever is below zero (possibly off-turn after a trade), not
+    // necessarily the active player. Drive a bot debtor; a null or illegal
+    // decision falls back to the canonical liquidation step, which is always
+    // legal here (an unrecoverable debtor went bankrupt at charge time and never
+    // reached this phase). A human debtor settles via their own UI.
+    const debtor = firstNegativePlayer(state);
+    if (debtor === null) return null;
+    const bot = botFor(state, debtor);
+    if (!bot) return null;
+    const op = legalOp(state, debtor, bot);
+    if (op) return op;
+    const forced = forcedRaiseStep(state, debtor);
+    return forced ? { kind: "intent", intent: forced } : null;
+  }
+  if (phase === "trade-pending" && state.turn.pendingTrade) {
+    // Each un-voted NAMED party owes a vote; drive the first bot among them (one
+    // per call). A null or illegal decision declines — a single decline cancels
+    // the proposal, the safe default (never approve a trade on a silent bot's
+    // behalf). A human party votes via their own UI.
+    const pending = state.turn.pendingTrade;
     for (const p of state.players) {
+      if (!(p.id in pending.approvals) || pending.approvals[p.id]) continue;
       const bot = botFor(state, p.id);
       if (!bot) continue;
-      const decision = bot(state, p.id);
-      if (decision) return opFor(decision);
+      return (
+        legalOp(state, p.id, bot) ??
+        {
+          kind: "intent",
+          intent: { kind: "decline-trade", playerId: p.id, tradeId: pending.id },
+        }
+      );
+    }
+    return null;
+  }
+  if (phase === "auction" && state.turn.auction) {
+    // Open-outcry: every still-in, non-leader seat owes a bid-or-drop for the
+    // auction to resolve. Drive the first bot among them (one per call); a null
+    // or illegal decision drops it (`pass-bid`), which always shrinks the active
+    // set so the auction terminates no matter how a bot misbehaves. The leader
+    // can't drop and needn't act; humans bid via their own UI.
+    const auction = state.turn.auction;
+    for (const p of state.players) {
+      if (!auction.active.includes(p.id) || p.id === auction.leaderId) continue;
+      const bot = botFor(state, p.id);
+      if (!bot) continue;
+      return (
+        legalOp(state, p.id, bot) ??
+        { kind: "intent", intent: { kind: "pass-bid", playerId: p.id } }
+      );
     }
     return null;
   }
@@ -221,20 +285,20 @@ function turnOp(
     if (actor === undefined) return null;
     const bot = botFor(state, actor);
     if (!bot) return null;
-    const decision = bot(state, actor);
-    return decision
-      ? opFor(decision)
-      : { kind: "intent", intent: { kind: "cancel-manage", playerId: actor } };
+    return (
+      legalOp(state, actor, bot) ??
+      { kind: "intent", intent: { kind: "cancel-manage", playerId: actor } }
+    );
   }
   if (phase === "trade-building") {
     const actor = state.turn.tradeDraft?.proposerId;
     if (actor === undefined) return null;
     const bot = botFor(state, actor);
     if (!bot) return null;
-    const decision = bot(state, actor);
-    return decision
-      ? opFor(decision)
-      : { kind: "intent", intent: { kind: "cancel-trade", playerId: actor } };
+    return (
+      legalOp(state, actor, bot) ??
+      { kind: "intent", intent: { kind: "cancel-trade", playerId: actor } }
+    );
   }
   return null;
 }

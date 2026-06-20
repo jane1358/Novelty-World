@@ -158,6 +158,19 @@ export function apply(state: GameState, intent: Intent): ApplyResult {
   return applyEndTurn(state, intent);
 }
 
+/** Whether an intent would be accepted against this state right now — a pure
+ *  dry-run of `apply` whose resulting state is discarded. `apply` is the single
+ *  source of truth for legality, so this can never drift from what the engine
+ *  actually enforces. The pacer uses it to vet a bot's decision before
+ *  submitting: an intent the engine would reject is swapped for the phase's
+ *  legal default instead of being route-rejected (which strands the once-per-
+ *  version drive guard and stalls the phase) or thrown by the headless sim's
+ *  `applyOrThrow`. So a misbehaving policy can never break the game — at worst
+ *  it plays the default. */
+export function isLegal(state: GameState, intent: Intent): boolean {
+  return apply(state, intent).ok;
+}
+
 /** The next turn block when control passes to `nextPlayerId` at a fresh
  *  pre-roll. Centralized so every path into pre-roll (end-turn today; future
  *  three-doubles bust-out, jail-release, etc.) builds it identically. */

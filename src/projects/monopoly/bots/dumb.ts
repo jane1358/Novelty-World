@@ -1,19 +1,8 @@
-import {
-  builtLotsInGroup,
-  colorAt,
-  developmentLevel,
-  groupPositions,
-  houseCostAt,
-} from "../development";
 import { BID_INCREMENT, firstNegativePlayer, JAIL_FEE } from "../engine";
-import {
-  heldJailCard,
-  mortgageInterestAt,
-  mortgageValueAt,
-  ownablePrice,
-} from "../logic";
-import type { GameState, Intent, PropertyColor } from "../types";
+import { heldJailCard, mortgageInterestAt, ownablePrice } from "../logic";
+import type { GameState, Intent } from "../types";
 import { type BotDecision, move } from "./decision";
+import { forcedRaiseStep } from "./fallback";
 
 /** The "dumb" bot policy: a note-less `BotDecision` wrapping the decision a bot
  *  `playerId` should submit right now, or null if it isn't this bot's move.
@@ -102,16 +91,10 @@ function dumbIntent(state: GameState, playerId: string): Intent | null {
 
   if (phase === "must-raise-cash") {
     if (firstNegativePlayer(state) !== playerId) return null;
-    // Mortgage building-free properties first (cheapest first), sparing
-    // developed monopolies as long as possible.
-    const toMortgage = cheapestMortgageable(state, playerId);
-    if (toMortgage !== null) {
-      return { kind: "mortgage", playerId, position: toMortgage };
-    }
-    // Only developed property is left — sell a built set's buildings. Without
-    // this the debtor stalls (a built property can't be mortgaged), so the
-    // forced phase would never clear.
-    return sellCheapestBuiltSet(state, playerId);
+    // The canonical value-preserving liquidation step (mortgage cheapest, then
+    // sell a built set) — shared with the pacer's must-raise-cash safety default
+    // (`bots/fallback.ts`).
+    return forcedRaiseStep(state, playerId);
   }
 
   if (phase === "trade-pending" && pendingTrade) {
@@ -121,63 +104,4 @@ function dumbIntent(state: GameState, playerId: string): Intent | null {
   }
 
   return null;
-}
-
-/** Position of the cheapest un-mortgaged, building-free property the player
- *  owns, or null if none can be mortgaged. Cheapest first preserves the more
- *  valuable assets for as long as possible — pure heuristic, swap in a real
- *  policy when bots learn. */
-function cheapestMortgageable(
-  state: GameState,
-  playerId: string,
-): number | null {
-  let best: { pos: number; value: number } | null = null;
-  for (const [posStr, ownerId] of Object.entries(state.ownership)) {
-    if (ownerId !== playerId) continue;
-    const pos = Number(posStr);
-    if (state.mortgaged[pos]) continue;
-    // Can't mortgage while any property in this lot's color set is built
-    // (official rule) — the bot sells those buildings via `manage` instead.
-    if (builtLotsInGroup(pos, (p) => developmentLevel(state, p)).length > 0) {
-      continue;
-    }
-    const value = mortgageValueAt(pos);
-    if (value === null) continue;
-    if (!best || value < best.value) best = { pos, value };
-  }
-  return best?.pos ?? null;
-}
-
-/** A `manage` intent that liquidates the cheapest color set the player has
- *  built on — every property in it back to a bare lot — or null if they have
- *  no buildings. The forced raise-cash branch of `applyManage` applies it and
- *  re-checks the debt, so the bot just keeps returning these (and mortgages)
- *  until settled. Selling a whole set to zero is always supply-feasible (the
- *  planner's liquidation escape covers any hotel shortage). v1 heuristic: a
- *  whole set at a time, cheapest first to spare pricier development — a smarter
- *  policy can sell more granularly. */
-function sellCheapestBuiltSet(
-  state: GameState,
-  playerId: string,
-): Intent | null {
-  const builtColors = new Set<PropertyColor>();
-  for (const [posStr, ownerId] of Object.entries(state.ownership)) {
-    if (ownerId !== playerId) continue;
-    if (!developmentLevel(state, Number(posStr))) continue;
-    const color = colorAt(Number(posStr));
-    if (color) builtColors.add(color);
-  }
-  let cheapest: PropertyColor | null = null;
-  let cheapestCost = Infinity;
-  for (const color of builtColors) {
-    const cost = houseCostAt(groupPositions(color)[0]) ?? Infinity;
-    if (cost < cheapestCost) {
-      cheapestCost = cost;
-      cheapest = color;
-    }
-  }
-  if (cheapest === null) return null;
-  const build: Record<number, number> = {};
-  for (const pos of groupPositions(cheapest)) build[pos] = 0;
-  return { kind: "manage", playerId, build, mortgage: {} };
 }
