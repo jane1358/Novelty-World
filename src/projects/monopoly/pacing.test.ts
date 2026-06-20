@@ -213,6 +213,38 @@ describe("driveOp — proactive bot infrastructure", () => {
     });
   });
 
+  it("does not re-offer a proactive arm whose window was already used this turn", () => {
+    // p2's trade window is already recorded as served this turn-group, so the
+    // pacer rolls rather than re-opening the boundary — this is what stops a
+    // proactively-arming bot from looping (arm -> open -> resolve -> re-arm) and
+    // starving the roll. The engine stays permissive (a human may reopen via UI).
+    const tradeServed = withTurn(base, {
+      playerId: "p2",
+      boundaryServed: [{ playerId: "p2", kind: "trade" }],
+    });
+    const armTrade: Bot = () => ({
+      intent: { kind: "set-queue", playerId: "p2", queue: "trade", armed: true },
+    });
+    expect(driveOp(tradeServed, true, "p1", onlyP2(armTrade))).toEqual({
+      kind: "step",
+    });
+  });
+
+  it("still offers an arm for a kind whose window is still open this turn", () => {
+    // trade is served but manage is a fresh window: one per KIND per turn-group.
+    const tradeServed = withTurn(base, {
+      playerId: "p2",
+      boundaryServed: [{ playerId: "p2", kind: "trade" }],
+    });
+    const armManage: Bot = () => ({
+      intent: { kind: "set-queue", playerId: "p2", queue: "manage", armed: true },
+    });
+    expect(driveOp(tradeServed, true, "p1", onlyP2(armManage))).toEqual({
+      kind: "intent",
+      intent: { kind: "set-queue", playerId: "p2", queue: "manage", armed: true },
+    });
+  });
+
   it("ignores a non-arm intent at pre-roll and rolls (only set-queue is legal there)", () => {
     const wrong: Bot = () => ({
       intent: { kind: "manage", playerId: "p2", build: {}, mortgage: {} },

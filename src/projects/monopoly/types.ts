@@ -474,6 +474,17 @@ export interface TurnState {
   tradeDraft?: TradeDraft;
   /** Present iff `phase === "trade-pending"`: the proposal awaiting approval. */
   pendingTrade?: PendingTrade;
+  /** Proactive boundary windows already OPENED this turn-group, by player + kind.
+   *  Each player gets at most one `manage` and one `trade` window per turn-group:
+   *  the pacer will not PROACTIVELY (re-)offer a bot an arm whose window is
+   *  already listed here, so a proactively-arming bot can't loop the turn
+   *  boundary (arm → open → resolve → re-arm) and starve the roll — every turn
+   *  always reaches its dice. Recorded by the engine when an intermission opens
+   *  (`tryEnterBoundary`) and reset to empty when a fresh turn-group begins
+   *  (`enterPreRoll`). The engine itself stays permissive (a human may reopen a
+   *  window via their own UI); only the bot-driving pacer reads this. Absent =
+   *  none opened yet this turn-group. */
+  boundaryServed?: readonly { playerId: string; kind: "trade" | "manage" }[];
 }
 
 /** Per-player automation policy. Drives the auto-play spectrum: the engine

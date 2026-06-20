@@ -104,6 +104,26 @@ function isNoOpArm(
   return intent.armed === present;
 }
 
+/** Whether this proactive arm would re-open a window the player has ALREADY used
+ *  this turn-group (`turn.boundaryServed`). Each player gets one `manage` and one
+ *  `trade` window per turn-group; the pacer declines to re-offer a bot a kind it
+ *  already opened, so a proactively-arming policy can't loop the boundary (arm →
+ *  open → resolve → re-arm) and starve the roll — the turn always reaches its
+ *  dice. Only an ARM (`armed`) is gated; un-arming is never blocked. The engine
+ *  itself stays permissive (a human may reopen a window via their UI); this bound
+ *  applies only to the bot-driving pacer. */
+function isServedArm(
+  state: GameState,
+  intent: Extract<Intent, { kind: "set-queue" }>,
+): boolean {
+  return (
+    intent.armed &&
+    (state.turn.boundaryServed ?? []).some(
+      (e) => e.playerId === intent.playerId && e.kind === intent.queue,
+    )
+  );
+}
+
 /** Turn a bot's `BotDecision` into a proxied drive op, carrying its reasoning
  *  note through to the store (which logs it). */
 function opFor(decision: BotDecision): DriveOp {
@@ -167,6 +187,7 @@ function turnOp(
         decision &&
         decision.intent.kind === "set-queue" &&
         !isNoOpArm(state, decision.intent) &&
+        !isServedArm(state, decision.intent) &&
         isLegal(state, decision.intent)
       ) {
         return opFor(decision);

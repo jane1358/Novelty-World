@@ -1497,6 +1497,10 @@ function returnToPreRoll(state: GameState): GameState {
       playerId: state.turn.playerId,
       phase: "pre-roll",
       doublesStreak: state.turn.doublesStreak,
+      // Same turn-group (same player) — preserve the proactive windows already
+      // opened this turn, so a bot can't escape the once-per-kind bound by
+      // cancelling and re-arming. A fresh turn-group (`enterPreRoll`) resets them.
+      boundaryServed: state.turn.boundaryServed,
     },
   };
 }
@@ -1524,6 +1528,13 @@ function tryEnterBoundary(state: GameState): GameState | null {
     ...state.boundaryQueue.slice(0, idx),
     ...state.boundaryQueue.slice(idx + 1),
   ];
+  // Record this player+kind window as opened this turn-group, so the pacer won't
+  // proactively re-offer a bot the same arm (the loop-prevention bound — see
+  // `TurnState.boundaryServed`). Reset when the next turn-group starts.
+  const boundaryServed = [
+    ...(state.turn.boundaryServed ?? []),
+    { playerId: entry.playerId, kind: entry.kind },
+  ];
   if (entry.kind === "trade") {
     return {
       ...state,
@@ -1537,6 +1548,7 @@ function tryEnterBoundary(state: GameState): GameState | null {
           gojfTo: {},
           cashDelta: {},
         },
+        boundaryServed,
       },
     };
   }
@@ -1550,6 +1562,7 @@ function tryEnterBoundary(state: GameState): GameState | null {
       // Seed empty staging so the broadcast view has a shape from the moment the
       // intermission opens (mirrors the trade branch seeding `tradeDraft`).
       manageStaged: { build: {}, mortgage: {} },
+      boundaryServed,
     },
   };
 }

@@ -1737,6 +1737,9 @@ describe("boundary queue", () => {
     // Active turn owner is unchanged — it just interrupts before p1 rolls.
     expect(next.turn.playerId).toBe("p1");
     expect(next.boundaryQueue).toEqual([]);
+    // The opened window is recorded so the pacer won't re-offer p3 a trade arm
+    // this turn-group (the loop-prevention bound).
+    expect(next.turn.boundaryServed).toEqual([{ playerId: "p3", kind: "trade" }]);
     expect(newEvents).toHaveLength(0);
   });
 
@@ -1753,7 +1756,26 @@ describe("boundary queue", () => {
     // The active turn owner is unchanged — p3 just manages before p1 rolls.
     expect(next.turn.playerId).toBe("p1");
     expect(next.boundaryQueue).toEqual([]);
+    expect(next.turn.boundaryServed).toEqual([{ playerId: "p3", kind: "manage" }]);
     expect(newEvents).toHaveLength(0);
+  });
+
+  it("clears boundaryServed when a fresh turn-group begins", () => {
+    const start = freshGame("queue-served-reset");
+    // p1 already opened a trade window earlier this turn-group.
+    const served: GameState = {
+      ...start,
+      turn: {
+        ...start.turn,
+        phase: "post-roll",
+        boundaryServed: [{ playerId: "p1", kind: "trade" }],
+      },
+    };
+    const result = apply(served, { kind: "end-turn", playerId: "p1" });
+    if (!result.ok) throw new Error(result.reason);
+    // The next turn-group starts clean — the window is available again.
+    expect(result.state.turn.phase).toBe("pre-roll");
+    expect(result.state.turn.boundaryServed).toBeUndefined();
   });
 
   it("returns to pre-roll and re-checks the queue on cancel-manage", () => {
