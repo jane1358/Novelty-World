@@ -358,10 +358,18 @@ export type TurnPhase =
  *    queue, then rolls). Used when a trade's settlement — cash deltas or
  *    mortgage interest — put one or more players (possibly out of turn) in the
  *    red.
+ *  - a **bank-estate continuation** (`{ kind: "bank-estate", … }`, reused from
+ *    `AuctionResume`): resume the estate-liquidation auction loop — auction the
+ *    next lot, or hand off when the estate is exhausted. Used when an estate-lot
+ *    winner bid above their cash (the net-worth cap) and must settle before the
+ *    next lot is put up.
  *
  *  A debtor who couldn't reach ≥ 0 even after maxing out raisable cash never
  *  enters this phase — they go straight to bankrupt at charge time. */
-export type RaiseCashResume = "after-landing" | "pre-roll";
+export type RaiseCashResume =
+  | "after-landing"
+  | "pre-roll"
+  | Extract<AuctionResume, { kind: "bank-estate" }>;
 
 /** What play resumes into once an auction resolves — the auction sub-game is
  *  shared by both triggers, and only the continuation differs:

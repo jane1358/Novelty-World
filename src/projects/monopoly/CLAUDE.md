@@ -139,11 +139,16 @@ order:** any still-in player may `bid` anytime. A bid carries an **absolute
 amount**, which is what makes it safely **rebaseable** through the optimistic
 overlay (re-applying it just re-records the same number — no snap-to-zero, no
 auto-escalation). Drops are permanent, so the active set only shrinks and it
-always terminates. **Bid cap = what you can pay** (`auctionBidCap`): net worth for
-decline-buy (a winner over cash settles via `must-raise-cash`, possibly
-off-turn), cash-on-hand less interest for the estate loop. Player-to-player and
-bank bankruptcy follow the full official rules (buildings sold to the bank at
-half, bare lots transferred, 10% interest on inherited mortgaged lots).
+always terminates. **Bid cap = what you can pay** (`auctionBidCap`): **net worth**
+for both triggers, less the 10% interest owed on a still-mortgaged estate lot. A
+winner over cash settles via `must-raise-cash` (possibly off-turn); on the estate
+loop each lot is **settled before the next is auctioned** (`settleOrRaise` carries
+a `bank-estate` resume that re-enters `resumeEstate` once solvent). The interest
+subtraction keeps the cap *recoverable* — a bid above it would strand the winner
+(or a bot, which bids straight to the cap) in an unsettleable `must-raise-cash`.
+Player-to-player and bank bankruptcy follow the full official rules (buildings
+sold to the bank at half, bare lots transferred, 10% interest on inherited
+mortgaged lots).
 
 ### Jail
 
@@ -193,8 +198,8 @@ plus a registry entry. Current strategies:
 - **`claude`** — the strong, proactive, pro-level opponent and the **default**
   for added bots (`addBot`) and the `freshGame` seed. It is **not a fixed file**:
   the `claude` strategy is a **pointer** into the version archive (`bots/live.ts`
-  → `LIVE_VERSION`, today **v3**), so the policy code lives in
-  `bots/versions/<label>/{claude,valuation,trades}.ts`. Whatever version ships, it
+  → `LIVE_VERSION` — read that file for the version currently shipped), so the
+  policy code lives in `bots/versions/<label>/{claude,valuation,trades}.ts`. Whatever version ships, it
   is a pure dispatcher over its `valuation.ts` (scoring, build planning,
   liquidation, jail) and `trades.ts` (counterparty-aware proposals + evaluation),
   everything keyed off `positionValue`, **noting its reasoning on every decision**.

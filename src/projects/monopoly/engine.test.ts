@@ -2809,12 +2809,12 @@ describe("auction (bank-estate bankruptcy)", () => {
     expect(s.turn.playerId).toBe("p2");
   });
 
-  it("caps an estate bid at cash on hand", () => {
+  it("caps an estate bid at net worth — here cash, as the bidder owns nothing to liquidate", () => {
     let s = bustToBankOwning("auc-estate-cap", { 1: "p1" }).state;
     s = { ...s, players: s.players.map((p) => (p.id === "p2" ? { ...p, cash: 15 } : p)) };
     s = applyOk(s, { kind: "bid", playerId: "p2", amount: 10 }); // $10 ok
     expect(s.turn.auction?.highBid).toBe(10);
-    // $20 would exceed p2's $15 cash.
+    // p2 owns no other property, so net worth == cash == $15; a $20 bid exceeds it.
     expect(apply(s, { kind: "bid", playerId: "p2", amount: 20 }).ok).toBe(false);
   });
 
@@ -2861,6 +2861,51 @@ describe("auction (bank-estate bankruptcy)", () => {
     expect(state.turn.phase).toBe("game-over");
     expect(newEvents.some((e) => e.kind === "winner" && e.winnerId === "p2")).toBe(true);
     expect(state.turn.auction).toBeUndefined();
+  });
+
+  it("lets an estate winner bid above cash and settle via must-raise-cash", () => {
+    // p1 busts to the bank owning lot 1 (Mediterranean); p2 separately owns lot 3
+    // (Baltic, $30 mortgage value) but holds only $15 cash. Net worth $45 lets p2
+    // bid above cash, and winning drops them into must-raise-cash to liquidate.
+    let s = bustToBankOwning("auc-estate-raise", { 1: "p1", 3: "p2" }).state;
+    s = setCash(s, "p2", 15);
+    s = applyOk(s, { kind: "bid", playerId: "p2", amount: 20 }); // > $15 cash, < $45 net worth
+    s = applyOk(s, { kind: "pass-bid", playerId: "p3" });
+    s = applyOk(s, { kind: "pass-bid", playerId: "p4" });
+    // Won the lot on credit and is now negative, parked in must-raise-cash.
+    expect(s.ownership[1]).toBe("p2");
+    expect(cashOf(s, "p2")).toBeLessThan(0);
+    expect(s.turn.phase).toBe("must-raise-cash");
+    // Mortgage Baltic to climb back to >= 0; the estate is exhausted, so play
+    // hands off to the next player (p2, the first non-bankrupt after p1).
+    s = applyOk(s, { kind: "mortgage", playerId: "p2", position: 3 });
+    expect(cashOf(s, "p2")).toBe(25); // 15 - 20 + 30
+    expect(s.mortgaged[3]).toBe(true);
+    expect(s.turn.phase).toBe("pre-roll");
+    expect(s.turn.playerId).toBe("p2");
+  });
+
+  it("caps a mortgaged estate bid at recoverable net worth, then lets the winner settle", () => {
+    // Lot 1 is mortgaged, so winning it owes $3 interest (Mediterranean $30
+    // mortgage -> 10% = $3) on top of the bid. p2 has $15 cash + Baltic ($30
+    // mortgage) = $45 net worth, so the recoverable cap is $45 - $3 = $42.
+    let s = bustToBankOwning("auc-estate-raise-mort", { 1: "p1", 3: "p2" }, {
+      mortgaged: { 1: true },
+    }).state;
+    s = setCash(s, "p2", 15);
+    // A $43 bid would leave p2 unrecoverable (debt $46 > $45 net worth) — rejected.
+    expect(apply(s, { kind: "bid", playerId: "p2", amount: 43 }).ok).toBe(false);
+    // $42 is the exact recoverable ceiling — allowed.
+    s = applyOk(s, { kind: "bid", playerId: "p2", amount: 42 });
+    s = applyOk(s, { kind: "pass-bid", playerId: "p3" });
+    s = applyOk(s, { kind: "pass-bid", playerId: "p4" });
+    expect(s.ownership[1]).toBe("p2");
+    expect(s.mortgaged[1]).toBe(true); // transfers still mortgaged
+    expect(s.turn.phase).toBe("must-raise-cash");
+    // Mortgage Baltic ($30): 15 - 42 - 3 + 30 = 0, exactly solvent.
+    s = applyOk(s, { kind: "mortgage", playerId: "p2", position: 3 });
+    expect(cashOf(s, "p2")).toBe(0);
+    expect(s.turn.phase).toBe("pre-roll");
   });
 });
 

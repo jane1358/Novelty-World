@@ -274,10 +274,13 @@ export function firstNegativePlayer(state: GameState): string | null {
  *    mortgaging (later: selling buildings) through `applyMortgage`.
  *  - Nobody is in the red → resume immediately: `after-landing` continues the
  *    active player's landing (doubles re-roll / post-roll); `pre-roll` returns
- *    to the boundary, where the next `autoStep` re-checks the trade queue.
+ *    to the boundary, where the next `autoStep` re-checks the trade queue; a
+ *    `bank-estate` continuation resumes the estate-liquidation auction loop
+ *    (`resumeEstate`) — auction the next lot, or hand off when it's exhausted.
  *
- *  The same helper serves rent (`after-landing`) and trade settlement
- *  (`pre-roll`), which is the whole point of unifying the debt model. */
+ *  The three resume targets unify the debt model across rent (`after-landing`),
+ *  trade settlement (`pre-roll`), and an estate-lot winner who bid above cash
+ *  (`bank-estate`) — each recovers through the same `must-raise-cash` path. */
 function settleOrRaise(state: GameState, resume: RaiseCashResume): GameState {
   if (firstNegativePlayer(state) !== null) {
     return {
@@ -300,6 +303,9 @@ function settleOrRaise(state: GameState, resume: RaiseCashResume): GameState {
     turn: { ...state.turn, raiseCash: undefined, manageStaged: undefined },
   };
   if (resume === "after-landing") return afterLanding(cleared);
+  // A bank-estate continuation resumes the multi-lot estate auction loop; the
+  // string checks above narrow `resume` to that object here.
+  if (resume !== "pre-roll") return resumeEstate(cleared, resume);
   return {
     ...cleared,
     turn: {
@@ -762,13 +768,18 @@ function enterAuction(
   };
 }
 
-/** The most a bidder may offer. Decline-buy bids are capped at **net worth**
- *  (cash + everything they could liquidate) — the binding-bid rule, with the
- *  winner settling any shortfall through `must-raise-cash`. Estate-liquidation
- *  bids are capped at **cash on hand** less the 10% interest owed if the lot is
- *  mortgaged, so the winner pays immediately and never goes negative (a v1
- *  simplification that keeps the multi-lot loop free of nested settlement —
- *  see `monopoly/CLAUDE.md`). */
+/** The most a bidder may offer: **net worth** (cash + everything they could
+ *  liquidate), less the 10% interest owed on a still-mortgaged estate lot. This
+ *  is the binding-bid rule for both auction triggers — a winner who bids above
+ *  cash drops into `must-raise-cash` and liquidates back to ≥ 0, settling each
+ *  estate lot before the next is auctioned. A declined (landing) lot is never
+ *  mortgaged, so its interest term is zero and the cap is plain net worth.
+ *
+ *  Subtracting the interest is load-bearing, not cosmetic: it makes the cap the
+ *  exact ceiling a winner can always recover from. A bid one dollar above it
+ *  would leave them unrecoverably negative — `must-raise-cash` would have nothing
+ *  left to mortgage yet never reach ≥ 0, stalling the game (and any bot, which
+ *  bids straight to this cap and trusts it to mean "what I can actually pay"). */
 function maxBid(
   state: GameState,
   auction: AuctionState,
@@ -776,19 +787,17 @@ function maxBid(
 ): number {
   const player = state.players.find((p) => p.id === playerId);
   if (!player) return 0;
-  if (auction.resume.kind === "landing") {
-    return player.cash + maxRaisableCash(state, playerId);
-  }
-  const interest = state.mortgaged[auction.position]
-    ? (mortgageInterestAt(auction.position) ?? 0)
-    : 0;
-  return player.cash - interest;
+  const interest =
+    auction.resume.kind === "bank-estate" && state.mortgaged[auction.position]
+      ? (mortgageInterestAt(auction.position) ?? 0)
+      : 0;
+  return player.cash + maxRaisableCash(state, playerId) - interest;
 }
 
 /** The most `playerId` may bid in the current auction, or 0 if none is open.
  *  Exposed so the auction panel can offer and disable the next +$10 bid against
- *  the same cap the engine enforces (net worth for a declined lot, cash on hand
- *  for an estate lot). */
+ *  the same cap the engine enforces (net worth for either trigger, less any 10%
+ *  interest owed on a still-mortgaged estate lot). */
 export function auctionBidCap(state: GameState, playerId: string): number {
   const auction = state.turn.auction;
   return auction ? maxBid(state, auction, playerId) : 0;
@@ -933,7 +942,11 @@ function resolveAuction(state: GameState): {
     // cash, within net worth) settles first via must-raise-cash.
     return { state: settleOrRaise(settled, "after-landing"), newEvents: [event] };
   }
-  return { state: resumeEstate(settled, resume), newEvents: [event] };
+  // Estate lot: a winner who bid above their cash (now allowed, up to net worth)
+  // is negative — settle through must-raise-cash before the next lot is put up.
+  // `settleOrRaise` carries the bank-estate continuation, so the loop resumes once
+  // they're solvent; a winner who paid from cash flows straight to the next lot.
+  return { state: settleOrRaise(settled, resume), newEvents: [event] };
 }
 
 /** Continue liquidating a bank-bankruptcy estate: auction the next lot, or —
