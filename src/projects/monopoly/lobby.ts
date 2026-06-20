@@ -1,5 +1,6 @@
 import type { PlayerProfile } from "@/shared/lib/profile";
 import { shuffleArray } from "@/shared/lib/utils";
+import { BOT_NAMES } from "./bot-names";
 import { PLAYER_COLORS, PLAYER_ICONS } from "./data";
 import { createRng, initialDecks } from "./engine";
 import type {
@@ -31,11 +32,6 @@ export const DEFAULT_PREFERENCES: PlayerPreferences = {
   jailStance: "leave",
   autoBuyCashFraction: 1,
 };
-
-/** Bot display names, handed out in order. Falls back to `Bot N` once the
- *  pool is exhausted (only reachable past 7 bots, which the 8-seat cap nearly
- *  rules out). */
-const BOT_NAMES = ["Alex", "Sam", "Jordan", "Riley", "Casey", "Morgan", "Drew"];
 
 /** Dense per-player records keyed by id — every seated player has an entry. */
 function densePreferences(
@@ -98,12 +94,19 @@ function nextBotId(state: GameState): string {
   }
 }
 
-/** First unused BOT_NAMES entry, falling back to a numbered default. */
-function nextBotName(state: GameState): string {
-  const names = new Set(state.players.map((p) => p.name));
-  const free = BOT_NAMES.find((name) => !names.has(name));
-  if (free) return free;
-  return `Bot ${(state.players.length + 1).toString()}`;
+/** A random name from the 100-name pool that isn't already taken at the table.
+ *  The pick is seed-deterministic (lobby ops are pure — no `Math.random`): it
+ *  draws from a stream keyed by the game seed and the bot's id, so each added
+ *  bot gets a distinct, reproducible name. Falls back to a numbered default if
+ *  the pool is somehow exhausted (unreachable under the 8-seat cap). */
+function nextBotName(state: GameState, botId: string): string {
+  const taken = new Set(state.players.map((p) => p.name));
+  const available = BOT_NAMES.filter((name) => !taken.has(name));
+  if (available.length === 0) {
+    return `Bot ${(state.players.length + 1).toString()}`;
+  }
+  const rng = createRng(`${state.rngSeed}-bot-name-${botId}`);
+  return available[Math.floor(rng.next() * available.length)];
 }
 
 /** A brand-new lobby seating the host as the only (human) player, holding the
@@ -190,13 +193,14 @@ export function addBot(
   const color = firstFree(PLAYER_COLORS, usedColors(state));
   const icon = firstFree(PLAYER_ICONS, usedIcons(state));
   if (!color || !icon) return { ok: false, reason: "lobby full" };
+  const id = nextBotId(state);
   return {
     ok: true,
     state: seat(
       state,
       freshPlayer({
-        id: nextBotId(state),
-        name: nextBotName(state),
+        id,
+        name: nextBotName(state, id),
         color,
         icon,
         botStrategy: strategy,

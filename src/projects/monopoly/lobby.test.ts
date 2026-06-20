@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { BOT_NAMES } from "./bot-names";
 import { PLAYER_COLORS, PLAYER_ICONS } from "./data";
 import {
   addBot,
@@ -98,9 +99,18 @@ describe("addBot", () => {
     // Defaults to the strong Claude policy — the opponent for a real game.
     expect(bot.botStrategy).toBe("claude");
     expect(bot.id).toBe("bot-1");
-    expect(bot.name).toBe("Alex");
+    // Name is drawn from the 100-name pool (seed-deterministic).
+    expect(BOT_NAMES).toContain(bot.name);
     expect(bot.color).toBe(PLAYER_COLORS[1]);
     expect(bot.icon).toBe(PLAYER_ICONS[1]);
+  });
+
+  it("draws a distinct, in-pool name for each added bot", () => {
+    let state = lobby();
+    for (let i = 0; i < 6; i++) state = ok(addBot(state));
+    const botNames = state.players.slice(1).map((p) => p.name);
+    expect(botNames.every((name) => BOT_NAMES.includes(name))).toBe(true);
+    expect(new Set(botNames).size).toBe(botNames.length);
   });
 
   it("can seat a specific strategy", () => {
