@@ -104,8 +104,13 @@ function parseAction(v: unknown): MonopolyAction | null {
     const profile = parseProfile(v.profile);
     return profile ? { type, profile, fromVersion } : null;
   }
-  if (type === "addBot" || type === "start") {
+  if (type === "start") {
     return { type, fromVersion };
+  }
+  if (type === "addBot") {
+    return typeof v.botId === "string"
+      ? { type, botId: v.botId, fromVersion }
+      : null;
   }
   if (type === "removePlayer") {
     return typeof v.playerId === "string"

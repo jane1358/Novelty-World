@@ -121,6 +121,16 @@ describe("addBot", () => {
     const state = ok(addBot(ok(addBot(lobby()))));
     expect(state.players.map((p) => p.id)).toEqual(["host", "bot-1", "bot-2"]);
   });
+
+  // A pinned-id add is ABSOLUTE: re-applying it (as the optimistic overlay does
+  // when a realtime echo replays a still-pending op on a head that already
+  // seated the bot) is a no-op, never a second seat. Guards the double-add bug.
+  it("is idempotent on a pinned id already seated", () => {
+    const once = ok(addBot(lobby(), "claude", "bot-1"));
+    const twice = ok(addBot(once, "claude", "bot-1"));
+    expect(twice.players).toHaveLength(2);
+    expect(twice).toBe(once);
+  });
 });
 
 describe("setPlayerStrategy", () => {
@@ -250,7 +260,7 @@ describe("lobbyReduce", () => {
   it("dispatches each op to its matching helper", () => {
     expect(ok(lobbyReduce(lobby(), { type: "join", profile: { id: "p2", name: "Alex" } })).players)
       .toHaveLength(2);
-    expect(ok(lobbyReduce(lobby(), { type: "addBot" })).players[1].botStrategy).toBe("claude");
+    expect(ok(lobbyReduce(lobby(), { type: "addBot", botId: "bot-1" })).players[1].botStrategy).toBe("claude");
     expect(ok(lobbyReduce(ok(addBot(lobby())), { type: "removePlayer", playerId: "bot-1" })).players)
       .toHaveLength(1);
     expect(ok(lobbyReduce(lobby(), { type: "setColor", playerId: "host", color: "emerald" })).players[0].color)

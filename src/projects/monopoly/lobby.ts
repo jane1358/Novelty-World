@@ -85,8 +85,10 @@ function firstFree<T>(ordered: readonly T[], used: ReadonlySet<T>): T | null {
 }
 
 /** Smallest `bot-N` (N ≥ 1) not already a seated id. Deterministic so adding
- *  a bot is pure — no randomness needed for a unique handle. */
-function nextBotId(state: GameState): string {
+ *  a bot is pure — no randomness needed for a unique handle. Exported so the
+ *  client can PIN the id at click time and carry it in the `addBot` op, which
+ *  makes the op absolute (idempotent on replay) — see `addBot`. */
+export function nextBotId(state: GameState): string {
   const ids = new Set(state.players.map((p) => p.id));
   for (let n = 1; ; n++) {
     const id = `bot-${n.toString()}`;
@@ -179,21 +181,31 @@ export function joinLobby(state: GameState, profile: PlayerProfile): LobbyResult
 
 /** Add a bot seat with a synthetic id/name and the first free color + icon.
  *  Seats the strong `claude` policy by default — the opponent a human picks for
- *  a real game; downgrade it to `dumb` per seat via `setPlayerStrategy`. */
+ *  a real game; downgrade it to `dumb` per seat via `setPlayerStrategy`.
+ *
+ *  `botId` pins the seat's id (the client supplies one from `nextBotId` at click
+ *  time). With it the op is ABSOLUTE and so idempotent: re-applying an add whose
+ *  seat already landed returns the state unchanged — exactly like `joinLobby`,
+ *  and exactly what the optimistic-overlay replay needs so a rebased add can
+ *  never seat a SECOND bot (the relative "next free id" form did, when an echo
+ *  replayed the op on a head that already had the bot). Defaults to `nextBotId`
+ *  when omitted, for direct (non-networked) callers like tests. */
 export function addBot(
   state: GameState,
   strategy: BotStrategy = "claude",
+  botId?: string,
 ): LobbyResult {
   if (state.status !== "lobby") {
     return { ok: false, reason: "game already started" };
   }
+  const id = botId ?? nextBotId(state);
+  if (state.players.some((p) => p.id === id)) return { ok: true, state };
   if (state.players.length >= MAX_PLAYERS) {
     return { ok: false, reason: "lobby full" };
   }
   const color = firstFree(PLAYER_COLORS, usedColors(state));
   const icon = firstFree(PLAYER_ICONS, usedIcons(state));
   if (!color || !icon) return { ok: false, reason: "lobby full" };
-  const id = nextBotId(state);
   return {
     ok: true,
     state: seat(
@@ -319,7 +331,7 @@ export function setPlayerName(
  *  lobby-op members of `MonopolyAction` minus their version guard. */
 export type LobbyOp =
   | { type: "join"; profile: PlayerProfile }
-  | { type: "addBot" }
+  | { type: "addBot"; botId: string }
   | { type: "removePlayer"; playerId: string }
   | { type: "setColor"; playerId: string; color: PlayerColor }
   | { type: "setIcon"; playerId: string; icon: PlayerIcon }
@@ -335,7 +347,7 @@ export function lobbyReduce(state: GameState, op: LobbyOp): LobbyResult {
     case "join":
       return joinLobby(state, op.profile);
     case "addBot":
-      return addBot(state);
+      return addBot(state, "claude", op.botId);
     case "removePlayer":
       return removePlayer(state, op.playerId);
     case "setColor":

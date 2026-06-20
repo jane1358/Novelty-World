@@ -8,7 +8,7 @@ import {
   groupPositions,
 } from "./development";
 import { apply } from "./engine";
-import { type LobbyOp, lobbyReduce } from "./lobby";
+import { type LobbyOp, lobbyReduce, nextBotId } from "./lobby";
 import { hasMonopoly } from "./logic";
 import { isRaiseOnly, manageActorId } from "./manage";
 import { freshGame } from "./mocks";
@@ -550,7 +550,10 @@ export const useMonopolyStore = create<MonopolyStore>((set, get) => {
     },
 
     addBot: () => {
-      predictLobby({ type: "addBot" });
+      // Pin the bot id NOW (off the optimistic display head) so the op is
+      // absolute: if a realtime echo replays it on a head that already seated
+      // this bot, the re-apply is an idempotent no-op instead of a second seat.
+      predictLobby({ type: "addBot", botId: nextBotId(get().state) });
     },
 
     removePlayer: (playerId) => {

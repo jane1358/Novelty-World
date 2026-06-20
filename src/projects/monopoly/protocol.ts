@@ -45,8 +45,10 @@ export type MonopolyAction =
   /** Seat the caller in a lobby, auto-assigning the first free color + icon.
    *  Idempotent for an already-seated profile. */
   | { type: "join"; profile: PlayerProfile; fromVersion: number }
-  /** Add a bot seat to a lobby. */
-  | { type: "addBot"; fromVersion: number }
+  /** Add a bot seat to a lobby. `botId` is pinned by the caller (from
+   *  `nextBotId`) so the op is absolute — re-applying it is idempotent, never a
+   *  second seat (see `lobby.ts:addBot`). */
+  | { type: "addBot"; botId: string; fromVersion: number }
   /** Remove a seat from a lobby (a leaving human or a kicked bot). */
   | { type: "removePlayer"; playerId: string; fromVersion: number }
   /** Change a lobby seat's token color (rejected if another seat holds it). */
