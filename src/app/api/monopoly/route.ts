@@ -315,8 +315,23 @@ async function mutate(
     .select("version")
     .maybeSingle<{ version: number }>();
   if (writeErr) return json({ ok: false, reason: writeErr.message }, 500);
-  // Lost the optimistic race between our read and write — a no-op, the winner
-  // broadcast its state to every subscriber.
-  if (!updated) return json({ ok: false, conflict: true });
+  // Lost the optimistic race between our read and write: the version moved
+  // between the SELECT above and this CAS UPDATE, so it matched no row. Re-read
+  // the winning row and hand it back like a stale-version conflict, so the client
+  // folds + rebases immediately. Without the winner the client can only wait for
+  // a Realtime echo to advance its head — which never arrives when the racing
+  // winner was the client's OWN already-consumed write (its echo is dropped as a
+  // duplicate), stranding the client's pending outbox and freezing its pump
+  // (e.g. a human's auction drop racing a bot's bid, both driven by one client).
+  if (!updated) {
+    const { data: winner } = await supabase
+      .from(TABLE)
+      .select("state, version")
+      .eq("id", gameId)
+      .maybeSingle<GameRow>();
+    return winner
+      ? json({ ok: false, conflict: true, state: winner.state, version: winner.version })
+      : json({ ok: false, conflict: true });
+  }
   return json({ ok: true, state: result.state, version: newVersion });
 }
