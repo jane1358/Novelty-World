@@ -409,16 +409,17 @@ bot as of this doc.
 | v20 | 2026-06-20 | **Buy-aggression — looser DIP gate** (`versions/v20/claude.ts`): lead 2, the ACQUISITION analog of v17's winning thin reserve. Lower `DIP_WORTH_MULT` 1.4→1.15 so the bot dips below its (already thin) rent reserve to buy land of clear value (set progress, railroad synergy, denial) more readily — funded by cash on hand, so FREE (no mortgage interest, unlike the v4/v8 tempo that washed). Branched from the champion v17; one constant. `v20/dip.test.ts` pins a 1.35×-worth second railroad v20 buys below the reserve and v17 passes. | **WIN-NEUTRAL vs v17 (base): INCONCLUSIVE 52.0% (2079–1921, 4000 decisive, ran to cap, improve-LLR +2.47 short of the +2.94 accept boundary, no regression).** BETTER vs v2 59.8%, v3 66.7%, v5 54.4%, v14 53.8%; Elo (v17=0) **v20 +13.5** (top of the field on Elo, but below the E=20 promotion bar). | **rejected** as champion (does not confirm BETTER vs base); base stays **v17**. The SECOND liquid-deployment lever to land at ~+13 Elo inconclusive (after v18's +13.1) — two independent sub-threshold leans in the same direction, real but within the E=20 noise Decision 5 refuses to chase alone. Sets up v21's coupling test. `v20/dip.test.ts` pins the looser gate. |
 | v21 | 2026-06-20 | **Couple the two liquid-deployment near-misses** (`versions/v21/`): v18 (thinner reserve 0.3→0.15, cap 300→200, base 120→80) AND v20 (looser buy-dip 1.4→1.15) each leaned ~+13 Elo sub-threshold vs v17. ONE coherent hypothesis: v17 leaves a small liquid-deployment edge on BOTH gates that crosses E=20 only when loosened together. Branched from v17 (reserve half in `valuation.ts`, buy-dip half in `claude.ts`). `v21/coupled.test.ts` pins both halves. | **EVEN vs v17 (base): 50.0% (891–891, 1782 decisive, confident EVEN, both LLRs −2.95).** BETTER vs v2 58.0%, v3 64.8%, v5 53.5%, v14 59.0%; Elo (v17=0) **v21 +3.2 ≈ v17 0**. No holdout — triage rejects (confident even). | **rejected** (win-neutral); base stays **v17**. The two +13 leans did **NOT compound** — combined they wash to dead even (+3.2), which means the individual leans were seed noise within E=20, not a real consistent edge. **The liquid-deployment axis is fully tapped out at v17** (reserve v9/v17/v18, buy-dip v20, hotels-vs-distress v19, coupling v21 — all explored). Methodology lesson: coupling two sub-threshold noise leans manufactures no signal. `v21/coupled.test.ts` pins the coupled loosening. |
 | v22 | 2026-06-20 | **House-famine denial** (`versions/v22/valuation.ts` `desiredLevel`): the proven negative-sum SHAPE (v5) on a NEW channel — the 32-house bank. v17 only holds at 4-and-hold (vs hoteling, which frees 4 houses back to the bank) once houses are nearly gone (≤ `HOUSE_SCARCE` 6); v22 starts the famine-hold while the bank is merely DRAWING DOWN (≤ `HOUSE_RACE` 12) and a rival could use houses, foregoing its own hotel rent to keep houses locked away and win the race to starve rivals' development. Off the exhausted liquid-deployment axis (deploys LESS, not more). Branched from v17; isolated to `desiredLevel`. `v22/famine.test.ts` pins the race-zone hold and the full-bank/no-rival no-ops. | **EVEN vs v17 (base): 50.0% (907–906, 1813 decisive, confident EVEN, LLRs impr −2.94 / regr −3.06).** BETTER vs v2 57.9%, v3 57.4%, v5 55.0%, v14 52.5%; Elo (v17=0) **v22 +0.0 ≈ v17 0**. No holdout — triage rejects (confident even). | **rejected** (win-neutral); base stays **v17**. House-famine **washes — and the reason sharpens the meta-lesson.** It is **reciprocable**: both bots compete for the *same* 32-house bank symmetrically, and foregoing my hotel rent ≈ the denial I impose, so it cancels (exactly v3's symmetric-set-completion wash). v5's trade-to-deny wins precisely because it is **unreciprocable** — the denied rival isn't a party and can't deny me back. **Negative-sum transfers win share only when ASYMMETRIC**; a symmetric denial race nets to zero. `v22/famine.test.ts` pins the famine hold. |
+| v23 | 2026-06-20 | **Unmortgage-eagerness — reclaim dead monopolies sooner** (`versions/v23/valuation.ts` `planBuild`): lead 2b. A mortgaged monopoly earns NOTHING (frozen rent, can't build), so reactivating it is an unusually high-value-per-dollar redeploy. v17 only reclaims when comfortably "flush" (cash > floor + `HOTEL_CUSHION` 600); v23 reclaims at a thinner cushion (floor + `RECLAIM_CUSHION` 200), deploying idle capital sooner to turn a frozen set's double-rent back on. The "deploy capital faster" direction v17 won on, but a DISTINCT gate (the unmortgage-reclaim) and a step-change in value, not the marginal nudges that washed. Branched from v17; isolated to planBuild's reclaim gate. `v23/reclaim.test.ts` pins the reclaim at 500 cash (v17 waits) and the no-op when genuinely thin. | **EVEN vs v17 (base): 50.6% (1509–1475, 2984 decisive, confident EVEN, LLRs impr −2.98 / regr −6.90).** BETTER vs v2 56.2%, v3 53.9%, v5 53.7%, v14 53.0%; Elo (v17=0) **v23 +1.7 ≈ v17 0**. No holdout — triage rejects (confident even). | **rejected** (win-neutral); base stays **v17**. Reclaiming dead monopolies sooner adds no net win share: v17's flush-gated reclaim already captures the value, and doing it earlier at a thinner cushion roughly trades the extra rent for the thinner buffer + 10% interest paid sooner. **A THIRD liquid-capital-deployment gate to wash at v17** (reserve, buy-dip, now unmortgage-reclaim) — even on a step-change-value redeploy. v17 is a sharp deployment optimum. `v23/reclaim.test.ts` pins the eager reclaim. |
 
 ## Status & next step
 
 **Two independent tracks — don't conflate them:**
 
-- **The loop champion** — the latest validated `vX` (currently **v2**; v3 was
-  attempted and **rejected** as win-neutral — see below). The improvement loop
-  advances this on its own: v2 → v3 → v4 …, each branching from the prior best.
-  **No human greenlight is needed to bump versions** — that's just Claude Code
-  continuing to make the bot stronger.
+- **The loop champion** — the latest validated `vX` (currently **v17**). The
+  improvement loop advances this on its own, each version branching from the prior
+  best. **No human greenlight is needed to bump versions** — that's just Claude Code
+  continuing to make the bot stronger. (The code half of crowning a champion is the
+  `CHAMPION_VERSION` pointer in `bots/roles.ts`; the doc half is the version-log row.)
 - **The live/official bot** — the `claude` strategy in `registry.ts`, the one
   shipped in the game, picked by the UI, played by humans. It is a **pointer**
   (`bots/live.ts` → `LIVE_VERSION`) into the archive, changed **only** on a human
@@ -426,13 +427,12 @@ bot as of this doc.
   decision, *not* a precondition for continuing the loop, and **orthogonal to the
   gauntlet floor**.
 
-**As of 2026-06-20 (after the v12–v18 run):** the loop champion is now **v17**
+**As of 2026-06-20 (after the v19–v23 run):** the loop champion is still **v17**
 (lower liquidity reserve), branched from **v14** (the phantom-denial correctness fix),
-itself branched from v5. v17 is the first win since v5 and the first NON-denial win —
-holdout-confirmed BETTER vs the whole archive (see the v17 row + note). The floor stays
-**v1**; the **live bot is whatever `bots/live.ts` → `LIVE_VERSION` points to** (a product
-call — untouched this run; see "promotion candidates" below). **The v12–v18 run (this
-session):**
+itself branched from v5. The v19–v23 run produced **five rejects** (below) — v17 held
+against every challenger. The floor stays **v1**; the **live bot is whatever
+`bots/live.ts` → `LIVE_VERSION` points to** (currently **v17**, promoted last session).
+The earlier **v12–v18 run:**
 
 - **v12** RNG-seam / mixed-strategy (information) — REJECTED (regression). The field
   models VALUE, not behaviour, so unpredictability has no read to deny; deviating from
@@ -446,7 +446,7 @@ session):**
 - **v18** push the reserve lower still (→0.15) — REJECTED (win-neutral; brackets the
   optimum at ~v17's 0.3).
 
-**The v19–v23 run (in progress, 2026-06-20), building from champion v17:**
+**The v19–v23 run (2026-06-20), building from champion v17 — ALL FIVE REJECTED, v17 holds:**
 
 - **v19** endgame elimination pressure (max-rent development keyed off a rival on the
   ropes) — **REJECTED (regresses v17, 46.5%)**, though it BEATS the older field (v2–v14).
@@ -473,6 +473,20 @@ session):**
   hotel rent ≈ the denial imposed, netting to zero (like v3's symmetric set-completion).
   **Sharpens the meta-lesson: negative-sum wins only when ASYMMETRIC/unreciprocable** (v5's
   denied rival isn't a party and can't deny back); a symmetric denial race nets to zero.
+- **v23** unmortgage-eagerness (reclaim a dead/mortgaged monopoly at a thinner cushion,
+  floor+200 vs v17's floor+600) — **REJECTED (EVEN, +1.7 Elo)**. Reclaiming frozen sets
+  sooner adds no net win share: v17's flush-gated reclaim already captures the value, and
+  doing it earlier trades the extra rent for the thinner buffer + 10% interest paid sooner.
+  A THIRD liquid-capital-deployment gate to wash at v17 (reserve, buy-dip, unmortgage).
+
+**Net for v19–v23:** five rejects, no champion bump — the methodology refusing to crown
+noise, as the handoff predicted. **v17 + v5 + v14 is a sharp, validated optimum.** Three
+sub-lessons added: (1) elimination pressure on the DEVELOPMENT channel REGRESSES (forcing
+illiquid hotels below flush is worse than a liquid thin reserve — v19); (2) the
+liquid-deployment axis is fully tapped (two +13 leans v18/v20 do NOT compound — v21 — and a
+step-change redeploy still washes — v23); (3) negative-sum denial transfers win share only
+when **ASYMMETRIC/unreciprocable** — a symmetric house-famine race nets to zero (v22), which
+is *why* v5's trade-to-deny (the denied rival isn't a party) is special.
 
 **The meta-lesson is now sharp and two-sided. AGGRESSION beats DEFENCE/POSSESSIVENESS.**
 Every lever that makes the bot HOLD MORE / refuse / cower regresses — v9 (raise reserve),
@@ -484,28 +498,41 @@ because they *mortgaged* for tempo; v17 gets the same tempo for free by holding 
 cash). Positive-sum self-improvement (v3, v4) and information (v12) wash; defence
 (v9/v13/v15) and over-pushing a denial parameter (v7/v10) regress.
 
-**Promotion candidates (product calls — `bots/live.ts` untouched, awaiting a human
-green-light):** (1) **v14** — the phantom-denial fix, fixes a real live-game bug (Baltic
-29× hot-potato) and speeds games; safe to ship regardless of strength. (2) **v17** — the
-current champion (strictly stronger than the v5 that's likely live). Shipping v17 also
-carries v14's fix. Repoint `LIVE_VERSION` to `"v17"` to ship.
+**Promotion status (product call — `bots/live.ts`):** **`LIVE_VERSION = v17`** (promoted
+last session — carries v14's phantom-denial fix and is the strongest measured version).
+No promotion pending; v19–v23 produced no champion to ship.
 
-**Lead for the next session (from v17).** The liquidity axis is now tuned (v17 = the
-sweet spot; v18 saturated). The two PROVEN winning shapes — proposer-side denial and
-faster capital deployment — are both near their local optima. **Genuinely untried,
-aggression-aligned leads** (prefer these; the defensive/acceptance/information axes are
-all logged dead ends — do NOT re-walk): **(a) endgame ELIMINATION pressure** — keyed off a
-rival's distress (near-bankruptcy), push development/denial to CLOSE OUT a weakened rival
-faster (negative-sum, proactive, proposer-side — the winning shape, untried); **(b)
-other free-tempo deployments** like v17 — e.g. unmortgage/redeploy more eagerly, or
-buy-aggression thresholds (`DIP_WORTH_MULT`/`RAISE_WORTH_MULT`) loosened now that the
-thinner reserve proved capital-deployment wins. Expect mostly rejects — v5+v14+v17 is a
-strong, sharp optimum.
+**Lead for the next session (from v17, after the v19–v23 sweep).** Both proven winning
+shapes are at sharp local optima: capital deployment is tapped on EVERY gate (reserve
+v9/v17/v18, buy-dip v20, coupling v21, unmortgage-reclaim v23, forced-hotels v19), and the
+denial PARAMETERS are all dead (funding v6, scope v7, price v10, coupling v8, target v11).
+The one thing v22 newly taught: **negative-sum denial transfers win share only when it is
+ASYMMETRIC/unreciprocable** (v5's denied rival isn't a party; a symmetric house-famine race
+nets to zero). So the highest-value untried lead is to **extend the ONE proven asymmetric
+winner (v5 trade-to-deny, Offer C) to a situation it currently misses:**
+
+- **(a, preferred) Railroad / utility denial via trade.** v5's Offer C and
+  `acquisitionValue`'s deny term fire ONLY for COLOR sets (`monopolyBonus`); a rival
+  one-short of the 4-railroad set (RAIL_SYNERGY 180→380, +$200 plus the $100→$200 rent
+  jump) or the utility pair is never denied via trade construction. Extending the *exact*
+  v5 mechanism (buy the rival's completer from a third-party holdout, rival not a party →
+  unreciprocable) to rails/utilities is the cleanest untried instance of the proven
+  asymmetric shape — a new ASSET CLASS, not another denial PARAMETER (which are tapped).
+- **(b) Desperation-pricing acquisition.** A near-bankrupt rival values immediate cash
+  above an asset's `positionValue`, so it will sell building-free lots BELOW its normal
+  break-even. The bot could model that and BUY a distressed rival's set-completers/denial
+  lots cheaply — asymmetric (exploits weakness), proposer-side, turning distress into gain.
+  Risk: mis-modeling the discount produces declines (wasted proposals); gate carefully.
+
+Expect mostly rejects — **v5+v14+v17 is a strong, sharp optimum** and this run added five
+more negative results confirming it. A real win, if any, most likely comes from (a).
 
 **Do NOT re-walk:** any denial PARAMETER (funding v6, scope v7, price v10, coupling v8,
 target v11), **defensive liquidity/tempo/possessiveness** (v4, v8, v9, v13, v15),
-**information/bluff** (v12), **jail** (v16), or **pushing the reserve below ~0.3** (v18) —
-all logged dead ends.
+**information/bluff** (v12), **jail** (v16), **pushing the reserve below ~0.3** (v18), the
+**whole liquid-deployment axis** (buy-dip v20, coupling v21, unmortgage-reclaim v23),
+**elimination pressure on the DEVELOPMENT channel** (forced hotels v19, regresses), and
+**symmetric/reciprocable denial** (house-famine v22, washes) — all logged dead ends.
 
 **v3 — what was tried and what we learned (a logged negative result):**
 
