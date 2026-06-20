@@ -413,13 +413,14 @@ bot as of this doc.
 | v24 | 2026-06-20 | **From-scratch monopoly acquisition** (`versions/v24/trades.ts` `proposeBestTrade`): the user's "property > cash" thesis — exploit opponents willing to sell, assemble a prize set the bot holds NONE of by buying its every lot off its split owners in one N-party deal ("pay them what they want, then build and crush them"). v17 only completes a set it already holds a STAKE in (`if (owned === 0) continue` — "buying a whole color from scratch isn't this engine's job"). v24 deletes that limit, gated to real prizes (`ACQUIRE_MIN_GAIN` 100, self-excluding pink/light-blue/brown whose thin ≈0.4×bonus net can't clear the bar) that keep the bot above its rent reserve (never a bare set it can't develop). Buying an INTACT monopoly off one owner is already -EV and self-rejects. Branched from champion v17; isolated to trade construction (valuation/dispatcher verbatim). `v24/acquire.test.ts` pins the grab, the cheap-set + intact-monopoly self-gates, and the liquidity gate. | **EVEN vs v17 (base): 49.9% (955–958, 1913 decisive, 15 draws, confident EVEN, LLR impr −3.34 / regr −3.00).** Elo (v17=0) **v24 −0.5 ≈ v17 0**; no regression. No holdout — triage rejects (confident even). | **rejected** (win-neutral); base stays **v17**. The grab is **POSITIVE-SUM, not the asymmetric transfer it looked like.** Each seller is paid its FAIR break-even (deeds + the 0.6×bonus rival-threat premium it prices for handing the bot a monopoly), so the set is bought at full value — the bot's booked +0.4×bonus is a fair trade, not a discount, and over many seeds both sides reach comparable developed positions. **Exactly v3/v4's lesson on a new instance: improving your OWN engine — complete sooner (v3), develop sooner (v4), now ACQUIRE MORE (v24) — washes even when the opponent can't do it**, because the gain is fairly priced and too small to convert. Taking a set "off the board" isn't a net transfer when you pay for it in full. **An acquisition transfers win share only if the property is UNDERPRICED** — a distressed seller below break-even (lead b), not a fair-price prize. Sharpens the user's "property > cash" thesis: true, but the *price* already captures the value, so paying it nets zero. `v24/acquire.test.ts` pins the grab. |
 | v27 | 2026-06-20 | **Dark-blue set-weight bump — value-table lead (c), magnitude 2/2 (SMALLER)** (`versions/v27/valuation.ts` `GROUP_WEIGHT`): v26's leap to the published #2 (weight 0.73, bonus 548) leaned −11 Elo, hypothesized as over-valuing a LOW-traffic 2-lot set in the own-buy/liquidation channels. v27 tries a SMALLER, more conservative correction: weight 0.55→0.62, lifting dark-blue's `monopolyBonus` 413→465 — only to ≈#4, level with the other big sets (just above green 460, below yellow 480) — to nudge it out of v17's last-of-the-big-sets #5 WITHOUT leaping past them. Grounded in the tight published "desirability per roll" cluster (dark-blue 3.10 ≈ red 3.09 ≈ yellow 3.03). Branched from champion v17; one weight changes. `v27/group-weight.test.ts` pins bonus 465 + the flow-through. | **REJECTED — confident WORSE: 47.7% win share (1512–1655, 3167 decisive, 22 draws, improve-LLR −13.48, regr-LLR +2.99 CROSSED → confident regression).** Elo (v17=0) **v27 −15.7** < v17 0. No holdout (triage rejects). | **rejected** (regresses the champion); base stays **v17**. Confirms and SHARPENS v26: even a MODEST dark-blue over-valuation hurts — v27's smaller bump regressed MORE confidently (crossed the regression boundary where v26 only leaned). **The direction is unambiguous: raising dark-blue's weight is −EV at every magnitude tried (0.62 confident-worse, 0.73 slight-worse).** The published "#2 desirability" rank does NOT translate to win-accuracy here; v17's #5 (penalizing dark-blue's 4.8% landing rarity) is correct. **Lead (c) on dark-blue is a closed dead end** — the foundational value dial is well-tuned at v17's settings on its one researched discrepancy. `v27/group-weight.test.ts` pins it. |
 | v26 | 2026-06-20 | **Dark-blue set-weight bump — value-table lead (c), magnitude 1/2** (`versions/v26/valuation.ts` `GROUP_WEIGHT`): the FIRST touch of the foundational set-VALUE dial since v1, single-variable. Web-researched grounding (monopolyland "desirability per roll", folding landing probability AND 3-house ROI) ranks dark-blue **#2** (3.10%/roll ≈ red 3.09%); v17's table ranked it **#5**. v26 RAISES dark-blue's weight 0.55→0.73, lifting its `monopolyBonus` 413→548 — just above red (544), landing it at the published #2. Touches every dark-blue decision (buy, auction bid cap, denial/threat pricing, liquidation). Branched from champion v17; only the one weight changes (other 7 verbatim). `v26/group-weight.test.ts` pins the new bonus, the unchanged sets, and the completion + denial-premium flow-through. | **REJECTED on triage — INCONCLUSIVE, leaning slightly NEGATIVE: 48.4% win share (1937–2063, 4000 decisive, 20 draws, improve-LLR −13.88 firmly NOT improving, regr-LLR +0.63 no confident regression).** Elo (v17=0) **v26 −10.9** < v17 0. No holdout (triage rejects on no-improvement). | **rejected** (does not improve vs base; leans slightly worse); base stays **v17**. Lead (c) magnitude 1 washes (slightly negative) — exactly the **positive-sum self-valuation** wash the handoff predicted (v3/v4/v24): raising my own valuation of dark-blue doesn't transfer win share, and here it leans −11 Elo because dark-blue's LOW LANDING TRAFFIC (4.8%, 2nd-worst) is real — over-valuing a rarely-hit set mildly mis-prioritizes buys/auctions/liquidation toward it vs higher-traffic sets the bot completes and earns from more often. The published "#2 desirability" folds in development the bot reaches less reliably for a 2-lot set; v17's #5 rank (penalizing the rarity) is at least as WIN-accurate. `v26/group-weight.test.ts` pins it. |
+| v28 | 2026-06-21 | **Desperation-pricing acquisition — lead (b), the TOP remaining lead** (`versions/v28/valuation.ts` + `trades.ts`): the ONE acquisition shape v24 didn't test and its result pointed straight at — an asymmetric, proposer-side, UNDERPRICED buy. ONE COUPLED hypothesis, bisectable. **SELLER half** (`valuation.ts` `isDistressed` + `distressThreatScale`, applied in `trades.ts` `rivalThreatCost`): a GENUINELY distressed seat — one deadly DEVELOPED rent (`≥ JAIL_DANGER_RENT 350`) it can't cover even after mortgaging out (`cash + mortgageableTotal < deadlyRent`) — discounts the rival-monopoly threat premium it normally holds out for by `DISTRESS_DISCOUNT 0.75`, valuing immediate cash above the future cost of arming a rival, so it accepts a sale below normal break-even. VOLUNTARY/pre-emptive (fires BEFORE the forced must-raise-cash path). **BUYER half** (Offer B's `sweetenForAll` automatically computes the discounted break-even): the bot buys a distressed rival's set-COMPLETER below fair price to finish its OWN near-monopoly — the bought lot is held + developed, never relocated, so it cannot hot-potato (v14/v25). The coupling is required (a v17 seller would just decline a below-fair offer → wash, v24's lesson) and bisectable (seller = `distressThreatScale`, buyer = the distress-aware `sweetenForAll`). Branched from champion v17; dispatcher verbatim. `v28/distress.test.ts` pins the distress gate (fires near-bankrupt, NOT comfortable, NOT on a bare board), the seller discount, and the buyer's underpriced construction + self-gate. | **BETTER vs v17 (base) on BOTH streams, NO regressions.** Triage: BETTER 55.8% (331–262, 593 decisive). Holdout: **BETTER 53.2% (772–679, 1451 decisive, +22.3 Elo)** on fresh seeds. Full-field (train): BETTER vs v17 55.8% AND vs the WHOLE archive v2–v16, v20, v22–v27; EVEN vs v18/v21, INCONCLUSIVE vs v19/v22 (none a regression). Elo (v17=0) **v28 +17.0 — TOP of the field** (> v21 +15.0 > v18 +13.3 > v17 0). | **ACCEPTED — new loop champion.** The first win since v17, and the FIRST acquisition win. Confirms the meta-lesson's positive prediction: an acquisition transfers win share **iff it is ASYMMETRIC AND UNDERPRICED** — the two conditions every prior win shared (v5 denial asymmetric, v17 deploys idle cash). v24's fair-price grab washed because the price captured the value; v28 buys CHEAP off a seat that rationally values liquidity above the asset, so the buyer banks the discount as a real transfer. The sim fired the mechanism every game (the "cheap off a cash-strapped owner" note recurs) and the bought completer DEVELOPS, never churns. Inherits v17's thin reserve + v14's phantom-denial fix. Base for the next version. `v28/distress.test.ts` pins the model. |
 | v25 | 2026-06-20 | **Railroad / utility denial via trade** (`versions/v25/trades.ts`): lead (a) — extend the proven trade-to-deny shape (v5) past COLOR sets to a new ASSET CLASS, the 4-railroad set / utility pair, via `kindCompletionBonus` (the synergy analog of `monopolyBonus`: rail 3→4 = 200, util pair = 40). The PROACTIVE half (an Offer C buy of a rival's rail completer from a holdout) was prototyped, then DROPPED after a live `--log` check: it reproduces Finding 1's phantom-denial HOT-POTATO (Reading Railroad bounced bot→bot every turn). Scoped to the DEFENSIVE half only: `rivalThreatCost` now prices HANDING a rival their 4th railroad / 2nd utility, so the bot won't SELL a rail-set completer for face value (the leak v17 had — it looped color sets only). Branched from v17; Offer C left color-only. `v25/rail-threat.test.ts` pins the rail/util threat-decline and that no proactive rail denial is constructed. | **EVEN vs v17 (base): 50.1% (990–985, 1975 decisive, 11 draws, confident EVEN, LLR impr −2.98 / regr −3.56).** Elo (v17=0) **v25 +0.9 ≈ v17 0**; no regression. No holdout — triage rejects (confident even). | **rejected** (win-neutral); base stays **v17**. TWO findings. (1) **PROCESS — the proactive rail denial reproduces the phantom-denial hot-potato on a NEW asset class.** A trade-denial never TRULY blocks in a bot field — the new holder would re-sell the completer to the rival at threat-price — so it degenerates into churn wherever the config is STATIC and clears v14's acquirability gate. Brown was caught by v14 (rival's gain doesn't clear the extraction cost); railroads are not (gain ~400 > cost ~350) AND a rail split never resolves (no development/bankruptcy), so it bounces forever. v14 patched one mole; rails are the next — patching the heuristic is whack-a-mole. (2) **The DEFENSIVE threat-pricing WASHES** — being asked to sell a rival a rail/utility completer is rare, and rail denial is the SMALLEST lever anyway (you can't undo the 3 rails they already own; basis 200 vs orange's 560). **The asset-class extension of the proven denial shape transfers no win share** — v5's denial win is colors-specific (high traffic, all-or-nothing, resolving configs), not a general "deny any set" principle. `v25/rail-threat.test.ts` pins it. |
 
 ## Status & next step
 
 **Two independent tracks — don't conflate them:**
 
-- **The loop champion** — the latest validated `vX` (currently **v17**). The
+- **The loop champion** — the latest validated `vX` (currently **v28**). The
   improvement loop advances this on its own, each version branching from the prior
   best. **No human greenlight is needed to bump versions** — that's just Claude Code
   continuing to make the bot stronger. (The code half of crowning a champion is the
@@ -431,12 +432,31 @@ bot as of this doc.
   decision, *not* a precondition for continuing the loop, and **orthogonal to the
   gauntlet floor**.
 
-**As of 2026-06-20 (after the v19–v27 run):** the loop champion is still **v17**
-(lower liquidity reserve), branched from **v14** (the phantom-denial correctness fix),
-itself branched from v5. The v19–v25 run produced seven rejects, and the v26–v27 run
-(lead c — the set VALUE table, dark-blue) added **two more** — v17 held against every
-challenger. The floor stays **v1**; the **live bot is whatever `bots/live.ts` →
-`LIVE_VERSION` points to** (currently **v17**, promoted last session).
+**As of 2026-06-21 (after the v28 run):** the loop champion is now **v28**
+(desperation-pricing acquisition), branched from **v17** (lower liquidity reserve) ←
+**v14** (phantom-denial fix) ← v5. After NINE straight rejects (v19–v27), v28 is the
+first ACCEPT since v17 and the first ACQUISITION win — it buys a genuinely distressed
+rival's set-completer BELOW fair price to finish its own monopoly (asymmetric +
+underpriced, the two conditions every prior win shared). BETTER vs v17 on train (55.8%)
+AND holdout (53.2%, +22.3 Elo), top of the full field on Elo (+17.0), no regressions.
+The floor stays **v1**; the **live bot is whatever `bots/live.ts` → `LIVE_VERSION`
+points to** (currently **v17** — v28 is a product call not yet greenlit).
+
+**The v28 run (2026-06-21), lead (b) — desperation/underpriced acquisition — ACCEPTED, NEW CHAMPION:**
+
+- **v28** couples a SELLER-side distress discount (a near-bankrupt seat — one deadly
+  developed rent it can't cover even after mortgaging out — discounts the rival-threat
+  premium 0.75, accepting a below-break-even sale, valuing liquidity NOW over arming a
+  rival later) with a BUYER-side underpriced completion (Offer B's `sweetenForAll`
+  automatically pays the discounted break-even to finish the buyer's OWN near-monopoly).
+  **ACCEPTED — BETTER on train (55.8%) and holdout (53.2%, +22.3 Elo), top-of-field Elo
+  +17.0, no regressions.** The coupling was REQUIRED (a v17 seller declines a below-fair
+  offer → the v24 wash) and is bisectable. The bought completer is held + developed, so
+  it never hot-potatoes (v14/v25) — verified in `--log` sims, where the mechanism fires
+  every game. **This validates the meta-lesson's positive prediction precisely: an
+  acquisition transfers win share iff ASYMMETRIC AND UNDERPRICED.** v24's fair-price grab
+  washed because the price captured the value; v28 wins because the distressed seller
+  rationally sells CHEAP, so the discount is a real proposer-side transfer.
 
 **The v26–v27 run (2026-06-20), lead (c) — re-tune the set VALUE table, dark-blue — BOTH REJECTED, v17 holds:**
 
@@ -561,20 +581,23 @@ pays if UNDERPRICED**; **v26/v27 added: self-valuation of a LOW-TRAFFIC set is a
 not merely neutral** (over-weighting a rarely-landed set steers cash off the high-traffic sets
 that convert). The surviving lead:
 
-- **(b, NOW TOP LEAD) Desperation-pricing acquisition.** A near-bankrupt rival values immediate
-  cash above an asset's `positionValue`, so it will sell building-free lots BELOW its break-even.
-  Model that and BUY a distressed rival's set-completers **at a discount** — asymmetric,
-  proposer-side, UNDERPRICED. **The ONE acquisition shape v24 did NOT test and its result points
-  straight at:** fair-price buying washes (v24), so the win, if any, is in buying CHEAP. This is
-  the last unexplored lead with a clear theoretical reason to transfer win share (asymmetric +
-  underpriced — the two conditions every prior win shared: v5 denial is asymmetric, v17 deploys
-  cash the field leaves idle). Risk: mis-modeling the discount produces declines; gate carefully
-  (seller must really be distressed — `cash + mortgageableTotal` near or below a deadly rent —
-  not just low-ish), and watch for the phantom-denial/hot-potato failure mode (v14/v25) if the
-  discount-buy can re-trade. **A fresh web-researched specific edge** is the only other live
-  option — the obvious published discrepancy (dark-blue) is now spent, so any new edge would
-  need genuinely new grounding (e.g. a specific opening-buy or trade-timing heuristic from
-  competitive-play sources), not a re-tune of an existing dial.
+- **(b) Desperation-pricing acquisition — WON in v28, now the CHAMPION's mechanism.** A
+  near-bankrupt seat values immediate cash above an asset's `positionValue`, so it sells a
+  building-free completer BELOW break-even; the bot buys it cheap to finish its own set. v28
+  realized this as a coupled seller-discount + buyer-underprice and **WON** (BETTER on train +
+  holdout, top-of-field Elo, no regressions). This is now a PROVEN winning shape — the third
+  after negative-sum denial (v5) and faster capital deployment (v17). **Open follow-ups that
+  branch from v28** (each its own version): (i) tune the distress GATE — `DEADLY_RENT 350` or the
+  `cash + mortgageableTotal < deadlyRent` strictness (a looser gate fires more often but risks
+  mis-classifying a recoverable seat); (ii) tune the `DISTRESS_DISCOUNT 0.75` magnitude (does a
+  steeper discount buy more, or does it just leave money on the table the seller would've taken
+  anyway?); (iii) extend the distress discount to DENIAL buys off a distressed holdout (Offer C
+  becomes cheaper), watching the hot-potato gate. Push the winning lever per the loop, expecting
+  the optimum to be sharp (as v17's reserve was).
+
+- **A fresh web-researched specific edge** — the obvious published discrepancy (dark-blue) is
+  spent, so any new edge needs genuinely new grounding (a specific opening-buy or trade-timing
+  heuristic from competitive-play sources), not a re-tune of an existing dial.
 
 - **(c) Set VALUE table — CLOSED for dark-blue, NOT promising elsewhere.** The one researched
   discrepancy (dark-blue #2 published vs #5 ours) is settled: raising it is −EV (v26/v27). The
@@ -583,10 +606,11 @@ that convert). The surviving lead:
   re-tune overfits (EVOLUTION is explicit). Do not re-walk dark-blue; only revisit the table if
   NEW research surfaces a different specific, single-set discrepancy.
 
-Expect mostly rejects — **v5+v14+v17 is a strong, sharp optimum** and the v19–v27 runs added
-NINE negative results confirming it. A real win, if any, most likely comes from (b) (underpriced
-/ distressed-seller acquisition) — the only lead left with both winning conditions (asymmetric
-AND underpriced).
+Expect mostly rejects — the bot is a strong, sharp optimum. The v19–v27 runs added NINE
+negative results; v28 then broke through on lead (b) exactly where the meta-lesson predicted
+(asymmetric AND underpriced). The most promising next work is tuning v28's own knobs (gate,
+discount magnitude) and the distressed-denial extension — but treat the distress optimum as
+likely sharp, like every other proven lever.
 
 **Do NOT re-walk:** any denial PARAMETER (funding v6, scope v7, price v10, coupling v8,
 target v11), **denial on rails/utilities** (v25 — proactive hot-potatoes, defensive washes;
