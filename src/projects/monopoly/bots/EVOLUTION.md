@@ -362,6 +362,7 @@ bot as of this doc.
 | v8 | 2026-06-20 | **Denial + tempo (coupled)** (`versions/v8/`): the marquee synergy the v4 building block was kept for. Carry v5's trade-to-deny engine VERBATIM (`v8/trades.ts`) and fold v4's mortgage-funded TEMPO `planBuild` back in (`v8/valuation.ts`) — so after denying a rival their set, the bot mortgages idle non-monopoly back-burner lots to out-develop the field with the freed leverage. ONE coupled hypothesis: denial alone (v5) won and tempo alone (v4) was win-neutral, but together they compound — deny, then press the advantage faster than rivals recover. Dispatcher verbatim; both changes live in the called modules. | **TRAIN said BETTER, HOLDOUT said EVEN — an overfit caught.** Train: BETTER vs v5 52.9% (942–839, 1781 decisive). Holdout: **EVEN vs v5 50.7% (1744–1697, 3441 decisive, confident),** also EVEN vs v6 (49.8%); BETTER vs v2/v3/v4/v7. Elo (holdout, v5=0): v8 +4.2 ≈ v5 0. The improve-vs-base bar fails on held-out seeds. | **rejected** as champion (win-neutral on holdout); base stays **v5**. The train accept was seed luck — Decision 7's train/holdout split did its job. Tempo adds no robust win share **even coupled with denial**, falsifying v4's "tempo may pay off coupled with denial" caveat. `v8/build.test.ts` + `v8/trades.test.ts` archived. |
 | v7 | 2026-06-20 | **Early (two-short) denial** (`versions/v7/trades.ts`): branched from v5 (NOT v6). After v6 showed denial's *funding reach* isn't the lever, push its *scope* instead: block a rival while still TWO lots short of a 3-lot set, taking one of the two missing lots from a holdout (holding one needed lot makes the set impossible). Hypothesis: at two-short the lots are still distributed/cheap, so early denial catches prize sets that become unblockable once the rival goes one-short and grabs the completer itself. Credit discounted by `TWO_SHORT_DISCOUNT = 0.5` (a two-short rival is further from completing); 2-lot sets excluded (their "two short" is "owns none"). `evaluateTrade` untouched; Offer D mirrors v5's go/no-go. | **WORSE vs v5 (base): 47.8% (1520–1663, 3183 decisive, confident REGRESSION, train).** Still beats the older field (v3 56.1%, v2 60.1%) but loses to v5; Elo v7 −13.6 < v5 0. | **rejected** (regresses the champion); base stays **v5**. Early denial is premature: it spends cash/assets on speculative blocks the rival might never have completed, and tying up capital early costs more than the rare unblockable-later set it saves. **v5's one-short timing — block exactly when the threat is imminent and the completer is pinpointed — is near-optimal for the denial lever.** `v7/trades.test.ts` pins Offer D. |
 | v6 | 2026-06-20 | **Deny-via-swap** (`versions/v6/trades.ts`): push the proven v5 denial harder by removing its CASH gate. v5 could only block a rival when it could fund the holdout's sweetener in cash (`sweetenFor` returns null otherwise), so a denial it wanted but couldn't afford never happened. v6 adds a SWAP variant — pay the holdout with a junk lot (`junkLotForSwap`: a lone color lot in a set neither I nor the holdout have a stake in) plus minimal cash. Same block, fundable on a thinner bankroll. Both variants constructed; selection takes the higher denial-augmented delta. `evaluateTrade` untouched; the junk-lot filter + unchanged rival-threat pricing keep the in-kind sweetener from advancing the holdout. | **Win-neutral vs v5 (base): 50.4% (1222–1204, 2426 decisive, confident EVEN, train).** No regressions: beats v3 59.0% (203–141), v2 66.3% (116–59); Elo v6 +5.6 ≈ v5 0 (within noise), v3 −52.3, v2 −77.2. Does **not** clear the improve-vs-base bar (triage; no holdout run — triage already EVEN). | **rejected** as champion (win-neutral); base stays **v5**. The cash gate wasn't the binding constraint — cash-fundable denials already capture the value; in-kind funding adds reach but no win share. `v6/trades.test.ts` pins the swap construction; archived as a building block. |
+| v11 | 2026-06-20 | **Threat-weighted denial** (`versions/v11/trades.ts`): the one denial axis v5 is naive about — target SELECTION. v5's denial premium is identical no matter WHICH rival is blocked, so it would spend as much to deny a hopeless trailer as the player about to win. v11 scales the premium by `threatWeight` — the denied rival's position value over the strongest opponent's, clamped to `[DENY_THREAT_FLOOR=0.5, 1]` — so the leading opponent keeps v5's full premium (cap 1.0, never above — respecting v10's overpay lesson) while a laggard's block is trimmed toward the floor. Denial spend is always ≤ v5's: it reallocates toward the threat and trims the weakest blocks, never inflates. `denial-target.test.ts` pins the weight math + a flip (v5 denies a trailer's bigger set, v11 denies the leader's). `valuation.ts`/`claude.ts` carried verbatim from v5. | **INCONCLUSIVE vs v5 (base): 48.8% (1951–2049, 4000 decisive, ran to cap, improve-LLR −12.27 — firmly NOT improving, regr-LLR −0.98 — no regression).** Beats v2 61.6%, v3 55.0%; Elo (v5=0) **v11 −7.5 ≈ v5 0**. Win-neutral; no holdout (triage already rejects on no-improvement, as v6). | **rejected** as champion (win-neutral); base stays **v5**. The best of the v9–v11 rejects — the only one that doesn't regress — but it adds no win share. v5's threat-blind denial already captures essentially all the available denial value; concentrating blocks on the leader vs trailers doesn't transfer extra wins (a trailer one-short of a strong set is still a real threat once completed, so denying it wasn't waste). `v11/denial-target.test.ts` pins the targeting. |
 | v10 | 2026-06-20 | **Auction denial aggression** (`versions/v10/valuation.ts` `auctionValue`, `claude.ts` auction handler): a fresh CHANNEL for the proven denial lever. v5's 0.6 `DENY_FACTOR` is calibrated for trade-to-deny, where the denied rival isn't a party and can't bid; an AUCTION is the opposite — the rival is a competing bidder valuing its own completer at the FULL bonus, so a 0.6 ceiling always drops out and the rival completes. v10 bids a rival's pinpointed completer up to `AUCTION_DENY_FACTOR=1.0`×bonus (the full swing) — either denying the set or forcing the rival to overpay near its max. `acquisitionValue` (buy/landing) and trade construction UNTOUCHED; scoped to the auction channel only. `auction.test.ts` pins it. | **WORSE vs v5 (base): 46.4% (549–635, 1184 decisive, confident REGRESSION, triage).** Beats v2 62.9%, v3 54.4%; Elo (v5=0) **v10 −19.1** < v5 0. No holdout — triage rejects. | **rejected** (regresses the champion); base stays **v5**. Paying up toward the full bonus to deny **overpays**: the cash sunk winning (or chasing) a rival's completer weakens my own position more than the block helps. Echoes v7 — pushing the denial lever *harder* (scope in v7, **price** here) destroys win share. v5's 0.6, one-short, cash-funded denial is tuned on every axis tried; the **magnitude** of the denial premium is right where it is. `v10/auction.test.ts` pins the aggressive ceiling. |
 | v9 | 2026-06-20 | **Graduated survival / liquidity guard** (`versions/v9/valuation.ts`, `liquidityFloor`): a NEW axis after the denial/tempo machinery tapped out. On top of v5's moderate reserve (half worst rent, capped $500), when a DEVELOPED rival board threatens, reserve a graduated 0.8× of the worst DEVELOPED rent, bounded by `SURVIVAL_CAP=$900` (below a full hotel hit, so never fully passive). Hypothesis: since tempo is proven worthless, trading a little development speed for a survival buffer is ~free on offense and converts variance into win share — outlast the hotel hit that busts a rival without fire-selling my own monopolies. A DEFENSIVE hardening, NOT a monopoly-value discount (`positionValue`/`acquisitionValue` untouched). `floor.test.ts` pins it; trade engine carried verbatim from v5. | **WORSE vs v5 (base): 45.2% (352–426, 778 decisive, confident REGRESSION, triage).** Beats v2 55.2%, EVEN vs v3 50.4%; Elo (v5=0) **v9 −31.4** < v5 0. No holdout run — triage already rejects. | **rejected** (regresses the champion); base stays **v5**. The buffer isn't ~free: a permanently higher reserve makes the bot **systematically under-develop** (unlike v4, which only re-ordered a build sooner), so it loses the rent race and the survival cash sits idle. Over-conservatism actively costs win share. `v9/floor.test.ts` pins the guard. |
 | v5 | 2026-06-20 | **Trade-to-deny** (`versions/v5/trades.ts`): extend v3's N-way trade CONSTRUCTION with a NEGATIVE-SUM move — when a rival is one lot short of a set and the completer sits with a third-party **holdout** (not me, not the rival, building-free), buy that lot to ME purely to **block** the completion, even though it doesn't complete my own set. Priced off the existing `DENY_FACTOR` lever (which `acquisitionValue` already applies on a landing/auction denial but construction never did): a new `denyBonus` candidate type with its own go/no-go gate `plainDelta + DENY_FACTOR×bonus > ACCEPT_MIN`. `evaluateTrade` is **unchanged** (completion + counterparty model + incoming vote all intact); the holdout judges by plain `evaluateTrade`; **the denied rival is NOT a party, so it can't veto its own denial — the asymmetry.** Weak sets self-gate (a small bonus rarely clears the holdout's sweetener). | **BETTER vs v3 (base): 54.0% (537–457, 994 decisive, train), confident.** No regressions — sweeps the whole field both streams: **train** v2 64.0%, v4 54.6%, v1 71.7%; **holdout** v3 54.2%, v2 65.1%, v4 61.8%, v1 80.0%. Elo (holdout) **v5 +216.3** > v3 +175.3 > v4 +149.3 > v2 +141.4 > v1 0 — clear top of the field. | **ACCEPTED — new loop champion.** The first non-neutral structural win since v2: a negative-sum, rival-specific move transfers win share where two positive-sum self-improvements (v3, v4) did not. Base for v6. `v5/trades.test.ts` pins the denial construction. |
@@ -382,37 +383,40 @@ bot as of this doc.
   decision, *not* a precondition for continuing the loop, and **orthogonal to the
   gauntlet floor**.
 
-**As of 2026-06-20:** the loop champion is now **v5** (trade-to-deny) — the first
+**As of 2026-06-20:** the loop champion is still **v5** (trade-to-deny) — the only
 change to beat its base since v2, validated on both seed streams against the whole
 field (see the v5 row and note). **The live bot is whatever `bots/live.ts` →
 `LIVE_VERSION` points to** (a product call, separate from the loop champion and the
 gauntlet floor — read that file for the current value; v5 was promoted live once it
 proved strictly stronger, replacing v3, which had been shipped earlier as the more
 *engaging* opponent for humans). The floor stays **v1**, a materialized frozen
-snapshot (`versions/v1/`). **Sessions A–C
-are done.** Session A built the measurement system; Session B built `v4` (tempo) and
-the gauntlet REJECTED it; **the overnight run (an extended Session C) built three
-versions from the negative-sum family: `v5` (one-short trade-to-deny) ACCEPTED as
-champion, `v6` (deny-via-swap — more funding) REJECTED win-neutral, and `v7`
-(two-short denial — more scope) REJECTED as a regression.** The base is now **v5**;
-the denial lever is **tuned at v5** (block one-short, in cash, when the completer is
-reachable) — neither more funding nor earlier scope helps. The next attempt is
-**v8 from v5** — see the lead below.
+snapshot (`versions/v1/`). **Sessions A–D are done.** Session A built the measurement
+system; Session B built `v4` (tempo, REJECTED); Session C built `v5` (ACCEPTED), `v6`
+(REJECTED win-neutral) and `v7` (REJECTED regression); **Session D built three more
+off v5 — `v8` (denial+tempo, REJECTED overfit/even-on-holdout), `v9` (survival /
+liquidity guard, REJECTED regression), `v10` (auction denial aggression, REJECTED
+regression), and `v11` (threat-weighted denial, REJECTED win-neutral).** The base is
+still **v5** and is now confirmed a **sharp local optimum**: the denial lever is tuned
+on every axis tried — funding (v6), scope (v7), price (v10), coupling (v8), target
+(v11) — and the non-denial axes tried are neutral-or-worse (tempo v4/v8; liquidity v9,
+which actively regresses because under-development loses).
 
-**Lead for the next session (v8 from v5).** Denial is proven and tuned; the open
-asymmetry levers NOT yet tried are the ones the Session-C prompt parked for the
-"v5-rejected" branch (still valid now, since v6/v7 only rejected *variants* of the
-denial already shipped). In rough priority: **(a) denial COUPLED with tempo** — the
-marquee synergy the v4 building block exists for: deny a rival their set, then use
-v4's mortgage-funded `planBuild` to out-develop the field with the freed leverage
-(neither v4 alone nor v5 alone tests this); **(b) a graduated survival/liquidity
-guard** — refuse marginal trades/builds below a rent reserve when a developed board
-threatens, so the bot outlasts variance (flagged in `bots/CLAUDE.md` "Considered and
-rejected" as a reasonable defensive hardening, NOT a monopoly-value discount); **(c)
-jail-as-haven timing** — sit longer on dangerous developed boards to collect rent
-risk-free while rivals move. Prefer the negative-sum / asymmetry shape; expect mostly
-rejects (that is the methodology working). Do NOT re-walk denial funding (v6) or
-denial scope (v7) — both are logged dead ends.
+**Lead for the next session (from v5).** The valuation / trades / liquidity / jail
+surfaces are looking exhausted — every parameter on the proven denial premium is
+tuned, defensive hardening backfires (v9), and positive-sum self-improvement washes
+(v3/v4/v8). Two genuinely different directions remain, neither yet touched: **(a)
+information / bluff via the RNG seam** — the bot is fully deterministic and legible,
+so a pro reads it perfectly; a mixed strategy (drawn from `rngState`, per the
+`Bot`-contract RNG seam in `bots/CLAUDE.md`) — e.g. occasionally varying jail-stay,
+auction drop-out, or which equal-value trade to propose — could deny opponents a clean
+read (this needs the small `Bot`-contract change to thread the rng); **(b) coordinated
+multi-rival pressure** — the denial work all targets ONE rival's ONE set; a structural
+lever that shapes the *whole* board (e.g. choosing trades that leave TWO rivals each
+one-short and bidding them against each other, or refusing to be the kingmaker who
+hands the runner-up a set against the leader) is a different decision than
+single-block denial. Prefer the negative-sum / asymmetry shape; expect mostly rejects.
+**Do NOT re-walk any denial parameter** (funding v6, scope v7, price v10, coupling v8,
+target v11) or **defensive liquidity/tempo** (v4, v8, v9) — all logged dead ends.
 
 **v3 — what was tried and what we learned (a logged negative result):**
 
@@ -655,6 +659,44 @@ denial scope (v7) — both are logged dead ends.
    local optimum — every direction away from it is neutral or worse.** The next
    lever must be a genuinely different decision (whom to target, when to sit), not
    another parameter on the denial premium.
+
+**v11 — what was tried and what we learned (a logged negative result — win-neutral):**
+
+1. **v11 isolated** in `bots/versions/v11/` (snapshot from v5; valuation + dispatcher
+   carried verbatim; `v11/denial-target.test.ts` pins `threatWeight` — the leading
+   opponent gets 1.0, a laggard floors to 0.5, an equal field is all-1.0 (so v11 ==
+   v5 there) — plus a behavioral flip: on a board where v5 denies a trailing rival's
+   bigger set, v11 denies the leader's slightly-smaller one; `v11/trades.test.ts`
+   re-pins the carried denial engine).
+2. **The change** is the one denial axis v5 is naive about: **target selection**.
+   v5 prices every block at `DENY_FACTOR×bonus` regardless of which rival it blocks,
+   so it spends as much to deny a hopeless trailer as the leader. v11 scales the
+   premium by the rival's position value relative to the strongest opponent (clamped
+   `[0.5, 1]`), concentrating the cash-costly block on the genuine threat and trimming
+   the weakest. Capped at 1.0 so it never pays above v5's level (v10's lesson) — it
+   only reallocates and trims.
+3. **The result is the lesson.** v11 is **win-neutral vs v5** (48.8%, ran to the 4000
+   cap with the improvement test firmly rejected, LLR −12.27, and no regression) — the
+   *best* of the three rejects this run (the only one that doesn't regress) but it
+   adds no win share. The reading: v5's threat-blind denial already captures
+   essentially all the available denial value. Trimming a trailer's block doesn't free
+   enough cash to matter, and the leader rarely has a *separate* simultaneous block
+   that the trailer's denial was crowding out — so reallocation is mostly a no-op, and
+   a trailer one-short of a strong set is a genuine threat the moment it completes
+   (denying it was never waste). This is the v6 pattern (a denial refinement that
+   neither helps nor hurts) on the targeting axis.
+4. **Net for the run (v9–v11).** Three more axes tested off v5, all rejected: **v9**
+   (survival/liquidity guard) — a defensive self-improvement that *regresses* (passive
+   under-development loses); **v10** (auction denial aggression) — pushing the denial
+   *price* higher, *regresses* (overpay); **v11** (threat-weighted denial) — denial
+   *target* selection, *win-neutral*. Combined with the Session-C results, **v5 is now
+   a sharp local optimum on every denial axis tried — funding (v6), scope (v7), price
+   (v10), coupling (v8), target (v11) — and the two non-denial axes tried (tempo: v4/v8;
+   liquidity: v9) are neutral-or-worse.** The denial machinery is fully tapped out and
+   defensive tuning backfires. The next genuinely new lever is unclear from valuation /
+   trades / liquidity / jail-channel tuning; a future session should look at a
+   different decision surface entirely (e.g. *information/​bluff* via the RNG seam, or
+   coordinated multi-rival pressure) rather than another knob on the proven denial.
 
 The v2-era engine fix (false-bankruptcy / hotel-shortage liquidation escape in
 shared `development.ts`, regression-tested in `development.test.ts`) still stands
