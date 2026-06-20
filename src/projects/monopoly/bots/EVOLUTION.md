@@ -410,6 +410,7 @@ bot as of this doc.
 | v21 | 2026-06-20 | **Couple the two liquid-deployment near-misses** (`versions/v21/`): v18 (thinner reserve 0.3→0.15, cap 300→200, base 120→80) AND v20 (looser buy-dip 1.4→1.15) each leaned ~+13 Elo sub-threshold vs v17. ONE coherent hypothesis: v17 leaves a small liquid-deployment edge on BOTH gates that crosses E=20 only when loosened together. Branched from v17 (reserve half in `valuation.ts`, buy-dip half in `claude.ts`). `v21/coupled.test.ts` pins both halves. | **EVEN vs v17 (base): 50.0% (891–891, 1782 decisive, confident EVEN, both LLRs −2.95).** BETTER vs v2 58.0%, v3 64.8%, v5 53.5%, v14 59.0%; Elo (v17=0) **v21 +3.2 ≈ v17 0**. No holdout — triage rejects (confident even). | **rejected** (win-neutral); base stays **v17**. The two +13 leans did **NOT compound** — combined they wash to dead even (+3.2), which means the individual leans were seed noise within E=20, not a real consistent edge. **The liquid-deployment axis is fully tapped out at v17** (reserve v9/v17/v18, buy-dip v20, hotels-vs-distress v19, coupling v21 — all explored). Methodology lesson: coupling two sub-threshold noise leans manufactures no signal. `v21/coupled.test.ts` pins the coupled loosening. |
 | v22 | 2026-06-20 | **House-famine denial** (`versions/v22/valuation.ts` `desiredLevel`): the proven negative-sum SHAPE (v5) on a NEW channel — the 32-house bank. v17 only holds at 4-and-hold (vs hoteling, which frees 4 houses back to the bank) once houses are nearly gone (≤ `HOUSE_SCARCE` 6); v22 starts the famine-hold while the bank is merely DRAWING DOWN (≤ `HOUSE_RACE` 12) and a rival could use houses, foregoing its own hotel rent to keep houses locked away and win the race to starve rivals' development. Off the exhausted liquid-deployment axis (deploys LESS, not more). Branched from v17; isolated to `desiredLevel`. `v22/famine.test.ts` pins the race-zone hold and the full-bank/no-rival no-ops. | **EVEN vs v17 (base): 50.0% (907–906, 1813 decisive, confident EVEN, LLRs impr −2.94 / regr −3.06).** BETTER vs v2 57.9%, v3 57.4%, v5 55.0%, v14 52.5%; Elo (v17=0) **v22 +0.0 ≈ v17 0**. No holdout — triage rejects (confident even). | **rejected** (win-neutral); base stays **v17**. House-famine **washes — and the reason sharpens the meta-lesson.** It is **reciprocable**: both bots compete for the *same* 32-house bank symmetrically, and foregoing my hotel rent ≈ the denial I impose, so it cancels (exactly v3's symmetric-set-completion wash). v5's trade-to-deny wins precisely because it is **unreciprocable** — the denied rival isn't a party and can't deny me back. **Negative-sum transfers win share only when ASYMMETRIC**; a symmetric denial race nets to zero. `v22/famine.test.ts` pins the famine hold. |
 | v23 | 2026-06-20 | **Unmortgage-eagerness — reclaim dead monopolies sooner** (`versions/v23/valuation.ts` `planBuild`): lead 2b. A mortgaged monopoly earns NOTHING (frozen rent, can't build), so reactivating it is an unusually high-value-per-dollar redeploy. v17 only reclaims when comfortably "flush" (cash > floor + `HOTEL_CUSHION` 600); v23 reclaims at a thinner cushion (floor + `RECLAIM_CUSHION` 200), deploying idle capital sooner to turn a frozen set's double-rent back on. The "deploy capital faster" direction v17 won on, but a DISTINCT gate (the unmortgage-reclaim) and a step-change in value, not the marginal nudges that washed. Branched from v17; isolated to planBuild's reclaim gate. `v23/reclaim.test.ts` pins the reclaim at 500 cash (v17 waits) and the no-op when genuinely thin. | **EVEN vs v17 (base): 50.6% (1509–1475, 2984 decisive, confident EVEN, LLRs impr −2.98 / regr −6.90).** BETTER vs v2 56.2%, v3 53.9%, v5 53.7%, v14 53.0%; Elo (v17=0) **v23 +1.7 ≈ v17 0**. No holdout — triage rejects (confident even). | **rejected** (win-neutral); base stays **v17**. Reclaiming dead monopolies sooner adds no net win share: v17's flush-gated reclaim already captures the value, and doing it earlier at a thinner cushion roughly trades the extra rent for the thinner buffer + 10% interest paid sooner. **A THIRD liquid-capital-deployment gate to wash at v17** (reserve, buy-dip, now unmortgage-reclaim) — even on a step-change-value redeploy. v17 is a sharp deployment optimum. `v23/reclaim.test.ts` pins the eager reclaim. |
+| v24 | 2026-06-20 | **From-scratch monopoly acquisition** (`versions/v24/trades.ts` `proposeBestTrade`): the user's "property > cash" thesis — exploit opponents willing to sell, assemble a prize set the bot holds NONE of by buying its every lot off its split owners in one N-party deal ("pay them what they want, then build and crush them"). v17 only completes a set it already holds a STAKE in (`if (owned === 0) continue` — "buying a whole color from scratch isn't this engine's job"). v24 deletes that limit, gated to real prizes (`ACQUIRE_MIN_GAIN` 100, self-excluding pink/light-blue/brown whose thin ≈0.4×bonus net can't clear the bar) that keep the bot above its rent reserve (never a bare set it can't develop). Buying an INTACT monopoly off one owner is already -EV and self-rejects. Branched from champion v17; isolated to trade construction (valuation/dispatcher verbatim). `v24/acquire.test.ts` pins the grab, the cheap-set + intact-monopoly self-gates, and the liquidity gate. | **EVEN vs v17 (base): 49.9% (955–958, 1913 decisive, 15 draws, confident EVEN, LLR impr −3.34 / regr −3.00).** Elo (v17=0) **v24 −0.5 ≈ v17 0**; no regression. No holdout — triage rejects (confident even). | **rejected** (win-neutral); base stays **v17**. The grab is **POSITIVE-SUM, not the asymmetric transfer it looked like.** Each seller is paid its FAIR break-even (deeds + the 0.6×bonus rival-threat premium it prices for handing the bot a monopoly), so the set is bought at full value — the bot's booked +0.4×bonus is a fair trade, not a discount, and over many seeds both sides reach comparable developed positions. **Exactly v3/v4's lesson on a new instance: improving your OWN engine — complete sooner (v3), develop sooner (v4), now ACQUIRE MORE (v24) — washes even when the opponent can't do it**, because the gain is fairly priced and too small to convert. Taking a set "off the board" isn't a net transfer when you pay for it in full. **An acquisition transfers win share only if the property is UNDERPRICED** — a distressed seller below break-even (lead b), not a fair-price prize. Sharpens the user's "property > cash" thesis: true, but the *price* already captures the value, so paying it nets zero. `v24/acquire.test.ts` pins the grab. |
 
 ## Status & next step
 
@@ -427,11 +428,20 @@ bot as of this doc.
   decision, *not* a precondition for continuing the loop, and **orthogonal to the
   gauntlet floor**.
 
-**As of 2026-06-20 (after the v19–v23 run):** the loop champion is still **v17**
+**As of 2026-06-20 (after the v19–v24 run):** the loop champion is still **v17**
 (lower liquidity reserve), branched from **v14** (the phantom-denial correctness fix),
-itself branched from v5. The v19–v23 run produced **five rejects** (below) — v17 held
+itself branched from v5. The v19–v24 run produced **six rejects** (below) — v17 held
 against every challenger. The floor stays **v1**; the **live bot is whatever
 `bots/live.ts` → `LIVE_VERSION` points to** (currently **v17**, promoted last session).
+
+- **v24** from-scratch monopoly acquisition (assemble a prize set you hold none of by
+  buying its every lot off its split owners) — **REJECTED (EVEN, 49.9%, Elo −0.5)**. The
+  grab is **positive-sum**: each seller is paid its FAIR break-even (deeds + the 0.6×bonus
+  threat premium), so the set is bought at full value, not taken at a discount — exactly
+  v3/v4's wash (improving your own engine washes even when the opponent can't), now on the
+  ACQUISITION instance. **An acquisition transfers win share only if the property is
+  UNDERPRICED (a distressed seller below break-even — lead b), never at fair price.**
+
 The earlier **v12–v18 run:**
 
 - **v12** RNG-seam / mixed-strategy (information) — REJECTED (regression). The field
@@ -495,44 +505,51 @@ plain value-maximising acceptance and a THIN reserve are right; v5's caution lef
 share on the table (v17). The winning shapes are exactly two: **negative-sum proposer-side
 denial** (v2, v5) and **deploying capital faster** (v17 — and note v4/v8 tempo washed only
 because they *mortgaged* for tempo; v17 gets the same tempo for free by holding less idle
-cash). Positive-sum self-improvement (v3, v4) and information (v12) wash; defence
-(v9/v13/v15) and over-pushing a denial parameter (v7/v10) regress.
+cash). Positive-sum self-improvement (v3, v4, **and v24's fair-price acquisition**) and
+information (v12) wash; defence (v9/v13/v15) and over-pushing a denial parameter (v7/v10)
+regress.
 
 **Promotion status (product call — `bots/live.ts`):** **`LIVE_VERSION = v17`** (promoted
 last session — carries v14's phantom-denial fix and is the strongest measured version).
-No promotion pending; v19–v23 produced no champion to ship.
+No promotion pending; v19–v24 produced no champion to ship.
 
-**Lead for the next session (from v17, after the v19–v23 sweep).** Both proven winning
+**Lead for the next session (from v17, after the v19–v24 sweep).** Both proven winning
 shapes are at sharp local optima: capital deployment is tapped on EVERY gate (reserve
 v9/v17/v18, buy-dip v20, coupling v21, unmortgage-reclaim v23, forced-hotels v19), and the
 denial PARAMETERS are all dead (funding v6, scope v7, price v10, coupling v8, target v11).
-The one thing v22 newly taught: **negative-sum denial transfers win share only when it is
-ASYMMETRIC/unreciprocable** (v5's denied rival isn't a party; a symmetric house-famine race
-nets to zero). So the highest-value untried lead is to **extend the ONE proven asymmetric
-winner (v5 trade-to-deny, Offer C) to a situation it currently misses:**
+v22 taught that **negative-sum denial transfers win share only when ASYMMETRIC/unreciprocable**
+(v5's denied rival isn't a party; a symmetric house-famine race nets to zero); **v24 added
+the mirror lesson on the BUY side: a FAIR-PRICE acquisition is positive-sum and washes — an
+acquisition only pays if the property is UNDERPRICED.** Both surviving leads follow from this:
 
-- **(a, preferred) Railroad / utility denial via trade.** v5's Offer C and
-  `acquisitionValue`'s deny term fire ONLY for COLOR sets (`monopolyBonus`); a rival
-  one-short of the 4-railroad set (RAIL_SYNERGY 180→380, +$200 plus the $100→$200 rent
-  jump) or the utility pair is never denied via trade construction. Extending the *exact*
-  v5 mechanism (buy the rival's completer from a third-party holdout, rival not a party →
-  unreciprocable) to rails/utilities is the cleanest untried instance of the proven
-  asymmetric shape — a new ASSET CLASS, not another denial PARAMETER (which are tapped).
-- **(b) Desperation-pricing acquisition.** A near-bankrupt rival values immediate cash
-  above an asset's `positionValue`, so it will sell building-free lots BELOW its normal
-  break-even. The bot could model that and BUY a distressed rival's set-completers/denial
-  lots cheaply — asymmetric (exploits weakness), proposer-side, turning distress into gain.
-  Risk: mis-modeling the discount produces declines (wasted proposals); gate carefully.
+- **(b, now preferred) Desperation-pricing acquisition.** A near-bankrupt rival values
+  immediate cash above an asset's `positionValue`, so it will sell building-free lots BELOW
+  its normal break-even. The bot could model that and BUY a distressed rival's
+  set-completers/denial lots **at a discount** — asymmetric (exploits weakness), proposer-side,
+  turning distress into gain. **This is the ONE acquisition shape v24 did NOT test and its
+  result points straight at:** v24 proved buying at FAIR price washes, so the win, if any, is
+  in buying CHEAP. Risk: mis-modeling the discount produces declines (wasted proposals); gate
+  carefully (and the seller must really be distressed, not just low-ish on cash).
+- **(a) Railroad / utility denial via trade.** v5's Offer C and `acquisitionValue`'s deny
+  term fire ONLY for COLOR sets (`monopolyBonus`); a rival one-short of the 4-railroad set
+  (RAIL_SYNERGY 180→380, +$200 plus the $100→$200 rent jump) or the utility pair is never
+  denied via trade construction. Extending the *exact* v5 mechanism (buy the rival's completer
+  from a third-party holdout, rival not a party → unreciprocable) to rails/utilities is a clean
+  untried instance of the proven asymmetric DENIAL shape — a new ASSET CLASS, not another
+  denial PARAMETER (which are tapped).
 
-Expect mostly rejects — **v5+v14+v17 is a strong, sharp optimum** and this run added five
-more negative results confirming it. A real win, if any, most likely comes from (a).
+Expect mostly rejects — **v5+v14+v17 is a strong, sharp optimum** and this run added six
+more negative results confirming it. A real win, if any, most likely comes from (b) (the
+underpriced-acquisition shape v24's reject newly points to) or (a).
 
 **Do NOT re-walk:** any denial PARAMETER (funding v6, scope v7, price v10, coupling v8,
 target v11), **defensive liquidity/tempo/possessiveness** (v4, v8, v9, v13, v15),
 **information/bluff** (v12), **jail** (v16), **pushing the reserve below ~0.3** (v18), the
 **whole liquid-deployment axis** (buy-dip v20, coupling v21, unmortgage-reclaim v23),
-**elimination pressure on the DEVELOPMENT channel** (forced hotels v19, regresses), and
-**symmetric/reciprocable denial** (house-famine v22, washes) — all logged dead ends.
+**elimination pressure on the DEVELOPMENT channel** (forced hotels v19, regresses),
+**symmetric/reciprocable denial** (house-famine v22, washes), and **FAIR-PRICE acquisition /
+buying a prize set at full value** (from-scratch grab v24, washes — positive-sum) — all
+logged dead ends.
 
 **v3 — what was tried and what we learned (a logged negative result):**
 
