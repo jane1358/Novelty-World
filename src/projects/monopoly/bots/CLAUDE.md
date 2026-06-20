@@ -178,8 +178,18 @@ Ordered by impact. Each is a place the *current* policy leaves value on the tabl
    non-monopoly lots to develop a prize set a level sooner, but the one-level tempo
    nudge bought no win share even against opponents that lacked it (leverage cost ≈
    tempo gain). Like v3's N-way, it's a win-safe, archived building block — the win
-   only comes paired with an *asymmetry* lever (denial). The **sweetener** half
-   (mortgage to fund a *trade's* cash) is still open and untried.
+   only comes paired with an *asymmetry* lever (denial). **The sweetener half
+   (mortgage to fund a *trade's* cash) was tried in v32 (`versions/v32/`, see
+   EVOLUTION.md) and found WIN-NEUTRAL** — even hard-gated to the proven distress
+   completion (mortgage an idle lot to fund a below-fair completer off a distressed
+   seller the bot can't pay for in cash). It is in-machinery (cross-turn: arm a
+   mortgage-only `manage`, then propose next turn — no engine change), fires cleanly,
+   never bleeds interest (self-limiting gate), but adds no win share: it only pulls a
+   few completions a turn or two sooner, and cash regenerates fast enough that Offer B
+   reaches most of them anyway (leverage cost ≈ tempo gain — v4's plain-mortgage-tempo
+   wash, on the distress channel; and v6's funding-reach wash). **Roadmap #2 is now
+   fully closed — both halves washed.** Mortgage-to-fund is a win-safe building block,
+   not an edge.
 
 When you close one of these, move it out of this list and fold the resulting
 behavior into the relevant section above.
