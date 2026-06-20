@@ -1,27 +1,17 @@
-import { SPACES } from "./data";
+import {
+  BUILDING_REFUND_PERCENT,
+  HOUSE_COST,
+  SPACES,
+  TOTAL_HOTELS,
+  TOTAL_HOUSES,
+} from "./data";
 import { hasMonopoly } from "./logic";
 import type { GameState, PropertyColor } from "./types";
 
-/** Standard US Monopoly building bank: 32 houses, 12 hotels. The remaining
- *  count is always derived from the board (`bankSupply`) — no separate counter
- *  is stored in `GameState`. */
-export const TOTAL_HOUSES = 32;
-export const TOTAL_HOTELS = 12;
-
-/** Cost of one development tier (a house, or the hotel) by color group, per the
- *  official board. Every tier in a group costs the same, and the hotel is just
- *  the fifth tier — so developing a property from bare lot to hotel costs
- *  `5 * HOUSE_COST[color]`. Selling a tier back refunds half (`buildingRefundAt`). */
-const HOUSE_COST: Readonly<Record<PropertyColor, number>> = {
-  brown: 50,
-  "light-blue": 50,
-  pink: 100,
-  orange: 100,
-  red: 150,
-  yellow: 150,
-  green: 200,
-  "dark-blue": 200,
-};
+// The building bank (32 houses / 12 hotels) and the per-group house costs are
+// rules — they live in `data.ts`. Re-exported here so the existing
+// `from "./development"` importers (the engine, the bot versions) keep working.
+export { TOTAL_HOTELS, TOTAL_HOUSES };
 
 /** Board positions of every property in each color group, in board order.
  *  Precomputed once — used to enforce the monopoly + even-build rules. */
@@ -55,11 +45,14 @@ export function houseCostAt(position: number): number | null {
   return space.kind === "property" ? HOUSE_COST[space.color] : null;
 }
 
-/** Cash refunded for selling one tier (house or hotel) back to the bank: half
- *  the tier cost, floored. Null for non-properties. */
+/** Cash refunded for selling one tier (house or hotel) back to the bank:
+ *  `BUILDING_REFUND_PERCENT`% of the tier cost, floored. Null for
+ *  non-properties. */
 export function buildingRefundAt(position: number): number | null {
   const cost = houseCostAt(position);
-  return cost === null ? null : Math.floor(cost / 2);
+  return cost === null
+    ? null
+    : Math.floor((cost * BUILDING_REFUND_PERCENT) / 100);
 }
 
 /** The color group a position belongs to, or null if it isn't a property. */

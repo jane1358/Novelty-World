@@ -1,5 +1,13 @@
 import { shuffleArray } from "@/shared/lib/utils";
-import { CHANCE, COMMUNITY_CHEST, deckFor, SPACES } from "./data";
+import {
+  BID_INCREMENT,
+  CHANCE,
+  COMMUNITY_CHEST,
+  deckFor,
+  JAIL_FEE,
+  PASS_GO_SALARY,
+  SPACES,
+} from "./data";
 import {
   builtLotsInGroup,
   developmentLevel,
@@ -33,13 +41,10 @@ import type {
   TurnState,
 } from "./types";
 
-/** Salary paid to a player whose move passes (or lands on) GO. */
-const PASS_GO_SALARY = 200;
-
-/** Fixed fee to buy out of jail (official $50). Charged to the bank on a
- *  voluntary `pay-to-leave-jail` and on the forced exit after a failed third
- *  jail roll. Exported so the bot policy and the jail prompt share the value. */
-export const JAIL_FEE = 50;
+// GO salary, the jail fee, and the bid increment are rules — they live in
+// `data.ts`. `JAIL_FEE` and `BID_INCREMENT` are re-exported here (the bot
+// policy, the jail prompt, and the auction panel import them `from "../engine"`).
+export { BID_INCREMENT, JAIL_FEE };
 
 /** The Jail cell a jailed token sits on, derived from the static board so the
  *  jail logic never hardcodes the index. */
@@ -727,11 +732,6 @@ function applyDeclineBuy(
 // lot reverts to the bank). The `AuctionResume` continuation says where play
 // picks up. See `monopoly/CLAUDE.md` "Auctions".
 // ---------------------------------------------------------------------------
-
-/** The fixed step every bid raises the high by. A bid carries no amount — the
- *  engine adds this to the current `highBid` at apply time, so a tap is always
- *  coherent against the latest authoritative high. */
-export const BID_INCREMENT = 10;
 
 /** Non-bankrupt players in seat order from the active player — the seating for
  *  the auction's `active` list (display only; there's no rotation). A bankrupt

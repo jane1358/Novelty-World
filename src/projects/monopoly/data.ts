@@ -1,4 +1,11 @@
-import type { Card, CardSource, PlayerColor, PlayerIcon, Space } from "./types";
+import type {
+  Card,
+  CardSource,
+  PlayerColor,
+  PlayerIcon,
+  PropertyColor,
+  Space,
+} from "./types";
 
 /** Canonical assignment order for player seats. The lobby hands out the first
  *  free color / icon in these orders, so seat N defaults to the Nth entry —
@@ -250,3 +257,75 @@ export const COMMUNITY_CHEST: readonly Card[] = [
 export function deckFor(source: CardSource): readonly Card[] {
   return source === "chance" ? CHANCE : COMMUNITY_CHEST;
 }
+
+// ---------------------------------------------------------------------------
+// Game rules & constants
+//
+// The tunable numbers of the ruleset, kept here as DATA rather than baked into
+// the engine. Two payoffs: a bot has the complete information set in one place
+// (the board above + these numbers = everything needed to value any decision),
+// and a future rule variant (house rules, a short game, a different edition) is
+// a variant of THIS file, not a fork of the engine. The engine, the build
+// planner, and the rent/mortgage helpers all read these — nothing redefines
+// them. Percentage rules are integer percents on purpose (see the mortgage note).
+// ---------------------------------------------------------------------------
+
+/** Salary paid to a player whose move passes (or lands on) GO. */
+export const PASS_GO_SALARY = 200;
+
+/** Fixed fee to buy out of jail. Charged to the bank on a voluntary
+ *  `pay-to-leave-jail` and on the forced exit after a failed third jail roll. */
+export const JAIL_FEE = 50;
+
+/** The fixed step every auction bid raises the high by. A bid carries an
+ *  absolute amount; this is the increment a client adds to the standing high. */
+export const BID_INCREMENT = 10;
+
+/** The building bank: a standard board ships 32 houses and 12 hotels. The
+ *  remaining supply is always derived from the board (`bankSupply`), never
+ *  stored in `GameState`. */
+export const TOTAL_HOUSES = 32;
+export const TOTAL_HOTELS = 12;
+
+/** Cost of one development tier (a house, or the hotel) by color group. Every
+ *  tier in a group costs the same, and the hotel is just the fifth tier — so
+ *  developing a property from bare lot to hotel costs `5 * HOUSE_COST[color]`.
+ *  Selling a tier back refunds `BUILDING_REFUND_PERCENT`% of this. */
+export const HOUSE_COST: Readonly<Record<PropertyColor, number>> = {
+  brown: 50,
+  "light-blue": 50,
+  pink: 100,
+  orange: 100,
+  red: 150,
+  yellow: 150,
+  green: 200,
+  "dark-blue": 200,
+};
+
+/** Rent for a railroad by how many railroads its owner holds (1-4), indexed
+ *  `[ownedCount - 1]`: $25, doubling per railroad held. */
+export const RAILROAD_RENT: readonly [number, number, number, number] = [
+  25, 50, 100, 200,
+];
+
+/** Utility rent as a multiplier on the dice roll: 4× when the owner holds one
+ *  utility, 10× when they hold both. */
+export const UTILITY_MULT_PARTIAL = 4;
+export const UTILITY_MULT_FULL = 10;
+
+/** Mortgage economics, as integer percentages of a square's printed price:
+ *  a player collects `MORTGAGE_VALUE_PERCENT`% when mortgaging (floored), and
+ *  pays the mortgage value back plus `UNMORTGAGE_INTEREST_PERCENT`% interest
+ *  (ceiled) to lift it. A receiver who takes on a still-mortgaged property in a
+ *  trade owes that interest to the bank.
+ *
+ *  Integer percents (computed as `value * (100 + pct) / 100`) on purpose: a
+ *  float rate like `value * 1.1` drifts in IEEE 754 — `200 * 1.1` is
+ *  `220.00000000000003`, which `Math.ceil` would round up to 221 — producing an
+ *  off-by-one on round-number rents. */
+export const MORTGAGE_VALUE_PERCENT = 50;
+export const UNMORTGAGE_INTEREST_PERCENT = 10;
+
+/** Cash refunded for selling one building tier back to the bank, as a percent
+ *  of its `HOUSE_COST` (floored). */
+export const BUILDING_REFUND_PERCENT = 50;

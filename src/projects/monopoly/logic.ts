@@ -1,4 +1,11 @@
-import { SPACES } from "./data";
+import {
+  MORTGAGE_VALUE_PERCENT,
+  RAILROAD_RENT,
+  SPACES,
+  UNMORTGAGE_INTEREST_PERCENT,
+  UTILITY_MULT_FULL,
+  UTILITY_MULT_PARTIAL,
+} from "./data";
 import type { CardSource, GameState, PropertyColor } from "./types";
 
 const PROPS_PER_COLOR: Readonly<Record<PropertyColor, number>> = {
@@ -12,10 +19,6 @@ const PROPS_PER_COLOR: Readonly<Record<PropertyColor, number>> = {
   "dark-blue": 2,
 };
 
-const RAILROAD_RENT: readonly [number, number, number, number] = [25, 50, 100, 200];
-const UTILITY_MULT_PARTIAL = 4;
-const UTILITY_MULT_FULL = 10;
-
 /** Buy price of an ownable square (property, railroad, utility), or null
  *  for any other space. Used by the engine to validate buy intents, by the
  *  bot pacer to decide buy vs. decline, and by the action bar to show the
@@ -28,27 +31,28 @@ export function ownablePrice(position: number): number | null {
   return null;
 }
 
-/** Cash a player collects when mortgaging this square. Official rule: half
- *  the printed price, rounded down for the odd dollar (Monopoly's price
- *  table only has even prices today, so the floor is a safety net). Null
- *  for non-ownable spaces. */
+/** Cash a player collects when mortgaging this square: `MORTGAGE_VALUE_PERCENT`%
+ *  of the printed price, rounded down for the odd dollar (Monopoly's price
+ *  table only has even prices today, so the floor is a safety net). Null for
+ *  non-ownable spaces. */
 export function mortgageValueAt(position: number): number | null {
   const price = ownablePrice(position);
   if (price === null) return null;
-  return Math.floor(price / 2);
+  return Math.floor((price * MORTGAGE_VALUE_PERCENT) / 100);
 }
 
-/** Cash a player must pay to lift a mortgage on this square. Official rule:
- *  mortgage value plus 10% interest, rounded up to the nearest dollar. Null
- *  for non-ownable spaces.
+/** Cash a player must pay to lift a mortgage on this square: mortgage value
+ *  plus `UNMORTGAGE_INTEREST_PERCENT`% interest, rounded up to the nearest
+ *  dollar. Null for non-ownable spaces.
  *
- *  Integer math (`value * 11 / 10`) because `value * 1.1` in IEEE 754 can
- *  drift — e.g. `200 * 1.1` is `220.00000000000003`, which `Math.ceil`
- *  would round up to 221 and produce off-by-one for round-number rents. */
+ *  Integer math (`value * (100 + pct) / 100`) because the float form
+ *  `value * 1.1` in IEEE 754 can drift — e.g. `200 * 1.1` is
+ *  `220.00000000000003`, which `Math.ceil` would round up to 221 and produce
+ *  off-by-one for round-number rents. */
 export function unmortgageCostAt(position: number): number | null {
   const value = mortgageValueAt(position);
   if (value === null) return null;
-  return Math.ceil((value * 11) / 10);
+  return Math.ceil((value * (100 + UNMORTGAGE_INTEREST_PERCENT)) / 100);
 }
 
 /** The 10% mortgage interest alone (un-mortgage cost minus the principal) —
