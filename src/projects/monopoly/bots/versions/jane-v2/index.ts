@@ -41,4 +41,4 @@
 //
 // Measured (official `npm run sim:gauntlet -- jane-v18 --base v29 --field v29`):
 // 64.6% win rate, +104.6 Elo, SPRT passed (LLR improvement 2.96).
-export { claudeBot as janeV2Bot } from "./claude";
+export { claudeBot as janeV2Bot } from "./policy";
