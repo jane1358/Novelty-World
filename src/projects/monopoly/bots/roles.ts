@@ -32,8 +32,23 @@ import { VERSIONS } from "./versions";
 /** The strongest version by measurement (highest gauntlet Elo) ACROSS ALL
  *  LINEAGES. Bump when the loop crowns a new overall best — see EVOLUTION.md
  *  "Coexistence & promotion". (Jane's `jane-v1` only TIES this, so the overall
- *  champion stays a Claude version for now.) */
-export const CHAMPION_VERSION = "v29";
+ *  champion stays a Claude version for now.)
+ *
+ *  WHY v35 IS CHAMPION DESPITE BEING A "WASH" (read before "fixing" this back):
+ *  v35 is EVEN with v29 — confirmed on BOTH seed streams (train 50.6% / holdout
+ *  50.7%, +4–5 Elo within noise, zero regressions) — NOT strictly better. Normally
+ *  the crown moves only on a strictly-BETTER result, so by that rule it would stay
+ *  v29. We moved it anyway, as a deliberate **quality tiebreak at parity**: v35
+ *  removes the value-less denial hot-potato (the bot→bot ring a live game exposed —
+ *  EVOLUTION.md Finding 2) that v29 still carries. At equal measured strength, the
+ *  crown goes to the version WITHOUT the degenerate, player-visible behavior. This
+ *  matters because the champion is the **base future versions branch from** AND the
+ *  lobby "Champion" opponent — keeping it on v29 would propagate the bug into every
+ *  descendant and let real players still see the ring. It's the v14 win-safe-
+ *  correctness pattern, promoted to champion because the parity is confirmed on both
+ *  streams and the displaced behavior is a genuine defect, not a style choice.
+ *  (Elo is a tie, so this does not falsify "highest Elo" — it breaks the tie.) */
+export const CHAMPION_VERSION = "v35";
 
 /** Jane's hand-picked / featured version (the bare "Jane" lobby pointer) —
  *  Jane's analog of Claude's LIVE_VERSION, moved by a human. */
