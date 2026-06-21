@@ -18,6 +18,7 @@ import {
   ownedInColor,
   positionValue,
   sellerDistress,
+  distressThreatScale,
   spaceName,
 } from "./valuation";
 
@@ -163,7 +164,8 @@ function rivalThreatCost(
     }
     worst = Math.max(worst, share);
   }
-  return Math.round(worst);
+  // v35 SELLER half: a genuinely distressed seat discounts the threat premium
+  return Math.round(worst * distressThreatScale(state, pid));
 }
 
 /** Evaluate `terms` from `pid`'s seat: accept iff it raises my position value

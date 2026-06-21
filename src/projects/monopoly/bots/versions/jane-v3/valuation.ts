@@ -113,6 +113,11 @@ const JAIL_DANGER_RENT = 350;
 
 const JAIL_FEE = 50;
 
+// Distress detection: a player is "genuinely distressed" when a single deadly
+// developed rent would bankrupt them even after mortgaging everything.
+const DEADLY_RENT = JAIL_DANGER_RENT;
+const DISTRESS_DISCOUNT = 1.0;
+
 /** Total printed price of a color group — the basis for its monopoly bonus. */
 const SET_TOTAL_PRICE: Readonly<Record<PropertyColor, number>> = (() => {
   const totals: Record<PropertyColor, number> = {
@@ -584,6 +589,30 @@ export function planRaiseByMortgage(
     raised += lot.value;
   }
   return raised >= need ? mortgage : null;
+}
+
+
+
+function deadliestDevelopedRent(state: GameState, pid: string): number {
+  let worst = 0;
+  for (const [posStr, owner] of Object.entries(state.ownership)) {
+    if (owner === pid) continue;
+    const pos = Number(posStr);
+    if (developmentLevel(state, pos) > 0) worst = Math.max(worst, rentEstimateAt(state, pos));
+  }
+  return worst;
+}
+
+export function isDistressed(state: GameState, pid: string): boolean {
+  const deadly = deadliestDevelopedRent(state, pid);
+  if (deadly < DEADLY_RENT) return false;
+  const player = state.players.find((p) => p.id === pid);
+  if (!player) return false;
+  return player.cash + mortgageableTotal(state, pid) < deadly;
+}
+
+export function distressThreatScale(state: GameState, pid: string): number {
+  return isDistressed(state, pid) ? 1 - DISTRESS_DISCOUNT : 1;
 }
 
 // ---------------------------------------------------------------------------
