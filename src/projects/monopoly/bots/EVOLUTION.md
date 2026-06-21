@@ -451,6 +451,22 @@ in the lobby.
    `dumb`** (which measures nothing and is hard-rejected from any field). v1 remains
    in `VERSIONS` and fully runnable; only the *default* field changed.
 
+9. **`gemini-v1` is DEPRECATED — ✅ TAKEN (2026-06-21, by Kyle).** Same cost
+   reasoning as Decision 8, applied to the worst bot in the archive. `gemini-v1` sits
+   ~150 Elo below the field (the lowest by a wide margin) *and* is the capped-game
+   bottleneck: its pairings run to the 2000-turn cap and each one is a ~6-min slog
+   that swamps any ratings/gauntlet run for near-zero signal (it dominated the
+   focused `claude-v36` ratings run until it was dropped, cutting that run from ~30
+   min to ~25 s). So it's added to **`RATING_EXCLUDED`** — unrated, rendered
+   deprecated in the lobby, and dropped from the gauntlet's default field (the field
+   filter now excludes the whole `RATING_EXCLUDED` set generically, not just
+   `claude-v1`; there's no `--with-gemini` opt-in — force it back with an explicit
+   `--field` if ever needed). It is the **sole Gemini version**, so this deprecates
+   the **entire Gemini family** in the lobby — intended. Like `claude-v1`, this is
+   **purely a cost optimization**: `gemini-v1` is a real strategy (a whole lineage's
+   v1), stays in `VERSIONS`, and remains fully runnable; only its rating/default-field
+   participation changed. The `RATING_EXCLUDED` set is now `{claude-v1, gemini-v1}`.
+
 ## Version log
 
 The running record of bot versions and how each fared against the field — **both
@@ -460,6 +476,7 @@ bot as of this doc.
 
 | Version | Date | Hypothesis / change | Result vs. field | Status |
 |---------|------|---------------------|------------------|--------|
+| claude-v36 | 2026-06-21 | **DENY_FACTOR 0.3 → 0.15 — denial STILL over-weighted** (`versions/claude-v36/valuation.ts`): branched from the cross-lineage champion **jane-v2** (substrate per "Two bests" — borrowing across lineages is free; the FIRST Claude-label version on the Jane base, since the Claude line's own v35 sits behind jane-v2). jane-v2's single biggest discovery was halving the denial knob 0.6→0.3 (+71 Elo vs v29: "wasting resources blocking opponents"); it then moved to the reserve/cushion axes and **never swept DENY below 0.3** (no record in the repo). DENY 0.6→0.3 is the STEEPEST single-parameter gradient in the whole log, so the optimum may sit lower. This is the direct, gauntlet-actionable lesson from the real 4-player game vs humans (`npm run game:review -- 2h0y0y`): a Claude bot (Rebecca) mortgaged THREE lots to deny-buy Boardwalk, left itself no liquidity buffer, and that over-leverage killed it (finished last). Halving again (0.3→0.15) mirrors jane's own 0.6→0.3 step; the bot still books a real (thinner) premium for a rival's last open lot — v5 proved denial has genuine positive value, so this sharpens self-focus without abandoning it. Single variable; everything else jane-v2 verbatim. | **BETTER vs jane-v2 (base) on BOTH streams, NO regressions:** train 58.9% (205–143, 348 decisive, 0 draws, +62.6 Elo), holdout 60.6% (172–112, 284 decisive, 0 draws, +74.5 Elo) — near-identical streams (real, not noise). Targeted field (train) BETTER vs ALL: claude-v5 (heavy-denial 0.6) 61.6%, claude-v35 53.6%, jane-v4 54.9%, gemini-v1 82.9%; Elo (jane-v2=0) **claude-v36 +27.7 — top of field**, no regressions. | **ACCEPTED — NEW CROSS-LINEAGE CHAMPION (crown + substrate).** Confirms denial was over-weighted even at jane-v2's 0.3: another step down transfers win share with NO regression against the denial-heavy claude-v5 (in fact BETTER, 61.6%) — there was no non-transitive denial-sensitivity trap. The first Claude-lineage champion since the line adopted the Jane base; the game's "denial over-investment is fatal" lesson is the one that the gauntlet rewards (its develop-faster / keep-a-buffer lessons map onto the already-rejected v4/v9/v19 — the "eval blind spot": those matter vs HUMANS but wash vs the bot field). Base for the next version. The DENY optimum is now somewhere **≤0.15** — a future version should sweep lower and bracket it (as v18 did the reserve). |
 | v31 | 2026-06-21 | **From-scratch DISTRESS grab — corner (A)** (`versions/v31/trades.ts` `proposeBestTrade` Offer E): extend the proven distress-discount lever to a whole-set buy. v29 buys a distressed rival's COMPLETER for a set the bot is one short of; v31 opens a from-scratch grab — when a GENUINELY DISTRESSED opponent owns a WHOLE, building-free monopoly of a color the bot holds NONE of, buy the entire set at the distress-discounted price and take it off the board. v24 proved a FAIR-PRICE from-scratch grab washes (positive-sum); the new `isDistressed` gate was meant to make it UNDERPRICED (the winning condition). Held + developed, never relocated (a complete monopoly has no third party to bounce to). Gated by `worthAcquiring` (real prize ≥ 100, stays above the rent reserve). Branched from champion v29; isolated to Offer E. `v31/acquire.test.ts` pins the structural finding (below). | **REJECTED on triage — EVEN vs v29 (base): 49.4% win share (1540–1578, 3118 decisive, 27 draws, confident EVEN, LLR impr −7.35 / regr −2.98).** Elo (v29=0) **v31 −4.2 ≈ v29 0**; no regression. No holdout (triage rejects on no-improvement). | **rejected** (win-neutral); champion stays **v29**. **Offer E is -EV by CONSTRUCTION and self-rejects — it never fires positively, so v31 plays identically to v29.** The proof (pinned in `acquire.test.ts`): the distress discount only erases the seller's rival-THREAT premium (the cost of arming the buyer); it does NOT discount the set's own `monopolyBonus`. When the buyer takes a WHOLE monopoly that bonus transfers ~1:1 — the seller loses exactly what the buyer gains — so the buyer's gain never clears the seller's discounted break-even plus the accept margin (measured: buyer gain +1120 vs seller discounted loss −1120 → net −30 after the $30 margin). **The asymmetry that made v29's Offer B win has no analogue here:** Offer B buys the LAST lot and banks the WHOLE bonus for one lot's price; a whole-set buy carries the bonus proportionally in every lot, so it is a fair (washing) transfer even at maximal distress — exactly v24's "intact-monopoly buy is -EV and self-rejects" lesson, and distress doesn't change it because the only thing it discounts (the threat premium) is precisely what cancels the buyer's gain. The ONLY way to make it clear would be to discount the bare set's own `monopolyBonus` by the owner's cash — the **cash-scaled-monopoly-value** idea that `bots/CLAUDE.md` explicitly considered and rejected. **Corner (A) is a closed dead end.** `v31/acquire.test.ts` pins the -EV self-reject. |
 | v33 | 2026-06-21 | **STRONG-set hot-potato — marginal-denial price gate** (`versions/v33/trades.ts`): a CORRECTNESS attempt for a live-game bug (Finding 2). A 4-player online game (a cash-rich HUMAN one dark-blue short, Boardwalk at a bot holdout) showed v14's gate closes only the WEAK-set ring: for a strong set + liquid rival, `rivalCanAcquire` PASSES, so each bot re-books the DENY premium and the completer hot-potatoes bot→bot until the rival buys in. v33 added a second, destination-side gate: fire only if the rival could acquire from the holder but NOT from ME after the buy (i.e. my buy actually makes it unreachable). Branched from champion v29; isolated to Offer C. `v33/phantom-denial.test.ts` pins the dark-blue repro + the distressed-holder denial that survives. | **REJECTED — WORSE vs v29: 47.5% (1198–1322, 2520 decisive, confident REGRESSION, −15.1 Elo).** Also WORSE vs v17 (47.0%). | **rejected** (regression). The gate keyed on the RIVAL'S WEALTH, so it deleted not just churn hops but the whole class of rich-rival denials — and the proactive strong-set denial carries real win share. First data point of the load-bearing-churn finding (see v35). `v33` archived. |
 | v34 | 2026-06-21 | **STRONG-set hot-potato — temporal anti-churn cooldown** (`versions/v34/trades.ts` `tradedWithin` + `DENY_COOLDOWN_TURNS`): after v33, attack only the REPETITION, not the denial — a completer traded within K turns is off-limits for a fresh denial buy (first denial fires, re-hops don't). Branched from champion v29; isolated to Offer C. K-swept {3,8,24}. `v34/cooldown.test.ts` pins the suppression + that completions/first-denials are untouched. | **REJECTED — WORSE vs v29: 47.7% (1493–1635, 3128 decisive, −15.8 Elo), IDENTICAL across all K** (rings are tight, ≤3-turn hops, so even K=3 catches them all). | **rejected** (regression). Confirmed v33's lesson by a second, independent mechanism: removing the ring costs ~15 Elo regardless of method. Triggered the diagnostic (below). `v34` archived (also recommended-against as live: same churn-kill as v35 but at −15 Elo). |
@@ -517,10 +534,13 @@ bot as of this doc.
   default tracks the *measured* strongest, which may briefly be a version that isn't
   (yet) the SPRT-confirmed crown — that's fine and expected (see "Two bests").
 
-**As of 2026-06-21:** the cross-lineage champion (crown + default substrate) is **`jane-v2`**
-(see the Champion-status note above — that note is authoritative). Within the Claude machine the
-line reached **v35** (← v29 ← v28 ← v17 ← v14 ← v5); the v28→v29 desperation-acquisition wins are
-the live lead this section tracks. (The "loop champion" framing below was written at v29, before
+**As of 2026-06-21:** the cross-lineage champion (crown + default substrate) is **`claude-v36`**
+(see the Champion-status note above — that note is authoritative): a single-knob fork of the
+prior champion `jane-v2` (DENY_FACTOR 0.3→0.15) proving denial was still over-weighted, BETTER on
+both streams with no regressions. It superseded **`jane-v2`** (the first non-Claude champion).
+Within the Claude machine the line reached **v35** (← v29 ← v28 ← v17 ← v14 ← v5) before adopting
+the Jane base at v36; the v28→v29 desperation-acquisition wins are the live lead this section
+tracks. (The "loop champion" framing below was written at v29, before
 the v33/v34 rejects and the v35 crown.) After NINE straight
 rejects (v19–v27), lead (b) broke through: **v28** introduced desperation-pricing
 acquisition (buy a distressed rival's set-completer BELOW fair price to finish your own
@@ -772,23 +792,28 @@ cash). Positive-sum self-improvement (v3, v4, **and v24's fair-price acquisition
 information (v12) wash; defence (v9/v13/v15) and over-pushing a denial parameter (v7/v10)
 regress.
 
-**Champion (crown + substrate) status:** the SPRT-confirmed best is the
-**Jane-lineage `jane-v2`** — the FIRST non-Claude champion (2026-06-21, PR #5),
-STRICTLY BETTER than the best Claude version `claude-v35` on BOTH seed streams
-(train 54.5% / +31.6 Elo, holdout 53.3% / +22.8 Elo, zero regressions; gauntlet
-`jane-v2 --base claude-v35 --field claude-v35`). `claude-v35` itself was the best
-Claude version (a quality tiebreak at parity with v29 — the win-safe strong-set
-hot-potato fix, carrying the whole v29 mechanism + v14's phantom-denial fix).
-**The next version we evolve branches from the current champion `jane-v2` by default**
+**Champion (crown + substrate) status:** the SPRT-confirmed best is
+**`claude-v36`** (2026-06-21) — the first Claude-LABEL champion built on the Jane
+base: a single-knob fork of `jane-v2` (DENY_FACTOR 0.3 → 0.15) that is BETTER than
+`jane-v2` on BOTH seed streams (train 58.9% / +62.6 Elo, holdout 60.6% / +74.5 Elo,
+zero regressions; gauntlet `claude-v36 --base jane-v2 --field jane-v2`) and beats a
+targeted field of the strongest/denial-heaviest opponents with no regression
+(claude-v5 61.6%, claude-v35 53.6%, jane-v4 54.9%, gemini-v1 82.9%). It proves the
+denial knob was still over-weighted at jane-v2's 0.3 — exactly the over-investment
+the real 4-player human game (`game:review 2h0y0y`) showed killing a Claude bot.
+The PRIOR champion `jane-v2` (the FIRST non-Claude champion, PR #5, beat `claude-v35`
+on both streams) is now superseded.
+**The next version we evolve branches from the current champion `claude-v36` by default**
 — improve the measured best directly. Lineages are just provenance (the machine a
 version was discovered on) and borrowing across them is free, so the substrate is the
-best base regardless of family, NOT the nominal ladder-topper (`jane-v4` tops the Elo
-ladder but failed the SPRT crown gate — see its row below). Branch from a different
-base only as a deliberate call — an archived building block to exploit, or to escape a
-local maximum. Note the split this creates: the
-lobby's player-facing **Strongest/default** is `jane-v4` (top of `ratings.ts`),
-while the **crown/substrate** stays `jane-v2`. That divergence is correct and
-expected (see "Two bests"). Jane's own evolution is in `versions/jane-v2/index.ts`,
+best base regardless of family. Branch from a different base only as a deliberate call
+— an archived building block to exploit, or to escape a local maximum. The first lead
+on `claude-v36`: the DENY optimum is now somewhere **≤0.15** (it crossed BETTER at the
+first step down from 0.3, so it has not yet bracketed); a future version should sweep
+DENY lower (0.075? 0?) and bracket it, exactly as v18 bracketed the reserve below v17.
+After regenerating `ratings.ts`, the lobby's player-facing **Strongest/default**
+(top of the Elo ladder) should also be `claude-v36` — crown and player-default
+realigned (see "Two bests"). Jane's own evolution is in `versions/jane-v2/index.ts`,
 not this Claude log.
 
 **`jane-v4`** (2026-06-21, PR #6) — **RECORDED + player default, NOT crowned, NOT substrate.**

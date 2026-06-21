@@ -1,7 +1,7 @@
 import process from "node:process";
 import { formatGauntlet, type GauntletProgress, runGauntlet } from "./gauntlet";
 import { defaultWorkerCount, WorkerPool } from "./parallel";
-import { VERSIONS } from "./versions";
+import { RATING_EXCLUDED, VERSIONS } from "./versions";
 
 /** A live progress line for a gauntlet run (so a long run isn't a black box). On a
  *  TTY it rewrites one line in place (`\r`); when captured to a file/pipe it prints
@@ -135,17 +135,20 @@ async function main(): Promise<void> {
   if (!known.includes(args.candidate)) {
     throw new Error(`unknown candidate "${args.candidate}" (known: ${known.join(", ")})`);
   }
-  // `dumb` is a null stub and is NEVER gauntleted. claude-v1 is the published FLOOR
-  // but is dropped from the DEFAULT field (Decision 8, now taken): every claude-vN≥2
-  // dominates it by ~160 Elo, while claude-v1's trade-veto deadlock caps ~a quarter of
-  // its games to the full turn limit — the slowest, least-informative pairing there is.
-  // Re-include it for an occasional archived floor audit with `--with-v1` (or an
-  // explicit --field).
+  // `dumb` is a null stub and is NEVER gauntleted. The DEFAULT field also drops the
+  // `RATING_EXCLUDED` versions — the deprecated set that's too weak/slow to be worth
+  // the cost (Decision 8): `claude-v1` (its trade-veto deadlock caps ~a quarter of its
+  // games to the full turn limit) and `gemini-v1` (worst Elo by a wide margin, and the
+  // capped-game bottleneck). `claude-v1` is the published FLOOR, re-includable for an
+  // occasional audit with `--with-v1`; any other excluded version stays out (force it
+  // in with an explicit `--field` if ever needed).
   const field =
     args.field ??
-    known.filter(
-      (v) => v !== "dumb" && v !== args.candidate && (args.withV1 || v !== "claude-v1"),
-    );
+    known.filter((v) => {
+      if (v === "dumb" || v === args.candidate) return false;
+      if (v === "claude-v1") return args.withV1;
+      return !RATING_EXCLUDED.has(v);
+    });
   if (field.length === 0) throw new Error("empty field — nothing to test the candidate against");
   for (const v of field) {
     if (!known.includes(v)) throw new Error(`unknown field version "${v}"`);

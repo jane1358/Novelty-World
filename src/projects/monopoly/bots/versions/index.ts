@@ -35,6 +35,7 @@ import { claudeV32Bot } from "./claude-v32";
 import { claudeV33Bot } from "./claude-v33";
 import { claudeV34Bot } from "./claude-v34";
 import { claudeV35Bot } from "./claude-v35";
+import { claudeV36Bot } from "./claude-v36";
 // Jane lineage — a bot family distinct from Claude (see EVOLUTION.md "Bot
 // lineages"). Every lineage is namespaced by label prefix — `claude-vN`,
 // `jane-vN`, `gemini-vN`.
@@ -95,6 +96,7 @@ export const VERSIONS: Readonly<Record<string, Bot>> = {
   "claude-v33": claudeV33Bot,
   "claude-v34": claudeV34Bot,
   "claude-v35": claudeV35Bot,
+  "claude-v36": claudeV36Bot,
   "jane-v1": janeV1Bot,
   "jane-v2": janeV2Bot,
   "jane-v4": janeV4Bot,
@@ -103,14 +105,20 @@ export const VERSIONS: Readonly<Record<string, Bot>> = {
 };
 
 /** Versions deliberately LEFT OUT of the Elo ladder — the rater skips them, so
- *  they never earn a rating. Today only `claude-v1`: the original champion's logic
- *  stalls/caps too many games (slow and least-informative — see EVOLUTION.md
- *  Decision 8), which would both poison the field and waste enormous compute. A
- *  version with no rating renders DEPRECATED in the lobby (struck through, "??? "
+ *  they never earn a rating, and the gauntlet drops them from its default field.
+ *  Both members are real, runnable snapshots kept for the archive; they're excluded
+ *  purely as a COST optimization (see EVOLUTION.md Decision 8 + the gemini-v1 note):
+ *    - `claude-v1` — the original champion; its trade-veto deadlock caps too many
+ *      games to the turn limit (slow + least-informative).
+ *    - `gemini-v1` — the weakest bot by a wide margin (~ −150 Elo below the field)
+ *      AND the capped-game bottleneck, so its pairings are ~6-min slogs that swamp
+ *      any ratings/gauntlet run for near-zero signal. It is the sole Gemini version,
+ *      so excluding it deprecates the whole Gemini family in the lobby (intended).
+ *  A version with no rating renders DEPRECATED in the lobby (struck through, "??? "
  *  Elo, disabled) — see `bots/roles.ts`. This is the lone hand-maintained
  *  rating-policy knob, and it stays tiny. `dumb` is excluded separately (it's a
  *  null stub, not a real bot). */
-export const RATING_EXCLUDED: ReadonlySet<string> = new Set(["claude-v1"]);
+export const RATING_EXCLUDED: ReadonlySet<string> = new Set(["claude-v1", "gemini-v1"]);
 
 /** Resolve a version label to its policy, or throw with the known set listed —
  *  a typo on the CLI should fail loud, not silently field the wrong bot. */

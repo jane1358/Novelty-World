@@ -298,12 +298,37 @@ Mechanics:
   `RATING_EXCLUDED`), fits one Elo across them, and writes `bots/ratings.ts`
   (`BOT_RATINGS`, raw Elo). Treat it as build output — a hand-edited rating would
   quietly lie to players about how hard each bot is.
-- **Cached, so re-runs are cheap.** Games are deterministic in (versions, seed,
-  count) and versions are frozen, so each pairing's tally is persisted to
-  `ratings-cache.json`. The first full run pays the whole cost once; afterward a new
-  version only **plays its own column** vs the field (every other pairing is a cache
-  hit) and the ladder re-fits over the full result set — the mathematically-correct
-  joint Elo, with no replay.
+- **Cached — but a full run is NOT necessarily cheap.** Games are deterministic in
+  (versions, seed, count, turn-cap) and versions are frozen, so each pairing's tally
+  is persisted to `ratings-cache.json` and reused. *In the ideal case* a new version
+  only plays its own column vs the field (every other pairing a cache hit) and the
+  ladder re-fits with no replay. **In practice the cache is INCOMPLETE** (it has only
+  the pairings prior runs happened to play — e.g. ~206 of the ~700-pairing full
+  round-robin), so a no-arg `npm run sim:ratings` (whole archive) can play **500+**
+  pairings — *hours*, dominated by **gemini-v1's capped-game slogs** (a weak bot's
+  games hit the 2000-turn cap and each capped game runs to the cap — ~6 min per
+  gemini pairing). Don't assume "cached ⇒ fast" for a full run; check
+  `ratings-cache.json` coverage first, or use the focused fast path below.
+- **Fast path — get a NEW version selectable in the UI without a full run.** The
+  lobby only needs the version to have an Elo entry in `ratings.ts`. `sim:ratings`
+  takes an **explicit version list**, fits Elo over *just those* (anchored at
+  `claude-v2`), and writes `ratings.ts` with **exactly that set** — so rate the new
+  version against **the set that's currently rated** (the versions already in
+  `ratings.ts`):
+  ```
+  npm run sim:ratings -- <new-version> <every-version-currently-in-ratings.ts>
+  ```
+  This keeps everything currently selectable selectable and adds the new one, in
+  minutes (its column is small and most internal pairings are cached). **Caveats:**
+  (1) *Include every currently-rated version* — any you accidentally omit drops out
+  of `ratings.ts` and its family deprecates. (Conversely, *deliberately* omitting a
+  version is exactly how you deprecate it — that's how `gemini-v1` was retired: drop
+  it from the rated set AND add it to `RATING_EXCLUDED`.) (2) The numbers differ
+  slightly from a full-field fit (it's a smaller fit);
+  the eventual full run overwrites with the complete joint Elo and **reuses** these
+  cached pairings. (3) This does **not** fix `ratings.test.ts` coverage — versions
+  outside the rated set stay unrated (that test is about full coverage, a separate
+  concern from "is the new bot selectable").
 - **Fixed anchor (`claude-v2 = 0`), permanently.** Elo is only defined up to a
   global offset, so one version is pinned to 0. We pin the field floor and **never
   move it** — keeping a saved number comparable across regenerations. The anchor
@@ -312,8 +337,10 @@ Mechanics:
   (`RATING_DISPLAY_BASE`, +1000) lives in `roles.ts` (`ratingFor`), so the floor
   reads ~1000 instead of a discouraging 0; `BOT_RATINGS` stays the raw measurement.
 - **`RATING_EXCLUDED` is the only hand-maintained rating knob** (`versions/index.ts`)
-  — versions deliberately left unrated because they'd poison/stall the field (today
-  just `claude-v1`). They render deprecated. Keep it tiny.
+  — versions deliberately left unrated because they're too weak/slow to be worth the
+  rating + gauntlet cost (`claude-v1` and `gemini-v1` — both real, runnable snapshots,
+  excluded purely as a cost optimization; see EVOLUTION.md Decision 8). They render
+  deprecated, and the gauntlet drops them from its default field too. Keep it tiny.
 - **Regenerate after adding any version** (and any time you want to refresh the
   whole ladder). This sets the player-facing **Strongest/default** automatically —
   no pointer to bump. It does **not** by itself crown a champion or pick a
