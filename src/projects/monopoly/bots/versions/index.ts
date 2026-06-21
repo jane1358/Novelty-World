@@ -32,6 +32,9 @@ import { v29Bot } from "./v29";
 import { v30Bot } from "./v30";
 import { v31Bot } from "./v31";
 import { v32Bot } from "./v32";
+import { v33Bot } from "./v33";
+import { v34Bot } from "./v34";
+import { v35Bot } from "./v35";
 // Jane lineage — a bot family distinct from Claude (see EVOLUTION.md "Bot
 // lineages"). Labels are namespaced `jane-vN`; Claude stays unprefixed `vN`.
 import { janeV1Bot } from "./jane-v1";
@@ -79,6 +82,9 @@ export const VERSIONS: Readonly<Record<string, Bot>> = {
   v30: v30Bot,
   v31: v31Bot,
   v32: v32Bot,
+  v33: v33Bot,
+  v34: v34Bot,
+  v35: v35Bot,
   "jane-v1": janeV1Bot,
   dumb: dumbBot,
 };

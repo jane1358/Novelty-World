@@ -144,6 +144,35 @@ completed one. Two principles:
    validation so a built draft is never route-rejected (a rejected drive would
    latch the pacer's once-per-version guard and stall the phase).
 
+### Denial is a premium game, not a wall — price BOTH sides of it (v35)
+
+A completer held against a one-short rival is **not** a wall that keeps the rival
+off its set. Instrumentation (`EVOLUTION.md` Finding 2 diagnostic) showed the rival
+**completes the set ~86% of the time anyway**, paying a **~$254 median premium** over
+book to whoever holds the completer at cash-out. So a held completer is a
+**premium-extraction option**, and "trade-to-deny" is really a competition to be the
+one holding it when the rival caves.
+
+The trap this creates: if you price denial **asymmetrically** — a *buyer* books the
+full `DENY_FACTOR` premium (via `acquisitionValue`) but a *holder* values its lot at
+only printed price — then every bot→bot hop clears at break-even and the completer
+**hot-potatoes** in a value-less ring (observed: 21–42 hops on one lot). The two
+abstain-from-denial fixes (v33 price gate, v34 time cooldown) both **regressed −15
+Elo**, because a bot that stops denying still *pays* the premium as the rival but
+never *collects* it as a holder.
+
+The fix (`denialPositionCost`, folded into `evaluateTrade`): **price the holder's side
+symmetrically.** Handing a held completer to anyone but the one-short rival forfeits
+the premium you're positioned to extract, so charge it — now no hop clears, the
+completer sits with its holder, and the holder collects the rival's payout directly
+(same cash-out, **zero rotation**, win-EVEN). Selling *to* the rival is the cash-out,
+priced by `rivalThreatCost` (mutually exclusive — recipient is the rival xor not — so
+no double-count). It's **distress-scaled** (`distressThreatScale`): a near-bust holder
+still sheds it cheap, preserving the genuinely protective grab off a seat about to
+bust. **Invariant: keep buyer-side and holder-side denial pricing in lockstep** — if
+you ever change `DENY_FACTOR` or `acquisitionValue`'s deny premium, `denialPositionCost`
+must move with it, or the ring returns.
+
 ## Randomness & the RNG seam
 
 The bot is a pure function `(state, playerId) => BotDecision | null` today — no
