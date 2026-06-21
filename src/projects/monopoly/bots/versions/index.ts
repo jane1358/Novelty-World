@@ -36,6 +36,7 @@ import { v32Bot } from "./v32";
 // lineages"). Labels are namespaced `jane-vN`; Claude stays unprefixed `vN`.
 import { janeV1Bot } from "./jane-v1";
 import { janeV2Bot } from "./jane-v2";
+import { janeV3Bot } from "./jane-v3";
 
 // ---------------------------------------------------------------------------
 // The version archive. Every bot snapshot the simulator can field by name, for
@@ -82,6 +83,7 @@ export const VERSIONS: Readonly<Record<string, Bot>> = {
   v32: v32Bot,
   "jane-v1": janeV1Bot,
   "jane-v2": janeV2Bot,
+  "jane-v3": janeV3Bot,
   dumb: dumbBot,
 };
 
