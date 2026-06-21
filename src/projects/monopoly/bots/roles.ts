@@ -37,7 +37,7 @@ export const CHAMPION_VERSION = "v29";
 
 /** Jane's hand-picked / featured version (the bare "Jane" lobby pointer) —
  *  Jane's analog of Claude's LIVE_VERSION, moved by a human. */
-export const JANE_FEATURED_VERSION = "jane-v1";
+export const JANE_FEATURED_VERSION = "jane-v2";
 
 /** Newest label in a lineage, found by its version-label prefix. Derived, so
  *  registering a new `<prefix>N` snapshot makes it that lineage's latest with no
