@@ -35,6 +35,7 @@ import { v32Bot } from "./v32";
 // Jane lineage — a bot family distinct from Claude (see EVOLUTION.md "Bot
 // lineages"). Labels are namespaced `jane-vN`; Claude stays unprefixed `vN`.
 import { janeV1Bot } from "./jane-v1";
+import { janeV2Bot } from "./jane-v2";
 
 // ---------------------------------------------------------------------------
 // The version archive. Every bot snapshot the simulator can field by name, for
@@ -80,6 +81,7 @@ export const VERSIONS: Readonly<Record<string, Bot>> = {
   v31: v31Bot,
   v32: v32Bot,
   "jane-v1": janeV1Bot,
+  "jane-v2": janeV2Bot,
   dumb: dumbBot,
 };
 
