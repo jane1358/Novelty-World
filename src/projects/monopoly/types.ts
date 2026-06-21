@@ -69,6 +69,8 @@ export const BOT_STRATEGIES = [
   "claude-latest",
   "jane",
   "jane-latest",
+  "gemini",
+  "gemini-latest",
 ] as const;
 
 /** Which bot policy controls a computer seat, resolved through the bot registry

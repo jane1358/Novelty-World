@@ -11,11 +11,16 @@ import { versionBot } from "./versions";
  *    npm run sim:versus -- v2 v1                     # candidate v2 vs baseline v1
  *    npm run sim:versus -- v2 v1 --seeds 100         # 100 games (default 50)
  *    npm run sim:versus -- v2 v1 --prefix holdout    # seed names "holdout-1"...
- *    npm run sim:versus -- v2 dumb --turns 1500      # vs the dumb floor
+ *    npm run sim:versus -- v2 v1 --turns 1500        # lower the per-game turn cap
  *    npm run sim:versus -- v2 v1 --log               # per-game table too
  *
- *  Known versions live in `versions/index.ts` (`v1`, `v2`, `dumb`). The first two
- *  positional args are the candidate (A) and the baseline (B). */
+ *  Known versions live in `versions/index.ts`. The two positional args are the
+ *  candidate (A) and the baseline (B). **`dumb` is NEVER a valid opponent here**
+ *  (rejected below, exactly as the gauntlet rejects it): it is a null/reactive
+ *  stub, not a strategy — it initiates nothing, so "beating dumb" measures
+ *  nothing about strength. The floor of the real field is `v2` (`v1` is archived
+ *  but excluded by default — its bad logic stalls games). See EVOLUTION.md
+ *  "Never gauntlet against dumb". */
 
 interface Args {
   aLabel: string;
@@ -60,6 +65,17 @@ function parseArgs(argv: readonly string[]): Args {
       `need exactly two versions to pit (got ${positional.length}). ` +
         `Example: npm run sim:versus -- v2 v1`,
     );
+  }
+  // `dumb` is a null stub, not a strategy — never an evaluation opponent (the
+  // gauntlet hard-rejects it too). Measuring against it tells you nothing; the
+  // real field's floor is v2. See EVOLUTION.md "Never gauntlet against dumb".
+  for (const label of positional) {
+    if (label === "dumb") {
+      throw new Error(
+        "`dumb` is a null stub and must not be used to evaluate bots — pit two " +
+          "real versions (the field floor is v2). See EVOLUTION.md.",
+      );
+    }
   }
   return { aLabel: positional[0], bLabel: positional[1], seeds, prefix, maxTurns, log };
 }

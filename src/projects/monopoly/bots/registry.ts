@@ -27,4 +27,6 @@ export const BOTS: Record<BotStrategy, Bot> = {
   "claude-latest": versionBot(lineageFor("claude-latest").latest),
   jane: versionBot(lineageFor("jane").featured),
   "jane-latest": versionBot(lineageFor("jane-latest").latest),
+  gemini: versionBot(lineageFor("gemini").featured),
+  "gemini-latest": versionBot(lineageFor("gemini-latest").latest),
 };

@@ -194,8 +194,12 @@ import the `move()` wrapper without an import cycle). Each seat's strategy is
 plus a registry entry. Current strategies:
 
 - **`dumb`** (`bots/dumb.ts`) — the reactive baseline; answers the proxy-driven
-  decision phases and never initiates. Returns note-less decisions. **Simulator/
-  gauntlet only — no longer offered in the lobby UI.**
+  decision phases and never initiates. Returns note-less decisions. Not offered
+  in the lobby UI. **It is NEVER an evaluation opponent** — a null stub measures
+  nothing about strength, so the gauntlet and `sim:versus` both hard-reject it
+  (the field floor is `v2`; see EVOLUTION.md "Never gauntlet against dumb"). It
+  exists only as a wiring/pacing baseline (e.g. `pacing.test.ts`) and for `sim`
+  playback.
 - **`champion` + per-lineage pointers** (`claude` / `claude-latest` / `jane` /
   `jane-latest` / …) — **pointers** into the version archive, declared as data in
   `bots/roles.ts` and the bots the lobby actually offers. The version archive is
@@ -380,8 +384,8 @@ bots/gauntlet.ts      candidate-vs-field gauntlet: parallel + SPRT + Elo + verdi
 bots/gauntlet-cli.ts  `npm run sim:gauntlet -- v3` — run the gauntlet on the pool
 bots/verify-cli.ts    `npm run sim:verify -- v2 v1` — prove parallel == single
 bots/versions/        version archive (EVOLUTION.md): self-contained bot snapshots; the source of truth for all policy code, decoupled from what ships live
-bots/versions/index.ts  VERSIONS map (v1=floor, v2, v3, …) + versionBot()
-bots/versions/v1/     v1 snapshot: the original champion, frozen — the gauntlet FLOOR
+bots/versions/index.ts  VERSIONS map (v1 archived/excluded, v2=floor, v3, …) + versionBot()
+bots/versions/v1/     v1 snapshot: original champion, frozen — archived, EXCLUDED from the default field (stalls games); v2 is the floor
 bots/versions/v2/     v2 snapshot (rival-threat pricing) + its tests
 bots/versions/v3/     v3 snapshot (N-way trades) — accepted as substrate (win-neutral vs v2)
 bots/versions/v4/     v4 snapshot (mortgage-funded build tempo) — rejected, win-neutral; archived

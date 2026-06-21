@@ -38,16 +38,21 @@ import { v35Bot } from "./v35";
 // Jane lineage — a bot family distinct from Claude (see EVOLUTION.md "Bot
 // lineages"). Labels are namespaced `jane-vN`; Claude stays unprefixed `vN`.
 import { janeV1Bot } from "./jane-v1";
+// Gemini lineage — a third bot family, authored by Gemini. Labels namespaced
+// `gemini-vN`.
+import { geminiV1Bot } from "./gemini-v1";
 
 // ---------------------------------------------------------------------------
 // The version archive. Every bot snapshot the simulator can field by name, for
 // head-to-head A/B (see EVOLUTION.md "Coexistence & promotion"). Every entry is
-// a self-contained frozen SNAPSHOT — including `v1`, the original champion and
-// the gauntlet's FLOOR — so a label always means that exact version. This is
-// deliberately DECOUPLED from what currently ships: the live bot is a pointer
-// into this archive (`bots/live.ts` → `LIVE_VERSION`), so promoting a version
-// to production never silently redefines the floor. `dumb` is a null reactive
-// stub — never gauntleted; v1 is the real floor of the field.
+// a self-contained frozen SNAPSHOT — so a label always means that exact version.
+// This is deliberately DECOUPLED from what currently ships: the live bot is a
+// pointer into this archive (`bots/live.ts` → `LIVE_VERSION`), so promoting a
+// version to production never silently redefines the field. `dumb` is a null
+// reactive stub — never gauntleted. The FLOOR of the default gauntlet field is
+// `v2`. `v1` (the original champion) is archived/frozen but EXCLUDED by default:
+// its bad logic stalls/caps too many games (slow and least-informative — see
+// EVOLUTION.md Decision 8); it returns only for an explicit `--with-v1` audit.
 // ---------------------------------------------------------------------------
 export const VERSIONS: Readonly<Record<string, Bot>> = {
   v1: v1Bot,
@@ -86,6 +91,7 @@ export const VERSIONS: Readonly<Record<string, Bot>> = {
   v34: v34Bot,
   v35: v35Bot,
   "jane-v1": janeV1Bot,
+  "gemini-v1": geminiV1Bot,
   dumb: dumbBot,
 };
 

@@ -54,6 +54,9 @@ export const CHAMPION_VERSION = "v35";
  *  Jane's analog of Claude's LIVE_VERSION, moved by a human. */
 export const JANE_FEATURED_VERSION = "jane-v1";
 
+/** Gemini's hand-picked / featured version (the bare "Gemini" lobby pointer). */
+export const GEMINI_FEATURED_VERSION = "gemini-v1";
+
 /** Newest label in a lineage, found by its version-label prefix. Derived, so
  *  registering a new `<prefix>N` snapshot makes it that lineage's latest with no
  *  other change. */
@@ -115,6 +118,13 @@ export const LINEAGES: readonly BotLineage[] = [
     displayName: "Jane",
     versionPrefix: "jane-v",
     featured: JANE_FEATURED_VERSION,
+  }),
+  makeLineage({
+    id: "gemini",
+    latestId: "gemini-latest",
+    displayName: "Gemini",
+    versionPrefix: "gemini-v",
+    featured: GEMINI_FEATURED_VERSION,
   }),
 ];
 
