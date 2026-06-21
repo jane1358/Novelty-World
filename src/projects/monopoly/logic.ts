@@ -8,16 +8,30 @@ import {
 } from "./data";
 import type { CardSource, GameState, PropertyColor } from "./types";
 
-const PROPS_PER_COLOR: Readonly<Record<PropertyColor, number>> = {
-  brown: 2,
-  "light-blue": 3,
-  pink: 3,
-  orange: 3,
-  red: 3,
-  yellow: 3,
-  green: 3,
-  "dark-blue": 2,
-};
+// The board is static, so the positions of each color group (and of the
+// railroads / utilities) are fixed for the whole game. Precompute them ONCE at
+// module load so the hot ownership predicates below can check a handful of known
+// positions directly instead of scanning all of `state.ownership` via
+// `Object.entries` (which allocates a pairs array and `Number`-parses every key
+// on every call). `hasMonopoly` alone dominated bot CPU before this — it runs 8×
+// per `positionValue`, which the trade search calls constantly.
+const COLOR_POSITIONS: Readonly<Record<PropertyColor, readonly number[]>> = (() => {
+  const m: Record<string, number[]> = {};
+  SPACES.forEach((s, i) => {
+    if (s.kind === "property") (m[s.color] ??= []).push(i);
+  });
+  return m as Record<PropertyColor, number[]>;
+})();
+
+const KIND_POSITIONS: Readonly<Record<"railroad" | "utility", readonly number[]>> = (() => {
+  const rail: number[] = [];
+  const util: number[] = [];
+  SPACES.forEach((s, i) => {
+    if (s.kind === "railroad") rail.push(i);
+    else if (s.kind === "utility") util.push(i);
+  });
+  return { railroad: rail, utility: util };
+})();
 
 /** Buy price of an ownable square (property, railroad, utility), or null
  *  for any other space. Used by the engine to validate buy intents, by the
@@ -85,13 +99,10 @@ export function hasMonopoly(
   color: PropertyColor,
   ownerId: string,
 ): boolean {
-  let count = 0;
-  for (const [posStr, oid] of Object.entries(state.ownership)) {
-    if (oid !== ownerId) continue;
-    const space = SPACES[Number(posStr)];
-    if (space.kind === "property" && space.color === color) count++;
+  for (const pos of COLOR_POSITIONS[color]) {
+    if (state.ownership[pos] !== ownerId) return false;
   }
-  return count === PROPS_PER_COLOR[color];
+  return true;
 }
 
 function countOwnedByKind(
@@ -100,9 +111,8 @@ function countOwnedByKind(
   kind: "railroad" | "utility",
 ): number {
   let count = 0;
-  for (const [posStr, oid] of Object.entries(state.ownership)) {
-    if (oid !== ownerId) continue;
-    if (SPACES[Number(posStr)].kind === kind) count++;
+  for (const pos of KIND_POSITIONS[kind]) {
+    if (state.ownership[pos] === ownerId) count++;
   }
   return count;
 }
