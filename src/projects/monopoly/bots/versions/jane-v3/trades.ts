@@ -164,7 +164,6 @@ function rivalThreatCost(
     }
     worst = Math.max(worst, share);
   }
-  // v35 SELLER half: a genuinely distressed seat discounts the threat premium
   return Math.round(worst * distressThreatScale(state, pid));
 }
 

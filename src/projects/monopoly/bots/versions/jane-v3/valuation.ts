@@ -113,8 +113,6 @@ const JAIL_DANGER_RENT = 350;
 
 const JAIL_FEE = 50;
 
-// Distress detection: a player is "genuinely distressed" when a single deadly
-// developed rent would bankrupt them even after mortgaging everything.
 const DEADLY_RENT = JAIL_DANGER_RENT;
 const DISTRESS_DISCOUNT = 1.0;
 
