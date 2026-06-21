@@ -30,6 +30,7 @@ yarn-error.log*
 # claude code
 .claude/*
 !.claude/skills/
+!.claude/commands/
 
 # vercel
 .vercel

@@ -35,7 +35,7 @@ const eslintConfig = defineConfig([
     },
   },
   {
-    files: ["*.mjs", "public/**/*.js"],
+    files: ["**/*.mjs", "public/**/*.js"],
     languageOptions: {
       parserOptions: { project: false },
     },
