@@ -6,7 +6,7 @@ import {
   type Highlight,
   type SimOptions,
 } from "./simulate";
-import { spaceName } from "./versions/v1/valuation";
+import { spaceName } from "../logic";
 
 /** `npm run sim` — an on-demand script that plays a full, headless Monopoly game
  *  between bots and prints the outcome. No UI, pure CPU, deterministic by seed.

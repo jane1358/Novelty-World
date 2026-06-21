@@ -1,10 +1,10 @@
 // ---------------------------------------------------------------------------
 // Elo rating from a field of pairwise results (see EVOLUTION.md "Measurement").
-// Strategy strength is NON-TRANSITIVE — v3 can beat v2, v2 beat v1, yet v3 lose
-// to v1 — so "beat the last guy" is not a robust definition of champion. Instead
+// Strategy strength is NON-TRANSITIVE — A can beat B, B beat C, yet A lose to C
+// — so "beat the last guy" is not a robust definition of champion. Instead
 // every version earns an Elo against the whole field, and the champion is the
-// HIGHEST Elo. Ratings are anchored so the floor (`v1`) sits at 0, i.e. an Elo of
-// +N means "N Elo above the v1 baseline".
+// HIGHEST Elo. Ratings are anchored so the floor (`claude-v1`) sits at 0, i.e. an
+// Elo of +N means "N Elo above the claude-v1 baseline".
 //
 // The fit is the standard Bradley–Terry maximum-likelihood model, solved by the
 // Zermelo / minorization–maximization iteration (parameter-free, monotonically
@@ -24,7 +24,7 @@ export interface PairResult {
 }
 
 export interface EloFitOptions {
-  /** The label pinned to 0 Elo (the field floor — `v1`). */
+  /** The label pinned to 0 Elo (the field floor — `claude-v1`). */
   anchor: string;
   /** MM iterations; the model converges well within this for a small field. */
   iterations?: number;

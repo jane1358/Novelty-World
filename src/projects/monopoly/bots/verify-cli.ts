@@ -12,9 +12,9 @@ import { versionBot } from "./versions";
  *  six 2+2 seatings) through both paths and compares every field of every game.
  *
  *  Usage:
- *    npm run sim:verify -- v2 v1                 # 60 games each way (default)
- *    npm run sim:verify -- v3 v2 --seeds 120
- *    npm run sim:verify -- v3 v1 --turns 2000 --workers 14 */
+ *    npm run sim:verify -- claude-v2 claude-v1            # 60 games each way (default)
+ *    npm run sim:verify -- claude-v3 claude-v2 --seeds 120
+ *    npm run sim:verify -- claude-v3 claude-v1 --turns 2000 --workers 14 */
 
 interface Args {
   a: string;

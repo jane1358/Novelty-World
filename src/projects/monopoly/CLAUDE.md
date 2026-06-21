@@ -197,7 +197,7 @@ plus a registry entry. Current strategies:
   decision phases and never initiates. Returns note-less decisions. Not offered
   in the lobby UI. **It is NEVER an evaluation opponent** — a null stub measures
   nothing about strength, so the gauntlet and `sim:versus` both hard-reject it
-  (the field floor is `v2`; see EVOLUTION.md "Never gauntlet against dumb"). It
+  (the field floor is `claude-v2`; see EVOLUTION.md "Never gauntlet against dumb"). It
   exists only as a wiring/pacing baseline (e.g. `pacing.test.ts`) and for `sim`
   playback.
 - **`champion` + per-lineage pointers** (`claude` / `claude-latest` / `jane` /
@@ -215,7 +215,7 @@ plus a registry entry. Current strategies:
   **Adding a lineage** is purely data — two ids in `BOT_STRATEGIES`, one `LINEAGES`
   row, two `BOTS` entries — and needs **no UI or gauntlet change** (the lobby
   renders from `BOT_ROLES`; the gauntlet fields versions by opaque label, so
-  cross-lineage matches like `sim:gauntlet -- jane-v1 --base v29` already work). A
+  cross-lineage matches like `sim:gauntlet -- jane-v1 --base claude-v29` already work). A
   worked TODO for the next family lives in `bots/roles.ts`. The policy code for
   whichever version each resolves to lives in
   `bots/versions/<label>/{policy,valuation,trades}.ts`. Whatever version ships, it
@@ -375,24 +375,24 @@ bots/roles.ts         BOT_ROLES — the lobby pointers (Claude/Champion/Latest) 
 bots/simulate.ts      headless self-play driver (per-seat Contenders / strategies)
 bots/simulate-cli.ts  `npm run sim` — watch one game (roster, seed, --log)
 bots/tournament.ts    head-to-head A/B between versions: win share vs the 50% null
-bots/versus-cli.ts    `npm run sim:versus -- v2 v1` — run the A/B over many seeds
+bots/versus-cli.ts    `npm run sim:versus -- claude-v2 claude-v1` — run the A/B over many seeds
 bots/parallel.ts      worker_threads pool: pure games distributed across cores
 bots/worker.ts        worker entry — runs simulateGame, posts back compact results
 bots/sprt.ts          SPRT in Elo (dual one-sided fishtest test) — pure, tested
 bots/elo.ts           Bradley–Terry Elo fit across the field — pure, tested
 bots/gauntlet.ts      candidate-vs-field gauntlet: parallel + SPRT + Elo + verdict
-bots/gauntlet-cli.ts  `npm run sim:gauntlet -- v3` — run the gauntlet on the pool
-bots/verify-cli.ts    `npm run sim:verify -- v2 v1` — prove parallel == single
-bots/versions/        version archive (EVOLUTION.md): self-contained bot snapshots; the source of truth for all policy code, decoupled from what ships live
-bots/versions/index.ts  VERSIONS map (v1 archived/excluded, v2=floor, v3, …) + versionBot()
-bots/versions/v1/     v1 snapshot: original champion, frozen — archived, EXCLUDED from the default field (stalls games); v2 is the floor
-bots/versions/v2/     v2 snapshot (rival-threat pricing) + its tests
-bots/versions/v3/     v3 snapshot (N-way trades) — accepted as substrate (win-neutral vs v2)
-bots/versions/v4/     v4 snapshot (mortgage-funded build tempo) — rejected, win-neutral; archived
-bots/versions/v5/     v5 snapshot (trade-to-deny) — loop CHAMPION
-bots/versions/v6/     v6 snapshot (deny-via-swap) — rejected, win-neutral; archived
-bots/versions/v7/     v7 snapshot (two-short denial) — rejected, regression; archived
-bots/versions/v8/     v8 snapshot (denial + tempo) — rejected, overfit (even on holdout); archived
+bots/gauntlet-cli.ts  `npm run sim:gauntlet -- claude-v3` — run the gauntlet on the pool
+bots/verify-cli.ts    `npm run sim:verify -- claude-v2 claude-v1` — prove parallel == single
+bots/versions/        version archive (EVOLUTION.md): self-contained bot snapshots; the source of truth for all policy code, decoupled from what ships live. Labels are namespaced per lineage: claude-vN, jane-vN, gemini-vN
+bots/versions/index.ts  VERSIONS map (claude-v1 archived/excluded, claude-v2=floor, claude-v3, …) + versionBot()
+bots/versions/claude-v1/     claude-v1 snapshot: original champion, frozen — archived, EXCLUDED from the default field (stalls games); claude-v2 is the floor
+bots/versions/claude-v2/     claude-v2 snapshot (rival-threat pricing) + its tests
+bots/versions/claude-v3/     claude-v3 snapshot (N-way trades) — accepted as substrate (win-neutral vs claude-v2)
+bots/versions/claude-v4/     claude-v4 snapshot (mortgage-funded build tempo) — rejected, win-neutral; archived
+bots/versions/claude-v5/     claude-v5 snapshot (trade-to-deny) — loop CHAMPION
+bots/versions/claude-v6/     claude-v6 snapshot (deny-via-swap) — rejected, win-neutral; archived
+bots/versions/claude-v7/     claude-v7 snapshot (two-short denial) — rejected, regression; archived
+bots/versions/claude-v8/     claude-v8 snapshot (denial + tempo) — rejected, overfit (even on holdout); archived
 (which version is LIVE is whatever bots/live.ts → LIVE_VERSION points to — a product call, see EVOLUTION.md)
 components/           React board + lobby/seat UI
 ```

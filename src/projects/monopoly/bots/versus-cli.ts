@@ -8,18 +8,18 @@ import { versionBot } from "./versions";
  *  EVOLUTION.md). Deterministic by seed: same args reproduce the same table.
  *
  *  Usage:
- *    npm run sim:versus -- v2 v1                     # candidate v2 vs baseline v1
- *    npm run sim:versus -- v2 v1 --seeds 100         # 100 games (default 50)
- *    npm run sim:versus -- v2 v1 --prefix holdout    # seed names "holdout-1"...
- *    npm run sim:versus -- v2 v1 --turns 1500        # lower the per-game turn cap
- *    npm run sim:versus -- v2 v1 --log               # per-game table too
+ *    npm run sim:versus -- claude-v2 claude-v1            # candidate vs baseline
+ *    npm run sim:versus -- claude-v2 claude-v1 --seeds 100   # 100 games (default 50)
+ *    npm run sim:versus -- claude-v2 claude-v1 --prefix holdout  # seeds "holdout-1"...
+ *    npm run sim:versus -- claude-v2 claude-v1 --turns 1500  # lower per-game turn cap
+ *    npm run sim:versus -- claude-v2 claude-v1 --log         # per-game table too
  *
  *  Known versions live in `versions/index.ts`. The two positional args are the
  *  candidate (A) and the baseline (B). **`dumb` is NEVER a valid opponent here**
  *  (rejected below, exactly as the gauntlet rejects it): it is a null/reactive
  *  stub, not a strategy — it initiates nothing, so "beating dumb" measures
- *  nothing about strength. The floor of the real field is `v2` (`v1` is archived
- *  but excluded by default — its bad logic stalls games). See EVOLUTION.md
+ *  nothing about strength. The floor of the real field is `claude-v2` (`claude-v1` is
+ *  archived but excluded by default — its bad logic stalls games). See EVOLUTION.md
  *  "Never gauntlet against dumb". */
 
 interface Args {

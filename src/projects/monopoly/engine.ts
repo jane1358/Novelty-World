@@ -787,6 +787,16 @@ function enterAuction(
   };
 }
 
+/** A player's **net worth**: cash plus everything they could liquidate (mortgage
+ *  every building-free lot, sell every building back to the bank at half value).
+ *  The engine's objective worth measure — the basis for the auction bid cap, and a
+ *  bot-independent yardstick for the headless sim's standings scoreboard. */
+export function netWorth(state: GameState, playerId: string): number {
+  const player = state.players.find((p) => p.id === playerId);
+  if (!player) return 0;
+  return player.cash + maxRaisableCash(state, playerId);
+}
+
 /** The most a bidder may offer: **net worth** (cash + everything they could
  *  liquidate), less the 10% interest owed on a still-mortgaged estate lot. This
  *  is the binding-bid rule for both auction triggers — a winner who bids above
@@ -804,13 +814,11 @@ function maxBid(
   auction: AuctionState,
   playerId: string,
 ): number {
-  const player = state.players.find((p) => p.id === playerId);
-  if (!player) return 0;
   const interest =
     auction.resume.kind === "bank-estate" && state.mortgaged[auction.position]
       ? (mortgageInterestAt(auction.position) ?? 0)
       : 0;
-  return player.cash + maxRaisableCash(state, playerId) - interest;
+  return netWorth(state, playerId) - interest;
 }
 
 /** The most `playerId` may bid in the current auction, or 0 if none is open.

@@ -53,17 +53,18 @@ function makeProgressReporter(): (p: GauntletProgress) => void {
  *  by seed: same args reproduce the same table.
  *
  *  Usage:
- *    npm run sim:gauntlet -- v3                       # candidate v3 vs the field
- *    npm run sim:gauntlet -- v3 --base v2             # must beat v2 specifically
- *    npm run sim:gauntlet -- v3 --field v1,v2         # explicit field
- *    npm run sim:gauntlet -- v8 --with-v1             # add the v1 floor audit back
- *    npm run sim:gauntlet -- v3 --prefix holdout      # held-out seed stream
- *    npm run sim:gauntlet -- v3 --margin 20 --alpha 0.05 --beta 0.05
- *    npm run sim:gauntlet -- v3 --max 4000 --workers 14
+ *    npm run sim:gauntlet -- claude-v3                # candidate claude-v3 vs the field
+ *    npm run sim:gauntlet -- claude-v3 --base claude-v2   # must beat claude-v2 specifically
+ *    npm run sim:gauntlet -- claude-v3 --field claude-v1,claude-v2  # explicit field
+ *    npm run sim:gauntlet -- claude-v8 --with-v1      # add the claude-v1 floor audit back
+ *    npm run sim:gauntlet -- claude-v3 --prefix holdout   # held-out seed stream
+ *    npm run sim:gauntlet -- claude-v3 --margin 20 --alpha 0.05 --beta 0.05
+ *    npm run sim:gauntlet -- claude-v3 --max 4000 --workers 14
  *
  *  The field defaults to every known version except `dumb` (a null stub — never
- *  gauntleted), `v1` (the floor — dominated and slow; opt back in with `--with-v1`,
- *  see EVOLUTION.md Decision 8), and the candidate; base defaults to the latest. */
+ *  gauntleted), `claude-v1` (the floor — dominated and slow; opt back in with
+ *  `--with-v1`, see EVOLUTION.md Decision 8), and the candidate; base defaults to
+ *  the latest. */
 
 interface Args {
   candidate: string;
@@ -134,15 +135,16 @@ async function main(): Promise<void> {
   if (!known.includes(args.candidate)) {
     throw new Error(`unknown candidate "${args.candidate}" (known: ${known.join(", ")})`);
   }
-  // `dumb` is a null stub and is NEVER gauntleted. v1 is the published FLOOR but is
-  // dropped from the DEFAULT field (Decision 8, now taken): every vN≥2 dominates it
-  // by ~160 Elo, while v1's trade-veto deadlock caps ~a quarter of its games to the
-  // full turn limit — the slowest, least-informative pairing there is. Re-include it
-  // for an occasional archived floor audit with `--with-v1` (or an explicit --field).
+  // `dumb` is a null stub and is NEVER gauntleted. claude-v1 is the published FLOOR
+  // but is dropped from the DEFAULT field (Decision 8, now taken): every claude-vN≥2
+  // dominates it by ~160 Elo, while claude-v1's trade-veto deadlock caps ~a quarter of
+  // its games to the full turn limit — the slowest, least-informative pairing there is.
+  // Re-include it for an occasional archived floor audit with `--with-v1` (or an
+  // explicit --field).
   const field =
     args.field ??
     known.filter(
-      (v) => v !== "dumb" && v !== args.candidate && (args.withV1 || v !== "v1"),
+      (v) => v !== "dumb" && v !== args.candidate && (args.withV1 || v !== "claude-v1"),
     );
   if (field.length === 0) throw new Error("empty field — nothing to test the candidate against");
   for (const v of field) {

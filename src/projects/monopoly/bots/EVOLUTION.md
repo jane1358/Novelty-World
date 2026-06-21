@@ -8,6 +8,15 @@ can go wrong — so anyone (human or Claude) can pick it up cold.
 Read `bots/CLAUDE.md` first for the bot's charter and current strategy. This doc
 is about the *process* of improving it.
 
+> **Label note (2026-06-21):** the Claude lineage's versions were renamed from the
+> bare `vN` scheme to the namespaced `claude-vN` scheme, matching Jane (`jane-vN`)
+> and Gemini (`gemini-vN`) so every label self-documents its family. Directories
+> are now `versions/claude-vN/`, the registry keys and pointers are `claude-vN`, and
+> the gauntlet floor is `claude-v1` / `claude-v2`. **The historical log entries below
+> were left as originally written** (bare `v1`…`v35`) — they are an append-only
+> record, and rewriting them would erase that history. Read a historical `vN` as
+> today's `claude-vN`.
+
 ## The core idea
 
 A genetic algorithm, but the mutation operator is **Claude Code reasoning**, not
@@ -691,15 +700,17 @@ cash). Positive-sum self-improvement (v3, v4, **and v24's fair-price acquisition
 information (v12) wash; defence (v9/v13/v15) and over-pushing a denial parameter (v7/v10)
 regress.
 
-**Promotion status:** **`LIVE_VERSION = v35`** AND **`CHAMPION_VERSION = v29 → v35`**
-(both promoted 2026-06-21 — the win-safe strong-set hot-potato fix: EVEN vs v29 on BOTH
-streams, no regressions, kills the value-less denial rotation a live game exposed). v35
-carries the whole v29 mechanism + v14's phantom-denial fix. **The champion move is a quality
-tiebreak at parity, NOT a strictly-better crown** — at EVEN measured strength the crown goes
-to the version without the degenerate ring, so the carried-forward base and the lobby Champion
-are both bug-free (full rationale at `roles.ts` `CHAMPION_VERSION`). **Next version branches
-from v35.** Only formal rigor skipped vs a strict crown: a full-field no-regression sweep
-(v35 is EVEN with field-dominating v29, so the non-transitivity risk is low).
+**Promotion status:** **`LIVE_VERSION = v35`** (the shipped Claude bot) AND
+**`CHAMPION_VERSION = jane-v2`** (cross-lineage). v35 was crowned champion 2026-06-21 (a
+quality tiebreak at parity with v29 — the win-safe strong-set hot-potato fix, carrying the
+whole v29 mechanism + v14's phantom-denial fix). The cross-lineage crown then moved to the
+**Jane-lineage `jane-v2`** (2026-06-21, PR #5) — the FIRST non-Claude champion — which is
+STRICTLY BETTER than v35 on BOTH seed streams (train 54.5% / +31.6 Elo, holdout 53.3% / +22.8
+Elo, zero regressions; gauntlet `jane-v2 --base v35 --field v35`). A clean strictly-better
+crown, full rationale at `roles.ts` `CHAMPION_VERSION`; Jane's own evolution is documented in
+`versions/jane-v2/index.ts`, not this Claude log. `LIVE_VERSION` stays v35 (shipping is a
+Claude product call). **The next CLAUDE version still branches from v35** — the best Claude
+version, independent of the cross-lineage crown.
 
 **Lead for the next session (from v17, after the v19–v27 sweep).** Both proven winning
 shapes are at sharp local optima: capital deployment is tapped on EVERY gate (reserve

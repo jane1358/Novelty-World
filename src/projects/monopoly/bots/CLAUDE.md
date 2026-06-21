@@ -144,7 +144,7 @@ completed one. Two principles:
    validation so a built draft is never route-rejected (a rejected drive would
    latch the pacer's once-per-version guard and stall the phase).
 
-### Denial is a premium game, not a wall — price BOTH sides of it (v35)
+### Denial is a premium game, not a wall — price BOTH sides of it (claude-v35)
 
 A completer held against a one-short rival is **not** a wall that keeps the rival
 off its set. Instrumentation (`EVOLUTION.md` Finding 2 diagnostic) showed the rival
@@ -157,7 +157,7 @@ The trap this creates: if you price denial **asymmetrically** — a *buyer* book
 full `DENY_FACTOR` premium (via `acquisitionValue`) but a *holder* values its lot at
 only printed price — then every bot→bot hop clears at break-even and the completer
 **hot-potatoes** in a value-less ring (observed: 21–42 hops on one lot). The two
-abstain-from-denial fixes (v33 price gate, v34 time cooldown) both **regressed −15
+abstain-from-denial fixes (claude-v33 price gate, claude-v34 time cooldown) both **regressed −15
 Elo**, because a bot that stops denying still *pays* the premium as the rival but
 never *collects* it as a holder.
 
@@ -192,31 +192,31 @@ Ordered by impact. Each is a place the *current* policy leaves value on the tabl
 
 1. **N-way trade construction.** Construction searches only 2-way deals
    (mutual-completion swaps + cash). The engine and `positionValue` model are both
-   N-way-ready; the *search* isn't. **Tried in v3 (`versions/v3/`, see EVOLUTION.md)
+   N-way-ready; the *search* isn't. **Tried in claude-v3 (`versions/claude-v3/`, see EVOLUTION.md)
    and found WIN-NEUTRAL:** it *eliminates the turn-cap deadlock* (0% draws) but
-   does not beat v2 head-to-head, because the residual deadlock cost *draws, not
-   losses* — completing sets symmetrically is a wash. The v3 work (N-way search +
+   does not beat claude-v2 head-to-head, because the residual deadlock cost *draws, not
+   losses* — completing sets symmetrically is a wash. The claude-v3 work (N-way search +
    the apportioned rival-threat premium that makes it clear) is a proven, win-safe
    building block; the win only comes when it's paired with an *asymmetry* lever
    (tempo / denial). Fold it into the live bot when promoting such a version.
 2. **Mortgage-to-fund a build / sweetener.** Raise-to-*buy* is wired, and
    redeploy mortgages-then-builds an idle set, but a *fresh* build/sweetener is
    still cash-funded only. A pro will mortgage a back-burner lot to hotel a prime
-   set a turn sooner. **The BUILD half was tried in v4 (`versions/v4/valuation.ts`,
+   set a turn sooner. **The BUILD half was tried in claude-v4 (`versions/claude-v4/valuation.ts`,
    see EVOLUTION.md) and found WIN-NEUTRAL:** `planBuild` now mortgages idle
    non-monopoly lots to develop a prize set a level sooner, but the one-level tempo
    nudge bought no win share even against opponents that lacked it (leverage cost ≈
-   tempo gain). Like v3's N-way, it's a win-safe, archived building block — the win
+   tempo gain). Like claude-v3's N-way, it's a win-safe, archived building block — the win
    only comes paired with an *asymmetry* lever (denial). **The sweetener half
-   (mortgage to fund a *trade's* cash) was tried in v32 (`versions/v32/`, see
+   (mortgage to fund a *trade's* cash) was tried in claude-v32 (`versions/claude-v32/`, see
    EVOLUTION.md) and found WIN-NEUTRAL** — even hard-gated to the proven distress
    completion (mortgage an idle lot to fund a below-fair completer off a distressed
    seller the bot can't pay for in cash). It is in-machinery (cross-turn: arm a
    mortgage-only `manage`, then propose next turn — no engine change), fires cleanly,
    never bleeds interest (self-limiting gate), but adds no win share: it only pulls a
    few completions a turn or two sooner, and cash regenerates fast enough that Offer B
-   reaches most of them anyway (leverage cost ≈ tempo gain — v4's plain-mortgage-tempo
-   wash, on the distress channel; and v6's funding-reach wash). **Roadmap #2 is now
+   reaches most of them anyway (leverage cost ≈ tempo gain — claude-v4's plain-mortgage-tempo
+   wash, on the distress channel; and claude-v6's funding-reach wash). **Roadmap #2 is now
    fully closed — both halves washed.** Mortgage-to-fund is a win-safe building block,
    not an edge.
 

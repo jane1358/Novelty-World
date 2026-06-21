@@ -111,9 +111,9 @@ export interface GauntletReport {
   pairings: readonly PairingRun[];
   /** Elo across [candidate, ...field], anchored so `anchor` = 0. */
   elo: Record<string, number>;
-  /** The label pinned to 0 Elo: `v1` (the published floor) when it's in the field,
-   *  else the base — so a v1-less field stays interpretable (ratings are relative
-   *  to the base). See EVOLUTION.md Decision 8. */
+  /** The label pinned to 0 Elo: `claude-v1` (the published floor) when it's in the
+   *  field, else the base — so a floor-less field stays interpretable (ratings are
+   *  relative to the base). See EVOLUTION.md Decision 8. */
   anchor: string;
   /** Highest-Elo label — the field's champion. */
   champion: string;
@@ -306,7 +306,7 @@ export async function runGauntlet(opts: GauntletOptions): Promise<GauntletReport
     })),
     ...fieldResults,
   ];
-  const anchor = opts.field.includes("v1") ? "v1" : opts.base;
+  const anchor = opts.field.includes("claude-v1") ? "claude-v1" : opts.base;
   const elo = fitElo(labels, pairResults, { anchor });
   const champion = labels.reduce((best, l) => (elo[l] > elo[best] ? l : best), labels[0]);
 

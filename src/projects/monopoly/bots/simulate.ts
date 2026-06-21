@@ -1,4 +1,4 @@
-import { apply, autoStep } from "../engine";
+import { apply, autoStep, netWorth } from "../engine";
 import { freshGame } from "../mocks";
 import { driveOp, type BotResolver } from "../pacing";
 import type {
@@ -9,11 +9,11 @@ import type {
   PlayerCount,
 } from "../types";
 import { BOTS, type Bot } from "./registry";
-// The headless sim's standings scoreboard uses v1's `positionValue` as a fixed,
-// neutral reporting yardstick (it only orders the final standings; the winner is
-// the engine's). v1 is the frozen archive floor, so this is stable across
-// promotions and identical across versions (valuation is unchanged since v1).
-import { positionValue } from "./versions/v1/valuation";
+// The standings scoreboard orders players by the engine's OBJECTIVE `netWorth`
+// (cash + full liquidation value) — a bot-independent yardstick. It only orders
+// the final standings; the winner is the engine's. Deliberately NOT a bot's
+// `positionValue`, which bakes in strategic premiums (monopoly bonus, rail
+// synergy) and would couple the simulator to a specific bot version's logic.
 
 /** A headless game driver: it plays a full Monopoly game in-process with no UI,
  *  driving every seat through the SAME pacer the browser uses (`driveOp`) and
@@ -44,7 +44,7 @@ const DEFAULT_STRATEGIES: readonly BotStrategy[] = [
 ];
 
 /** One seat in a head-to-head table: a `Bot` policy plus a `label` used for
- *  reporting (e.g. "v1", "v2"). The label need not be a registry strategy — it's
+ *  reporting (e.g. "claude-v1", "claude-v2"). The label need not be a registry strategy — it's
  *  just how this seat's wins are tallied. */
 export interface Contender {
   label: string;
@@ -83,7 +83,8 @@ export interface Standing {
   label: string;
   bankrupt: boolean;
   cash: number;
-  /** `positionValue` at the final state — the bot's own yardstick for worth. */
+  /** Objective net worth at the final state (cash + full liquidation value),
+   *  the engine's bot-independent worth measure — see `netWorth`. */
   netWorth: number;
 }
 
@@ -242,7 +243,7 @@ function buildStandings(
       label: labelById.get(p.id) ?? p.botStrategy ?? "human",
       bankrupt: p.bankrupt,
       cash: p.cash,
-      netWorth: positionValue(state, p.id),
+      netWorth: netWorth(state, p.id),
     }))
     .sort((a, b) => {
       if (a.bankrupt !== b.bankrupt) return a.bankrupt ? 1 : -1;

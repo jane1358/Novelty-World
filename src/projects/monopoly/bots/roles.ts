@@ -30,25 +30,23 @@ import { VERSIONS } from "./versions";
 // ---------------------------------------------------------------------------
 
 /** The strongest version by measurement (highest gauntlet Elo) ACROSS ALL
- *  LINEAGES. Bump when the loop crowns a new overall best — see EVOLUTION.md
- *  "Coexistence & promotion". (Jane's `jane-v1` only TIES this, so the overall
- *  champion stays a Claude version for now.)
+ *  LINEAGES. Bump when a new overall best is crowned — see EVOLUTION.md
+ *  "Coexistence & promotion".
  *
- *  WHY v35 IS CHAMPION DESPITE BEING A "WASH" (read before "fixing" this back):
- *  v35 is EVEN with v29 — confirmed on BOTH seed streams (train 50.6% / holdout
- *  50.7%, +4–5 Elo within noise, zero regressions) — NOT strictly better. Normally
- *  the crown moves only on a strictly-BETTER result, so by that rule it would stay
- *  v29. We moved it anyway, as a deliberate **quality tiebreak at parity**: v35
- *  removes the value-less denial hot-potato (the bot→bot ring a live game exposed —
- *  EVOLUTION.md Finding 2) that v29 still carries. At equal measured strength, the
- *  crown goes to the version WITHOUT the degenerate, player-visible behavior. This
- *  matters because the champion is the **base future versions branch from** AND the
- *  lobby "Champion" opponent — keeping it on v29 would propagate the bug into every
- *  descendant and let real players still see the ring. It's the v14 win-safe-
- *  correctness pattern, promoted to champion because the parity is confirmed on both
- *  streams and the displaced behavior is a genuine defect, not a style choice.
- *  (Elo is a tie, so this does not falsify "highest Elo" — it breaks the tie.) */
-export const CHAMPION_VERSION = "v35";
+ *  CHAMPION IS NOW A JANE-LINEAGE BOT (`jane-v2`) — the FIRST cross-lineage crown.
+ *  jane-v2 is STRICTLY BETTER than the prior champion claude-v35, confirmed on BOTH
+ *  seed streams with zero regressions: train 54.5% / +31.6 Elo, holdout 53.3% / +22.8
+ *  Elo (gauntlet `jane-v2 --base claude-v35 --field claude-v35`, run on both `train`
+ *  and `--prefix holdout`, 2026-06-21). Unlike claude-v35's promotion (a quality
+ *  tiebreak at PARITY with claude-v29), this is a clean strictly-better result — it
+ *  clears the normal
+ *  "crown only on BETTER" bar outright, on both streams. jane-v2's own evolution
+ *  journey lives in `versions/jane-v2/index.ts`; Jane is a separate lineage, so the
+ *  Claude version log in EVOLUTION.md does not track it. `LIVE_VERSION` (the shipped
+ *  `claude` bot) is unaffected — shipping is a Claude product call; only this
+ *  cross-lineage measurement pointer moves. The next CLAUDE version still branches
+ *  from the best Claude version (claude-v35), independent of this crown. */
+export const CHAMPION_VERSION = "jane-v2";
 
 /** Jane's hand-picked / featured version (the bare "Jane" lobby pointer) —
  *  Jane's analog of Claude's LIVE_VERSION, moved by a human. */
@@ -66,7 +64,8 @@ function latestForPrefix(prefix: string): string {
     if (!label.startsWith(prefix)) continue;
     const suffix = label.slice(prefix.length);
     // The label belongs to this lineage only if the remainder is a bare number
-    // (`v17`, `jane-v1`) — guards `v` from matching a future `va…` label.
+    // (`claude-v17`, `jane-v1`) — guards a prefix from swallowing a longer one
+    // (e.g. `claude-v` must not match a future `claude-va…` label).
     if (suffix.length === 0 || !/^\d+$/.test(suffix)) continue;
     const index = Number(suffix);
     if (best === null || index > best.index) best = { label, index };
@@ -88,7 +87,7 @@ export interface BotLineage {
   latestId: BotStrategy;
   /** Family name shown in the lobby. */
   displayName: string;
-  /** Version-label prefix that namespaces this family (`v`, `jane-v`). */
+  /** Version-label prefix that namespaces this family (`claude-v`, `jane-v`). */
   versionPrefix: string;
   /** The hand-picked / featured version label. */
   featured: string;
@@ -102,14 +101,14 @@ function makeLineage(
   return { ...spec, latest: latestForPrefix(spec.versionPrefix) };
 }
 
-/** The bot families, in lobby display order. Claude is unprefixed (`vN`) for
- *  historical continuity; later families are namespaced (`jane-vN`). */
+/** The bot families, in lobby display order. Every family is namespaced by its
+ *  label prefix (`claude-vN`, `jane-vN`, `gemini-vN`). */
 export const LINEAGES: readonly BotLineage[] = [
   makeLineage({
     id: "claude",
     latestId: "claude-latest",
     displayName: "Claude",
-    versionPrefix: "v",
+    versionPrefix: "claude-v",
     featured: LIVE_VERSION,
   }),
   makeLineage({
@@ -127,34 +126,6 @@ export const LINEAGES: readonly BotLineage[] = [
     featured: GEMINI_FEATURED_VERSION,
   }),
 ];
-
-// TODO — Adding a new bot family (e.g. Gemini or ChatGPT). It's four small,
-// mechanical edits; the lobby UI and the gauntlet need ZERO changes (the UI
-// renders from BOT_ROLES, and the gauntlet fields versions by opaque label).
-//
-//   1. `types.ts` → add the family's two ids to `BOT_STRATEGIES`:
-//        "gemini", "gemini-latest"          (the route validator picks them up
-//                                            automatically — it reads this list)
-//   2. `versions/` → add the snapshots under the family's label prefix, e.g.
-//        `versions/gemini-v1/`, `versions/gemini-v2/`, … and register each in
-//        `versions/index.ts` ("gemini-v1": geminiV1Bot, …).
-//   3. Here → add one row to `LINEAGES` (and a featured-pointer const like
-//        `JANE_FEATURED_VERSION` if it isn't the latest):
-//        makeLineage({
-//          id: "gemini",
-//          latestId: "gemini-latest",
-//          displayName: "Gemini",
-//          versionPrefix: "gemini-v",   // namespaces its labels; derives `latest`
-//          featured: GEMINI_FEATURED_VERSION,
-//        }),
-//   4. `registry.ts` → add the two keys to the `BOTS` literal (the exhaustive
-//        `Record<BotStrategy, Bot>` will fail to compile until you do):
-//        gemini: versionBot(lineageFor("gemini").featured),
-//        "gemini-latest": versionBot(lineageFor("gemini-latest").latest),
-//
-// That's it — "Gemini" and "Gemini Latest" then appear in the lobby, compete in
-// the gauntlet (`npm run sim:gauntlet -- gemini-v1 --base v29`), and are eligible
-// for the single global `champion` pointer like any other family.
 
 /** Resolve a lineage by either of its pointer ids. Throws on an unknown id, so
  *  the registry's per-lineage lookups can't silently drift. */

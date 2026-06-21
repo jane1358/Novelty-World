@@ -33,6 +33,18 @@ const KIND_POSITIONS: Readonly<Record<"railroad" | "utility", readonly number[]>
   return { railroad: rail, utility: util };
 })();
 
+/** Display name of a board square: the ownable's own name, else a generic
+ *  "that space" for the corners/cards/tax tiles. Pure board data — used for
+ *  human-readable log lines and bot notes. */
+export function spaceName(position: number): string {
+  const space = SPACES[position];
+  return space.kind === "property" ||
+    space.kind === "railroad" ||
+    space.kind === "utility"
+    ? space.name
+    : "that space";
+}
+
 /** Buy price of an ownable square (property, railroad, utility), or null
  *  for any other space. Used by the engine to validate buy intents, by the
  *  bot pacer to decide buy vs. decline, and by the action bar to show the

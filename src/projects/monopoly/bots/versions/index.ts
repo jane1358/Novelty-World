@@ -1,43 +1,45 @@
 import type { Bot } from "../decision";
 import { dumbBot } from "../dumb";
-import { v1Bot } from "./v1";
-import { v2Bot } from "./v2";
-import { v3Bot } from "./v3";
-import { v4Bot } from "./v4";
-import { v5Bot } from "./v5";
-import { v6Bot } from "./v6";
-import { v7Bot } from "./v7";
-import { v8Bot } from "./v8";
-import { v9Bot } from "./v9";
-import { v10Bot } from "./v10";
-import { v11Bot } from "./v11";
-import { v12Bot } from "./v12";
-import { v13Bot } from "./v13";
-import { v14Bot } from "./v14";
-import { v15Bot } from "./v15";
-import { v16Bot } from "./v16";
-import { v17Bot } from "./v17";
-import { v18Bot } from "./v18";
-import { v19Bot } from "./v19";
-import { v20Bot } from "./v20";
-import { v21Bot } from "./v21";
-import { v22Bot } from "./v22";
-import { v23Bot } from "./v23";
-import { v24Bot } from "./v24";
-import { v25Bot } from "./v25";
-import { v26Bot } from "./v26";
-import { v27Bot } from "./v27";
-import { v28Bot } from "./v28";
-import { v29Bot } from "./v29";
-import { v30Bot } from "./v30";
-import { v31Bot } from "./v31";
-import { v32Bot } from "./v32";
-import { v33Bot } from "./v33";
-import { v34Bot } from "./v34";
-import { v35Bot } from "./v35";
+import { claudeV1Bot } from "./claude-v1";
+import { claudeV2Bot } from "./claude-v2";
+import { claudeV3Bot } from "./claude-v3";
+import { claudeV4Bot } from "./claude-v4";
+import { claudeV5Bot } from "./claude-v5";
+import { claudeV6Bot } from "./claude-v6";
+import { claudeV7Bot } from "./claude-v7";
+import { claudeV8Bot } from "./claude-v8";
+import { claudeV9Bot } from "./claude-v9";
+import { claudeV10Bot } from "./claude-v10";
+import { claudeV11Bot } from "./claude-v11";
+import { claudeV12Bot } from "./claude-v12";
+import { claudeV13Bot } from "./claude-v13";
+import { claudeV14Bot } from "./claude-v14";
+import { claudeV15Bot } from "./claude-v15";
+import { claudeV16Bot } from "./claude-v16";
+import { claudeV17Bot } from "./claude-v17";
+import { claudeV18Bot } from "./claude-v18";
+import { claudeV19Bot } from "./claude-v19";
+import { claudeV20Bot } from "./claude-v20";
+import { claudeV21Bot } from "./claude-v21";
+import { claudeV22Bot } from "./claude-v22";
+import { claudeV23Bot } from "./claude-v23";
+import { claudeV24Bot } from "./claude-v24";
+import { claudeV25Bot } from "./claude-v25";
+import { claudeV26Bot } from "./claude-v26";
+import { claudeV27Bot } from "./claude-v27";
+import { claudeV28Bot } from "./claude-v28";
+import { claudeV29Bot } from "./claude-v29";
+import { claudeV30Bot } from "./claude-v30";
+import { claudeV31Bot } from "./claude-v31";
+import { claudeV32Bot } from "./claude-v32";
+import { claudeV33Bot } from "./claude-v33";
+import { claudeV34Bot } from "./claude-v34";
+import { claudeV35Bot } from "./claude-v35";
 // Jane lineage — a bot family distinct from Claude (see EVOLUTION.md "Bot
-// lineages"). Labels are namespaced `jane-vN`; Claude stays unprefixed `vN`.
+// lineages"). Every lineage is namespaced by label prefix — `claude-vN`,
+// `jane-vN`, `gemini-vN`.
 import { janeV1Bot } from "./jane-v1";
+import { janeV2Bot } from "./jane-v2";
 // Gemini lineage — a third bot family, authored by Gemini. Labels namespaced
 // `gemini-vN`.
 import { geminiV1Bot } from "./gemini-v1";
@@ -50,47 +52,49 @@ import { geminiV1Bot } from "./gemini-v1";
 // pointer into this archive (`bots/live.ts` → `LIVE_VERSION`), so promoting a
 // version to production never silently redefines the field. `dumb` is a null
 // reactive stub — never gauntleted. The FLOOR of the default gauntlet field is
-// `v2`. `v1` (the original champion) is archived/frozen but EXCLUDED by default:
-// its bad logic stalls/caps too many games (slow and least-informative — see
-// EVOLUTION.md Decision 8); it returns only for an explicit `--with-v1` audit.
+// `claude-v2`. `claude-v1` (the original champion) is archived/frozen but
+// EXCLUDED by default: its bad logic stalls/caps too many games (slow and
+// least-informative — see EVOLUTION.md Decision 8); it returns only for an
+// explicit `--with-v1` audit.
 // ---------------------------------------------------------------------------
 export const VERSIONS: Readonly<Record<string, Bot>> = {
-  v1: v1Bot,
-  v2: v2Bot,
-  v3: v3Bot,
-  v4: v4Bot,
-  v5: v5Bot,
-  v6: v6Bot,
-  v7: v7Bot,
-  v8: v8Bot,
-  v9: v9Bot,
-  v10: v10Bot,
-  v11: v11Bot,
-  v12: v12Bot,
-  v13: v13Bot,
-  v14: v14Bot,
-  v15: v15Bot,
-  v16: v16Bot,
-  v17: v17Bot,
-  v18: v18Bot,
-  v19: v19Bot,
-  v20: v20Bot,
-  v21: v21Bot,
-  v22: v22Bot,
-  v23: v23Bot,
-  v24: v24Bot,
-  v25: v25Bot,
-  v26: v26Bot,
-  v27: v27Bot,
-  v28: v28Bot,
-  v29: v29Bot,
-  v30: v30Bot,
-  v31: v31Bot,
-  v32: v32Bot,
-  v33: v33Bot,
-  v34: v34Bot,
-  v35: v35Bot,
+  "claude-v1": claudeV1Bot,
+  "claude-v2": claudeV2Bot,
+  "claude-v3": claudeV3Bot,
+  "claude-v4": claudeV4Bot,
+  "claude-v5": claudeV5Bot,
+  "claude-v6": claudeV6Bot,
+  "claude-v7": claudeV7Bot,
+  "claude-v8": claudeV8Bot,
+  "claude-v9": claudeV9Bot,
+  "claude-v10": claudeV10Bot,
+  "claude-v11": claudeV11Bot,
+  "claude-v12": claudeV12Bot,
+  "claude-v13": claudeV13Bot,
+  "claude-v14": claudeV14Bot,
+  "claude-v15": claudeV15Bot,
+  "claude-v16": claudeV16Bot,
+  "claude-v17": claudeV17Bot,
+  "claude-v18": claudeV18Bot,
+  "claude-v19": claudeV19Bot,
+  "claude-v20": claudeV20Bot,
+  "claude-v21": claudeV21Bot,
+  "claude-v22": claudeV22Bot,
+  "claude-v23": claudeV23Bot,
+  "claude-v24": claudeV24Bot,
+  "claude-v25": claudeV25Bot,
+  "claude-v26": claudeV26Bot,
+  "claude-v27": claudeV27Bot,
+  "claude-v28": claudeV28Bot,
+  "claude-v29": claudeV29Bot,
+  "claude-v30": claudeV30Bot,
+  "claude-v31": claudeV31Bot,
+  "claude-v32": claudeV32Bot,
+  "claude-v33": claudeV33Bot,
+  "claude-v34": claudeV34Bot,
+  "claude-v35": claudeV35Bot,
   "jane-v1": janeV1Bot,
+  "jane-v2": janeV2Bot,
   "gemini-v1": geminiV1Bot,
   dumb: dumbBot,
 };
