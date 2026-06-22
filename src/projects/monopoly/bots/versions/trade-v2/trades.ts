@@ -1,5 +1,4 @@
 // ===========================================================================
-import { OpponentModel } from "./opponent-model";
 // jane-v2 SNAPSHOT — fork of jane-v1's trades.ts (see EVOLUTION.md).
 // One constant changed from jane-v1: SURVIVAL_FACTOR 0.4→1.5 — each dollar of
 // cash is worth up to $2.50 in positionValue to a fully distressed seller.
@@ -277,15 +276,14 @@ function sweetenFor(
   pid: string,
   oppId: string,
   base: TradeTerms,
-  margin: number = ACCEPT_MARGIN,
 ): TradeTerms | null {
   const oppDelta = evaluateTrade(state, oppId, base).delta;
-  if (oppDelta >= margin) return base; // they already want it
+  if (oppDelta >= ACCEPT_MARGIN) return base; // they already want it
   // v28: distressed sellers need less sweetening — the survival bonus of the
   //  incoming cash itself closes part of the gap. Cash is worth (1+relief)×
   //  face to them, so divide the gap by that factor.
   const relief = 1 + sellerDistress(state, oppId) * SURVIVAL_FACTOR;
-  const cash = Math.ceil((margin - oppDelta) / relief);
+  const cash = Math.ceil((ACCEPT_MARGIN - oppDelta) / relief);
   const myCash = state.players.find((p) => p.id === pid)?.cash ?? 0;
   if (myCash - cash < 0) return null; // can't fund it in cash (v1: no mortgage-to-fund)
   return { ...base, cashDelta: { [pid]: -cash, [oppId]: cash } };
@@ -305,16 +303,15 @@ function sweetenForAll(
   pid: string,
   sellers: readonly string[],
   base: TradeTerms,
-  margin: number = ACCEPT_MARGIN,
 ): TradeTerms | null {
   const sweeteners: Record<string, number> = {};
   let total = 0;
   for (const sId of sellers) {
     const delta = evaluateTrade(state, sId, base).delta;
-    if (delta >= margin) continue; // already a gain for them, no cash needed
+    if (delta >= ACCEPT_MARGIN) continue; // already a gain for them, no cash needed
     // v28: distressed sellers need less sweetening.
     const relief = 1 + sellerDistress(state, sId) * SURVIVAL_FACTOR;
-    const cash = Math.ceil((margin - delta) / relief);
+    const cash = Math.ceil((ACCEPT_MARGIN - delta) / relief);
     sweeteners[sId] = cash;
     total += cash;
   }
@@ -406,9 +403,6 @@ export function proposeBestTrade(
 ): { terms: TradeTerms; reason: string } | null {
   if (proposedThisTurn(state, pid)) return null;
 
-  const oppModel = new OpponentModel();
-  oppModel.reconstruct(state, pid);
-
   const candidates: Candidate[] = [];
 
   for (const color of COLORS_BY_WEIGHT) {
@@ -454,7 +448,6 @@ export function proposeBestTrade(
           pid,
           oppId,
           { propertyTo: { [single.pos]: pid, [oppMissing]: oppId }, gojfTo: {}, cashDelta: {} },
-          oppModel.getAcceptMargin(oppId),
         );
         if (swap !== null) {
           candidates.push({
@@ -473,12 +466,11 @@ export function proposeBestTrade(
     // no single 2-way deal can resolve.
     const propertyTo: Record<number, string> = {};
     for (const m of missingLots) propertyTo[m.pos] = pid;
-    const minMargin = Math.min(...[...sellers].map((s) => oppModel.getAcceptMargin(s)));
     const buy = sweetenForAll(state, pid, [...sellers], {
       propertyTo,
       gojfTo: {},
       cashDelta: {},
-    }, minMargin);
+    });
     if (buy !== null) {
       const reason =
         single !== undefined
@@ -518,7 +510,7 @@ export function proposeBestTrade(
         propertyTo: { [pos]: pid },
         gojfTo: {},
         cashDelta: {},
-      }, oppModel.getAcceptMargin(holder));
+      });
       if (buy === null) continue;
       const holderName = state.players.find((p) => p.id === holder)?.name ?? "its owner";
       candidates.push({

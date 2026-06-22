@@ -98,13 +98,13 @@ const BASE_FLOOR = 60;
  *  on liquidating assets (must-raise-cash) for the rare big hit, so it can still
  *  fight back by building.
  *
- *  v17 LOWERS this reserve (0.5→0.3, cap 500→300) — the untried AGGRESSIVE direction
+ *  v17 LOWERS this reserve (0.3→0.2 — push the aggression axis one more notch) — the untried AGGRESSIVE direction
  *  on the liquidity axis. v9 RAISED the reserve and regressed (under-development lost
  *  the rent race); the symmetric question is whether v5's 0.5/500 is itself too
  *  cautious. A lower floor frees cash to buy and develop sooner (reaches "flush" /
  *  hotels earlier), leaning harder on must-raise-cash for the rare big hit. Probes
  *  the run's meta-lesson — aggression beats defense — directly on the reserve. */
-const FLOOR_RENT_FRACTION = 0.3;
+const FLOOR_RENT_FRACTION = 0.2;
 const FLOOR_CAP = 300;
 
 /** Below this many houses left in the 32-house bank, houses are a scarce
