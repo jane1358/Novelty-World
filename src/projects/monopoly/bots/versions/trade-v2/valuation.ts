@@ -52,8 +52,8 @@ const GROUP_WEIGHT: Readonly<Record<PropertyColor, number>> = {
   green: 0.5,
   "dark-blue": 0.55,
   pink: 0.85,
-  "light-blue": 1.3,
-  brown: 1.0,
+  "light-blue": 1.0,
+  brown: 0.7,
 };
 
 /** Fixed color order so every scan is deterministic (no `Object.keys` ordering
@@ -86,7 +86,7 @@ const UTIL_PAIR_BONUS = 40;
  *  even at jane-v2's halved 0.3 (see the file header). The bot still books a real
  *  premium for taking a rival's last open lot, just a thinner one, redirecting
  *  cash toward its own development. */
-const DENY_FACTOR = 0.15;
+const DENY_FACTOR = 0.125;
 
 /** A bare reserve every floor calculation clamps up to — never voluntarily spend
  *  to truly zero, even on a quiet board. */
