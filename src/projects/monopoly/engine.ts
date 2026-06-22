@@ -261,8 +261,10 @@ function advanceToNextPlayer(
  *  the printed price of every unmortgaged ownable. */
 function maxRaisableCash(state: GameState, ownerId: string): number {
   let total = maxBuildingSaleValue(state, ownerId);
-  for (const [posStr, oid] of Object.entries(state.ownership)) {
-    if (oid !== ownerId) continue;
+  // Keyed for...in, not Object.entries — no per-call pairs array (hot: liquidity
+  // and bankruptcy checks). Same integer-key order; the body only reads key/owner.
+  for (const posStr in state.ownership) {
+    if (state.ownership[posStr] !== ownerId) continue;
     const pos = Number(posStr);
     if (state.mortgaged[pos]) continue;
     const value = mortgageValueAt(pos);
