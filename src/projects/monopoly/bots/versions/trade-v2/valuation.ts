@@ -86,7 +86,13 @@ const UTIL_PAIR_BONUS = 40;
  *  even at jane-v2's halved 0.3 (see the file header). The bot still books a real
  *  premium for taking a rival's last open lot, just a thinner one, redirecting
  *  cash toward its own development. */
-const DENY_FACTOR = 0.15;
+// Adaptive DENY: scales between DENY_MIN (when behind) and DENY_MAX (when ahead).
+// When ahead, deny aggressively to starve opponents. When behind, focus on
+// own development instead of paying premiums for denial.
+const DENY_MIN = 0.05;
+const DENY_MAX = 0.30;
+// Fixed midpoint for trades.ts RIVAL_THREAT_FACTOR (trade denial is state-independent)
+const DENY_FACTOR = (DENY_MIN + DENY_MAX) / 2; // 0.175
 
 /** A bare reserve every floor calculation clamps up to — never voluntarily spend
  *  to truly zero, even on a quiet board. */
@@ -225,6 +231,23 @@ function withOwner(state: GameState, pos: number, pid: string): GameState {
   return { ...state, ownership: { ...state.ownership, [pos]: pid } };
 }
 
+/** Adaptive DENY factor: scales from DENY_MIN (when behind) to DENY_MAX
+ *  (when ahead), based on the ratio of pid's positionValue to the average
+ *  opponent positionValue. This adapts within a single game — the bot denies
+ *  aggressively when winning but focuses on development when losing. */
+function adaptiveDenyFactor(state: GameState, pid: string): number {
+  const myVal = positionValue(state, pid);
+  const opps = activeOpponents(state, pid);
+  if (opps.length === 0 || myVal === 0) return DENY_FACTOR;
+  const oppAvg = opps.reduce((sum, o) => sum + positionValue(state, o.id), 0) / opps.length;
+  if (oppAvg === 0) return DENY_MAX; // opponents bankrupt — deny everything
+  const ratio = myVal / oppAvg;
+  // ratio=1.0 (even) → midpoint. ratio=2.0 (2x ahead) → DENY_MAX. ratio=0.5 (2x behind) → DENY_MIN.
+  // Linear interpolation clamped to [DENY_MIN, DENY_MAX].
+  const t = Math.max(0, Math.min(1, (ratio - 0.5) / 1.5));
+  return DENY_MIN + t * (DENY_MAX - DENY_MIN);
+}
+
 /** What acquiring `pos` adds to `pid`'s position value right now — set
  *  completion, partial progress, and railroad synergy fall straight out of the
  *  position-value delta — PLUS the value of denying an opponent who is one lot
@@ -244,7 +267,7 @@ export function acquisitionValue(
       // `pos` is unowned, so the only seat one lot short of this set needs
       // exactly this lot — taking it blocks their monopoly.
       if (ownedInColor(state, opp.id, color) === total - 1) {
-        deny = Math.max(deny, Math.round(monopolyBonus(color) * DENY_FACTOR));
+        deny = Math.max(deny, Math.round(monopolyBonus(color) * adaptiveDenyFactor(state, pid)));
       }
     }
   }
@@ -661,4 +684,5 @@ export {
   BASE_FLOOR,
   COLORS_BY_WEIGHT,
   DENY_FACTOR,
+  adaptiveDenyFactor,
 };
