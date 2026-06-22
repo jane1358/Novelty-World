@@ -265,7 +265,7 @@ export class TradeEngine {
 
         // Score from MY perspective.
         const after = postTradeState(state, terms);
-        const myDelta = evalDelta(state, after, pid, myWeights) - totalCashNeeded; // cash already out
+        const myDelta = evalDelta(state, after, pid, myWeights); // after state already includes cash spent
 
         // Score from the primary seller's perspective.
         const primarySeller = sellers[0];
