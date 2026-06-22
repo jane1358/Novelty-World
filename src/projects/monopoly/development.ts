@@ -160,9 +160,9 @@ export function planDevelopment(
 ): DevelopmentPlan {
   // 1. Which positions actually change, and which color groups they touch.
   const changed: number[] = [];
-  for (const posStr in target) {
+  for (const [posStr, level] of Object.entries(target)) {
     const pos = Number(posStr);
-    if (target[pos] !== developmentLevel(state, pos)) changed.push(pos);
+    if (level !== developmentLevel(state, pos)) changed.push(pos);
   }
   if (changed.length === 0) {
     return { ok: true, steps: [], netCash: 0, notes: [] };
@@ -506,10 +506,8 @@ function applyMove(
  *  property — houses and the hotel alike — refunds half its cost. */
 export function maxBuildingSaleValue(state: GameState, ownerId: string): number {
   let total = 0;
-  // Keyed for...in, not Object.entries — no per-call pairs array (hot: forced
-  // liquidation + the raise-cash ceiling). Same order; body reads key/owner only.
-  for (const posStr in state.ownership) {
-    if (state.ownership[posStr] !== ownerId) continue;
+  for (const [posStr, oid] of Object.entries(state.ownership)) {
+    if (oid !== ownerId) continue;
     const pos = Number(posStr);
     const level = developmentLevel(state, pos);
     if (level === 0) continue;
