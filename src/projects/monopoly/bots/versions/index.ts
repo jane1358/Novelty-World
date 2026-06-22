@@ -41,6 +41,7 @@ import { claudeV36Bot } from "./claude-v36";
 // `jane-vN`, `gemini-vN`.
 import { janeV1Bot } from "./jane-v1";
 import { janeV2Bot } from "./jane-v2";
+import { janeV3Bot } from "./jane-v3";
 import { janeV4Bot } from "./jane-v4";
 // Gemini lineage — a third bot family, authored by Gemini. Labels namespaced
 // `gemini-vN`.
@@ -99,6 +100,7 @@ export const VERSIONS: Readonly<Record<string, Bot>> = {
   "claude-v36": claudeV36Bot,
   "jane-v1": janeV1Bot,
   "jane-v2": janeV2Bot,
+  "jane-v3": janeV3Bot,
   "jane-v4": janeV4Bot,
   "gemini-v1": geminiV1Bot,
   dumb: dumbBot,
@@ -119,6 +121,43 @@ export const VERSIONS: Readonly<Record<string, Bot>> = {
  *  rating-policy knob, and it stays tiny. `dumb` is excluded separately (it's a
  *  null stub, not a real bot). */
 export const RATING_EXCLUDED: ReadonlySet<string> = new Set(["claude-v1", "gemini-v1"]);
+
+/** The ANCHOR PANEL — the small fixed set of opponents that BOTH the rater and the
+ *  crown gauntlet measure a new version against (see `bots/CLAUDE.md` "The ANCHOR
+ *  PANEL" and EVOLUTION.md). It does two jobs:
+ *    - `sim:ratings` (default) fits Elo over the panel GRAPH (panel round-robin +
+ *      every other version vs the panel only) instead of a full O(N²) round-robin —
+ *      making a new version O(k) to rate and the archive O(N·k).
+ *    - `sim:gauntlet --panel` uses it as the crown-gate FIELD: a version is crowned
+ *      only if it BEATS its base AND regresses against NO panel member — so a bot that
+ *      merely COUNTERS the champion (non-transitively) can't steal the crown (see
+ *      EVOLUTION.md "Non-transitivity & the crown" — the jane-v3 RPS cycle).
+ *  The SECOND hand-maintained eval knob alongside `RATING_EXCLUDED`; keep it small and
+ *  deliberate. Membership rule: span the Elo range AND the distinct strategies, not the
+ *  dense middle of washed siblings. Current roster and why each earns its slot:
+ *    - claude-v2   — the rating ANCHOR (Elo≡0) + field floor + baseline rival-threat
+ *                    pricing. Mandatory: it defines the scale.
+ *    - claude-v5   — the denial-MAXIMIZER (active trade-to-deny, DENY 0.6, ~46 Elo).
+ *                    Guards against a new bot that quietly collapses vs heavy denial.
+ *    - claude-v17  — a mid-ladder calibrator (reserve/liquidity axis, ~63). Fills the
+ *                    46→84 Elo gap; without it the dense 50–80 band is poorly bracketed.
+ *    - claude-v35  — upper-mid + the mature symmetric denial-pricing trade engine
+ *                    (`denialPositionCost`, ~84).
+ *    - jane-v2     — the reduced-denial 0.3 regime, near the top (~127). Also the bot
+ *                    that beats jane-v3, so it's what catches that counter at the gate.
+ *    - claude-v36  — the champion: lowest-denial 0.15 regime + the ceiling, and the
+ *                    crown base, so ladder and crown stay consistent (~133).
+ *  Must include the rating anchor `claude-v2` and contain no `RATING_EXCLUDED` member
+ *  (both asserted by the tools). When you crown a new champion, add it here (and you
+ *  may retire a now-redundant member) — that keeps the ceiling of the graph current. */
+export const RATING_PANEL: readonly string[] = [
+  "claude-v2",
+  "claude-v5",
+  "claude-v17",
+  "claude-v35",
+  "jane-v2",
+  "claude-v36",
+];
 
 /** Resolve a version label to its policy, or throw with the known set listed —
  *  a typo on the CLI should fail loud, not silently field the wrong bot. */

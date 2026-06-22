@@ -286,10 +286,15 @@ the single biggest trap in this whole model. Keep them apart:
 1. **Record** — archive the snapshot? **Legal ⇒ always** (it's cheap, and the
    archive is the source of truth). Registering it in `versions/index.ts` also makes
    it appear in the lobby and earn an Elo on the next `sim:ratings`.
-2. **Crown** — is it the *measured best*? **Elo proposes, SPRT confirms.** Topping
-   the Elo ladder is necessary but **not sufficient** — a point-estimate lead inside
-   the noise is not a crown. The candidate must be a confident win (gauntlet/SPRT
-   `BETTER` on **both** seed streams) over the current champion.
+2. **Crown** — is it the *measured best*? **Elo proposes, SPRT confirms.** A
+   point-estimate lead inside the noise is not a crown. The candidate must be a
+   confident SPRT win (`BETTER` on **both** seed streams) over its base **AND regress
+   against no member of the anchor-panel field** (`npm run sim:gauntlet -- <v> --base
+   <champion> --panel`). The no-regression half is **load-bearing**: beating the
+   *current champion alone is not enough*, because strength is non-transitive — a bot
+   can COUNTER the champion while losing to the rest of the field, so "beat the last
+   guy" would just rotate the crown around a cycle (see "Non-transitivity & the
+   crown"). The panel field is what stops such a counter from stealing the crown.
 3. **Substrate** — what do we EVOLVE the next bot FROM? **A judgment, not a rule.**
    Survey ALL versions across ALL families and pick the base you can most improve —
    usually the current champion, so that's the default prior, but nothing confines
@@ -338,6 +343,38 @@ with no magnitude is "real, but how much?" Don't try to buy confidence by cranki
 ratings games — Elo SE shrinks only ~as 1/√N (≈17 Elo at 400 games/pairing), so
 trusting a ~+14 Elo gap would cost ~6–8× the rating compute *every* regeneration.
 SPRT with tight bands is the right tool for the crown/substrate question.
+
+### Non-transitivity & the crown — the jane-v3 RPS cycle (2026-06-22)
+
+`jane-v3` (PR #7) exposed a hole in the old crown rule and is why the gate now tests
+against a **field**, not just the predecessor. It's a two-constant fork of `jane-v2`
+(`DENY_FACTOR 0.3 → 0.0625`, `SURVIVAL_FACTOR 1.5 → 2.0`) — the "sweep DENY lower"
+lead on `claude-v36`. Re-measured on current `main`, the top of the archive turned
+out to be a **rock-paper-scissors cycle** (round-robin head-to-head, 400 games each):
+
+> **jane-v3 beats claude-v36 (55.8%) beats jane-v2 (57.8%) beats jane-v3 (54.4%)**
+
+The trap: the old crown gate ran `--field <champion>` (the *single* current champion).
+By that rule jane-v3 is `BETTER` vs claude-v36 on **both** streams (train 54.2% / +29.2
+Elo, holdout 59.3% / +65.2 Elo, no regressions in a one-bot field) → it would have been
+**wrongly crowned**. But it's not the measured best — it's a *counter* to claude-v36 that
+loses to jane-v2/jane-v4, sitting at **rank 4** on the Elo ladder (which fits across the
+whole field and so already prices the cycle correctly). Crowning it would just rotate the
+crown around the loop.
+
+**The fix: crown against the anchor-panel FIELD (`sim:gauntlet --panel`), reject on any
+regression.** Run against the panel, jane-v3 is `BETTER` vs claude-v2/v5/v17/v35 and the
+base claude-v36 but **WORSE vs jane-v2** (train 39.9%, holdout 39.7%) → **REJECT on both
+streams**; the panel's own champion is jane-v2, not jane-v3. The no-regression half of
+`accepted = improvesVsBase && regressions.length === 0` is exactly the cycle guard — a
+counter can clear the base but never clears the whole field.
+
+Two lasting lessons: (1) **the denial knob has no global optimum** — below claude-v36's
+0.15 it stops being a gradient and becomes matchup-dependent, so more win share must come
+from a *different axis* or from a **mixed / opponent-adaptive** denial (the game-theoretic
+answer to a cycle: a pure strategy is always counterable, a mixed one isn't); (2) **the
+player-facing ladder was right all along** — Bradley–Terry handles non-transitivity, so
+"rank 4" was the honest read; only the crown *rule* needed the field.
 
 ## Coexistence & promotion
 
@@ -476,6 +513,7 @@ bot as of this doc.
 
 | Version | Date | Hypothesis / change | Result vs. field | Status |
 |---------|------|---------------------|------------------|--------|
+| jane-v3 | 2026-06-22 | **DENY_FACTOR 0.3 → 0.0625, SURVIVAL_FACTOR 1.5 → 2.0** (PR #7, `versions/jane-v3/`): a two-constant fork of `jane-v2` chasing the "sweep DENY below claude-v36's 0.15" lead — push denial near zero. Self-contained graft onto current `main` (PR branched from stale `324bd2c`); legality clean (deterministic, no cross-version imports). Diff vs jane-v2 is exactly the two constants. | **RECORDED on the ladder at rank 4/39** (Elo 95.8 full-RR / 109.5 panel — below champion claude-v36 132.7, and 3rd in the Jane family behind jane-v2 and jane-v4). **Crown gate `--panel` (anchor-panel field), BOTH streams: REJECT.** BETTER vs base claude-v36 (train 54.2% / +29.2 Elo, holdout 59.3% / +65.2 Elo) and vs claude-v2/v5/v17/v35, but **WORSE vs jane-v2** (train 39.9%, holdout 39.7%); field champion = jane-v2. The PR's own (stale, single-opponent) claim of +28.6/+66.8 vs claude-v36 REPRODUCED — but it only ever measured vs claude-v36. | **RECORDED, NOT CROWNED.** A non-transitive COUNTER to claude-v36, not a global improvement: jane-v3 ▷ claude-v36 ▷ jane-v2 ▷ jane-v3 is an RPS cycle (see "Non-transitivity & the crown"). Champion/substrate stays **claude-v36**. Archived building block: sub-0.15 denial as a known claude-v36 counter / seed for a future **mixed-denial** bot. This PR is what motivated the crown-gate-vs-field fix (panel field) and the anchor-panel rating refactor. |
 | claude-v36 | 2026-06-21 | **DENY_FACTOR 0.3 → 0.15 — denial STILL over-weighted** (`versions/claude-v36/valuation.ts`): branched from the cross-lineage champion **jane-v2** (substrate per "Two bests" — borrowing across lineages is free; the FIRST Claude-label version on the Jane base, since the Claude line's own v35 sits behind jane-v2). jane-v2's single biggest discovery was halving the denial knob 0.6→0.3 (+71 Elo vs v29: "wasting resources blocking opponents"); it then moved to the reserve/cushion axes and **never swept DENY below 0.3** (no record in the repo). DENY 0.6→0.3 is the STEEPEST single-parameter gradient in the whole log, so the optimum may sit lower. This is the direct, gauntlet-actionable lesson from the real 4-player game vs humans (`npm run game:review -- 2h0y0y`): a Claude bot (Rebecca) mortgaged THREE lots to deny-buy Boardwalk, left itself no liquidity buffer, and that over-leverage killed it (finished last). Halving again (0.3→0.15) mirrors jane's own 0.6→0.3 step; the bot still books a real (thinner) premium for a rival's last open lot — v5 proved denial has genuine positive value, so this sharpens self-focus without abandoning it. Single variable; everything else jane-v2 verbatim. | **BETTER vs jane-v2 (base) on BOTH streams, NO regressions:** train 58.9% (205–143, 348 decisive, 0 draws, +62.6 Elo), holdout 60.6% (172–112, 284 decisive, 0 draws, +74.5 Elo) — near-identical streams (real, not noise). Targeted field (train) BETTER vs ALL: claude-v5 (heavy-denial 0.6) 61.6%, claude-v35 53.6%, jane-v4 54.9%, gemini-v1 82.9%; Elo (jane-v2=0) **claude-v36 +27.7 — top of field**, no regressions. | **ACCEPTED — NEW CROSS-LINEAGE CHAMPION (crown + substrate).** Confirms denial was over-weighted even at jane-v2's 0.3: another step down transfers win share with NO regression against the denial-heavy claude-v5 (in fact BETTER, 61.6%) — there was no non-transitive denial-sensitivity trap. The first Claude-lineage champion since the line adopted the Jane base; the game's "denial over-investment is fatal" lesson is the one that the gauntlet rewards (its develop-faster / keep-a-buffer lessons map onto the already-rejected v4/v9/v19 — the "eval blind spot": those matter vs HUMANS but wash vs the bot field). Base for the next version. The DENY optimum is now somewhere **≤0.15** — a future version should sweep lower and bracket it (as v18 did the reserve). |
 | v31 | 2026-06-21 | **From-scratch DISTRESS grab — corner (A)** (`versions/v31/trades.ts` `proposeBestTrade` Offer E): extend the proven distress-discount lever to a whole-set buy. v29 buys a distressed rival's COMPLETER for a set the bot is one short of; v31 opens a from-scratch grab — when a GENUINELY DISTRESSED opponent owns a WHOLE, building-free monopoly of a color the bot holds NONE of, buy the entire set at the distress-discounted price and take it off the board. v24 proved a FAIR-PRICE from-scratch grab washes (positive-sum); the new `isDistressed` gate was meant to make it UNDERPRICED (the winning condition). Held + developed, never relocated (a complete monopoly has no third party to bounce to). Gated by `worthAcquiring` (real prize ≥ 100, stays above the rent reserve). Branched from champion v29; isolated to Offer E. `v31/acquire.test.ts` pins the structural finding (below). | **REJECTED on triage — EVEN vs v29 (base): 49.4% win share (1540–1578, 3118 decisive, 27 draws, confident EVEN, LLR impr −7.35 / regr −2.98).** Elo (v29=0) **v31 −4.2 ≈ v29 0**; no regression. No holdout (triage rejects on no-improvement). | **rejected** (win-neutral); champion stays **v29**. **Offer E is -EV by CONSTRUCTION and self-rejects — it never fires positively, so v31 plays identically to v29.** The proof (pinned in `acquire.test.ts`): the distress discount only erases the seller's rival-THREAT premium (the cost of arming the buyer); it does NOT discount the set's own `monopolyBonus`. When the buyer takes a WHOLE monopoly that bonus transfers ~1:1 — the seller loses exactly what the buyer gains — so the buyer's gain never clears the seller's discounted break-even plus the accept margin (measured: buyer gain +1120 vs seller discounted loss −1120 → net −30 after the $30 margin). **The asymmetry that made v29's Offer B win has no analogue here:** Offer B buys the LAST lot and banks the WHOLE bonus for one lot's price; a whole-set buy carries the bonus proportionally in every lot, so it is a fair (washing) transfer even at maximal distress — exactly v24's "intact-monopoly buy is -EV and self-rejects" lesson, and distress doesn't change it because the only thing it discounts (the threat premium) is precisely what cancels the buyer's gain. The ONLY way to make it clear would be to discount the bare set's own `monopolyBonus` by the owner's cash — the **cash-scaled-monopoly-value** idea that `bots/CLAUDE.md` explicitly considered and rejected. **Corner (A) is a closed dead end.** `v31/acquire.test.ts` pins the -EV self-reject. |
 | v33 | 2026-06-21 | **STRONG-set hot-potato — marginal-denial price gate** (`versions/v33/trades.ts`): a CORRECTNESS attempt for a live-game bug (Finding 2). A 4-player online game (a cash-rich HUMAN one dark-blue short, Boardwalk at a bot holdout) showed v14's gate closes only the WEAK-set ring: for a strong set + liquid rival, `rivalCanAcquire` PASSES, so each bot re-books the DENY premium and the completer hot-potatoes bot→bot until the rival buys in. v33 added a second, destination-side gate: fire only if the rival could acquire from the holder but NOT from ME after the buy (i.e. my buy actually makes it unreachable). Branched from champion v29; isolated to Offer C. `v33/phantom-denial.test.ts` pins the dark-blue repro + the distressed-holder denial that survives. | **REJECTED — WORSE vs v29: 47.5% (1198–1322, 2520 decisive, confident REGRESSION, −15.1 Elo).** Also WORSE vs v17 (47.0%). | **rejected** (regression). The gate keyed on the RIVAL'S WEALTH, so it deleted not just churn hops but the whole class of rich-rival denials — and the proactive strong-set denial carries real win share. First data point of the load-bearing-churn finding (see v35). `v33` archived. |
@@ -808,9 +846,14 @@ on both streams) is now superseded.
 version was discovered on) and borrowing across them is free, so the substrate is the
 best base regardless of family. Branch from a different base only as a deliberate call
 — an archived building block to exploit, or to escape a local maximum. The first lead
-on `claude-v36`: the DENY optimum is now somewhere **≤0.15** (it crossed BETTER at the
-first step down from 0.3, so it has not yet bracketed); a future version should sweep
-DENY lower (0.075? 0?) and bracket it, exactly as v18 bracketed the reserve below v17.
+on `claude-v36` — "sweep DENY below 0.15 to bracket the optimum" — was **tried in
+`jane-v3` (DENY 0.0625) and the gradient turned out to be a CYCLE, not a slope**:
+jane-v3 beats claude-v36 head-to-head on both streams but LOSES to jane-v2 (DENY 0.3),
+which claude-v36 beats — a rock-paper-scissors loop (see "Non-transitivity & the
+crown"). So the denial knob has **no single global optimum**; pushing it lower just
+trades which opponent you counter. A future version chasing more win share should look
+to a **different axis** than denial level, or to an **opponent-adaptive / mixed
+denial** strategy (the game-theoretic answer to the cycle), not a lower constant.
 After regenerating `ratings.ts`, the lobby's player-facing **Strongest/default**
 (top of the Elo ladder) should also be `claude-v36` — crown and player-default
 realigned (see "Two bests"). Jane's own evolution is in `versions/jane-v2/index.ts`,
@@ -1412,12 +1455,16 @@ is **v9 from v5**. NEVER gauntlet `dumb`. v1 is now **out of the default field**
    regenerated `ratings.ts` re-ranks the field, and the lobby derives
    Strongest / per-family-best straight from it (`roles.ts`). No code copied, no
    tests change, no pointer to bump — the default just follows the ladder.
-2. **Crown it / make it the default substrate:** only on a **confident SPRT win** —
-   gauntlet `BETTER` on both seed streams over the current champion. Record the crown
-   as the version-log row below; by default the next version branches from it (though
-   substrate is ultimately a judgment — you may branch elsewhere or start fresh to
-   escape a local maximum; see "Two bests"). A ladder-topper that's only EVEN under
-   SPRT is the player default but **stays uncrowned** and is **not** the default
+2. **Crown it / make it the default substrate:** only on a **confident SPRT win
+   against the FIELD** — `npm run sim:gauntlet -- <vX> --base <champion> --panel` on
+   **both** seed streams, accepted iff it is `BETTER` than its base AND regresses
+   against **no panel member**. Beating the champion head-to-head is *not* sufficient
+   on its own (non-transitivity — see "Non-transitivity & the crown"); the panel field
+   is the guard. Record the crown as the version-log row below; by default the next
+   version branches from it (though substrate is ultimately a judgment — you may branch
+   elsewhere or start fresh to escape a local maximum; see "Two bests"). A ladder-topper
+   that's only EVEN under SPRT, or a counter that regresses against a panel member, is
+   the player default at most but **stays uncrowned** and is **not** the default
    substrate (this is the complexity-ratchet guard).
 
 This doc deliberately does **not** restate the current best (it would only go stale;

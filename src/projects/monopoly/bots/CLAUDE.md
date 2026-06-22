@@ -293,33 +293,46 @@ generated `BOT_RATINGS`):
 - **Deprecated** — any version with **no Elo** (struck through, "???", disabled).
 
 Mechanics:
-- **Generated, never hand-typed.** `npm run sim:ratings` (`ratings-cli.ts`) plays a
-  round-robin over the **whole archive** (every version except `dumb` and
-  `RATING_EXCLUDED`), fits one Elo across them, and writes `bots/ratings.ts`
-  (`BOT_RATINGS`, raw Elo). Treat it as build output — a hand-edited rating would
-  quietly lie to players about how hard each bot is.
-- **Cached — but a full run is NOT necessarily cheap.** Games are deterministic in
-  (versions, seed, count, turn-cap) and versions are frozen, so each pairing's tally
-  is persisted to `ratings-cache.json` and reused. *In the ideal case* a new version
-  only plays its own column vs the field (every other pairing a cache hit) and the
-  ladder re-fits with no replay. **In practice the cache is INCOMPLETE** (it has only
-  the pairings prior runs happened to play — e.g. ~206 of the ~700-pairing full
-  round-robin), so a no-arg `npm run sim:ratings` (whole archive) can play **500+**
-  pairings — *hours*, dominated by **gemini-v1's capped-game slogs** (a weak bot's
-  games hit the 2000-turn cap and each capped game runs to the cap — ~6 min per
-  gemini pairing). Don't assume "cached ⇒ fast" for a full run; check
-  `ratings-cache.json` coverage first, or use the focused fast path below.
-- **Fast path — get a NEW version selectable in the UI without a full run.** The
-  lobby only needs the version to have an Elo entry in `ratings.ts`. `sim:ratings`
-  takes an **explicit version list**, fits Elo over *just those* (anchored at
-  `claude-v2`), and writes `ratings.ts` with **exactly that set** — so rate the new
-  version against **the set that's currently rated** (the versions already in
-  `ratings.ts`):
+- **Generated, never hand-typed.** `npm run sim:ratings` (`ratings-cli.ts`) fits one
+  Elo over the **whole archive** (every version except `dumb` and `RATING_EXCLUDED`)
+  and writes `bots/ratings.ts` (`BOT_RATINGS`, raw Elo). Treat it as build output — a
+  hand-edited rating would quietly lie to players about how hard each bot is.
+- **The ANCHOR PANEL — why the default is NOT a full round-robin.** A complete
+  round-robin is **O(N²)** pairings and a new version's marginal cost is its whole
+  **O(N)** column — both grow without bound, and most of that work re-measures tiny
+  distinctions between near-duplicate parameter siblings (34 of the first 35 versions
+  share `DENY_FACTOR=0.6`). Elo only needs a **connected** comparison graph, not a
+  complete one. So by default `sim:ratings` fits over the **anchor-panel graph**: a
+  small fixed panel (`RATING_PANEL` in `ratings-cli.ts`) plays a full round-robin
+  among itself, and every other version plays **only the panel** — making a new
+  version **O(k)** (constant) and the whole archive **O(N·k)** (linear). The panel is
+  chosen empirically (claude-v2/v5/v17/v35 + jane-v2 + claude-v36) to span the Elo
+  range *and* the strategic axes (denial level, trade mechanism); vs a full
+  round-robin it reproduces the overall Strongest and **both family bests exactly**,
+  with ~6 Elo mean per-version error confined to the intra-family ordering of non-best
+  siblings (which differ by 1–3 Elo — within the full ladder's own noise). **Re-examine
+  the panel when a STRUCTURALLY different lineage lands** (e.g. the learned bot):
+  parameter siblings are ~transitive so a small panel suffices, but a genuinely new
+  engine can expose a matchup the panel doesn't represent.
+- **Cached, and now cheap by default.** Games are deterministic in (versions, seed,
+  count, turn-cap) and versions are frozen, so each pairing's tally is persisted to
+  `ratings-cache.json` and reused. With the panel as the default, a no-arg
+  `npm run sim:ratings` only ever plays a new version's **k panel pairings** (the rest
+  cache hits) — seconds on a warm cache. `--full` forces the **complete O(N²)
+  round-robin** (a high-precision recalibration): use it sparingly — on a cold cache
+  it is *hours*, historically dominated by **gemini-v1's capped-game slogs** (now in
+  `RATING_EXCLUDED`, so out of the default field).
+- **Explicit list — a focused check (the panel does NOT apply here).** The default
+  no-arg run already rates a new version cheaply (it plays only the k panel pairings),
+  so you rarely need this. But `sim:ratings` still accepts an **explicit version
+  list**, over which it does a full round-robin and fits Elo over *just those*
+  (anchored at `claude-v2`), writing `ratings.ts` with **exactly that set** — handy
+  for a tight head-to-head Elo among a hand-picked few. If you use it to publish the
+  ladder, rate against **every version currently in `ratings.ts`**:
   ```
   npm run sim:ratings -- <new-version> <every-version-currently-in-ratings.ts>
   ```
-  This keeps everything currently selectable selectable and adds the new one, in
-  minutes (its column is small and most internal pairings are cached). **Caveats:**
+  **Caveats:**
   (1) *Include every currently-rated version* — any you accidentally omit drops out
   of `ratings.ts` and its family deprecates. (Conversely, *deliberately* omitting a
   version is exactly how you deprecate it — that's how `gemini-v1` was retired: drop
@@ -336,11 +349,18 @@ Mechanics:
 - **Only relative gaps mean anything.** The friendly display offset
   (`RATING_DISPLAY_BASE`, +1000) lives in `roles.ts` (`ratingFor`), so the floor
   reads ~1000 instead of a discouraging 0; `BOT_RATINGS` stays the raw measurement.
-- **`RATING_EXCLUDED` is the only hand-maintained rating knob** (`versions/index.ts`)
-  — versions deliberately left unrated because they're too weak/slow to be worth the
-  rating + gauntlet cost (`claude-v1` and `gemini-v1` — both real, runnable snapshots,
-  excluded purely as a cost optimization; see EVOLUTION.md Decision 8). They render
-  deprecated, and the gauntlet drops them from its default field too. Keep it tiny.
+- **Two hand-maintained eval knobs (both in `versions/index.ts`, both kept tiny).**
+  (1) `RATING_EXCLUDED` — versions deliberately left unrated because they're too
+  weak/slow to be worth the rating + gauntlet cost (`claude-v1` and `gemini-v1` — both
+  real, runnable snapshots, excluded purely as a cost optimization; see EVOLUTION.md
+  Decision 8). They render deprecated, and the gauntlet drops them from its default
+  field too. (2) `RATING_PANEL` — the fixed opponents a version is measured against,
+  shared by BOTH tools: the rater fits the ladder over the panel graph (above), and
+  `sim:gauntlet --panel` uses it as the **crown-gate field** (a version is crowned only
+  if it beats its base AND regresses against no panel member — the non-transitivity
+  guard). Must include the anchor and no excluded member (asserted by both tools).
+  **When you crown a new champion, add it to the panel** (and you may retire a
+  now-redundant member) — that keeps the ceiling of the comparison graph current.
 - **Regenerate after adding any version** (and any time you want to refresh the
   whole ladder). This sets the player-facing **Strongest/default** automatically —
   no pointer to bump. It does **not** by itself crown a champion or pick a

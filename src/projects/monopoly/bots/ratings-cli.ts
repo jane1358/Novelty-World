@@ -3,7 +3,7 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { fitElo, type PairResult } from "./elo";
 import { defaultWorkerCount, pairingSpecs, WorkerPool } from "./parallel";
-import { RATING_EXCLUDED, VERSIONS } from "./versions";
+import { RATING_EXCLUDED, RATING_PANEL, VERSIONS } from "./versions";
 
 // ---------------------------------------------------------------------------
 // `npm run sim:ratings` — produce the bot strength ladder and write it to
@@ -20,18 +20,34 @@ import { RATING_EXCLUDED, VERSIONS } from "./versions";
 // time. The display offset that turns 0 into a friendly baseline lives in
 // `roles.ts` (`ratingFor`); this file stays the raw measurement.
 //
-// CACHING — why a full re-run is cheap after the first. A simulated game is a
-// PURE function of (seed, seating, versions), and versions are FROZEN snapshots,
-// so a pairing's decisive tally never changes once measured. We persist every
-// pairing's tally to `ratings-cache.json` and reuse it on the next run. The first
-// full round-robin pays the whole cost once; afterward, adding a version only
-// PLAYS that version's column vs the field (~N pairings) — every other pairing is
-// a cache hit — and the ladder re-fits over the full result set instantly. That
-// is the mathematically-correct joint Elo: cached games are reused exactly, and
-// the fit (which is what places the new version) always runs over everyone.
+// CACHING — why a re-run is cheap after the first. A simulated game is a PURE
+// function of (seed, seating, versions), and versions are FROZEN snapshots, so a
+// pairing's decisive tally never changes once measured. We persist every
+// pairing's tally to `ratings-cache.json` and reuse it on the next run.
 //
-// Run with no args to rate/refresh the whole archive. Pass an explicit version
-// list to rate just those (+ the anchor) — handy for a quick focused check.
+// SCALING — the ANCHOR PANEL (why the default is NOT a full round-robin). A
+// complete round-robin is O(N²) pairings, and a brand-new version's marginal cost
+// is its whole O(N) column — both grow without bound as the archive does, and most
+// of that work re-measures tiny distinctions between near-duplicate parameter
+// siblings (e.g. 34 of the first 35 versions share DENY_FACTOR=0.6). Elo does not
+// need a COMPLETE comparison graph — only a CONNECTED one. So by default we fit
+// over the ANCHOR-PANEL graph: a small fixed panel of strategically-spanning
+// versions plays a full round-robin among itself, and every other version plays
+// ONLY the panel. That makes a new version's cost O(k) (k = panel size, constant)
+// and the whole archive O(N·k) (linear). The panel is chosen to span both the Elo
+// range (floor → champion) and the real strategic axes (denial level, trade
+// mechanism), so transitive comparisons through it stay fair — see `RATING_PANEL`
+// and `bots/CLAUDE.md` "Anchor panel". Re-examine the panel when a STRUCTURALLY
+// different lineage (e.g. a learned bot) enters: parameter siblings are ~transitive
+// so a small panel suffices, but a genuinely new engine can expose a matchup the
+// panel doesn't represent.
+//
+// Modes:
+//   (no args)            rate/refresh the whole archive via the panel graph (default).
+//   --full               whole archive via a COMPLETE round-robin (high-precision
+//                        recalibration; O(N²), slow on a cold cache).
+//   <explicit versions>  rate just those (+ the anchor), full round-robin among them
+//                        — a small focused check; the panel does not apply.
 // ---------------------------------------------------------------------------
 
 /** Pinned to 0 Elo, permanently — the field floor. Do not change without
@@ -39,12 +55,21 @@ import { RATING_EXCLUDED, VERSIONS } from "./versions";
  *  constant shift, so prefer keeping this stable). */
 const ANCHOR = "claude-v2";
 
+// The ANCHOR PANEL (`RATING_PANEL`, defined in `./versions` so the gauntlet can
+// share it) is the fixed set every non-panel version is rated against — see the
+// SCALING note above and the roster rationale where it's declared.
+
 interface Args {
   versions: string[];
   games: number;
   maxTurns: number;
   workers: number;
   prefix: string;
+  /** True when no explicit version list was given — the whole-archive default,
+   *  which uses the panel graph unless `--full` forces a complete round-robin. */
+  defaultSet: boolean;
+  /** Force a COMPLETE round-robin over the whole archive (ignores the panel). */
+  full: boolean;
 }
 
 function num(argv: readonly string[], i: number, fallback: number): number {
@@ -59,6 +84,8 @@ function parseArgs(argv: readonly string[]): Args {
     maxTurns: 2000,
     workers: defaultWorkerCount(),
     prefix: "ratings",
+    defaultSet: false,
+    full: false,
   };
   const explicit: string[] = [];
   for (let i = 0; i < argv.length; i++) {
@@ -67,6 +94,8 @@ function parseArgs(argv: readonly string[]): Args {
     else if (arg === "--turns") a.maxTurns = num(argv, ++i, a.maxTurns);
     else if (arg === "--workers") a.workers = num(argv, ++i, a.workers);
     else if (arg === "--prefix") a.prefix = argv[++i];
+    // Force a complete round-robin over the whole archive (bypass the panel).
+    else if (arg === "--full") a.full = true;
     // `--all` is the default behavior now (rate the whole archive); accepted as a
     // no-op so existing muscle memory / scripts don't error.
     else if (arg === "--all") continue;
@@ -79,7 +108,8 @@ function parseArgs(argv: readonly string[]): Args {
   const rateable = Object.keys(VERSIONS).filter(
     (v) => v !== "dumb" && !RATING_EXCLUDED.has(v),
   );
-  const chosen = explicit.length > 0 ? explicit : rateable;
+  a.defaultSet = explicit.length === 0;
+  const chosen = a.defaultSet ? rateable : explicit;
   a.versions = [...new Set([ANCHOR, ...chosen])];
   return a;
 }
@@ -221,11 +251,40 @@ async function main(): Promise<void> {
   }
   if (args.versions.length < 2) throw new Error("need at least two versions to rate");
 
-  const pairs = (args.versions.length * (args.versions.length - 1)) / 2;
+  // Panel mode: the default whole-archive run (unless `--full`) fits over the
+  // ANCHOR-PANEL graph rather than a complete round-robin (see the SCALING note).
+  const usePanel = args.defaultSet && !args.full;
+  const panel = new Set(RATING_PANEL);
+  if (usePanel) {
+    for (const p of RATING_PANEL) {
+      if (!known.includes(p)) throw new Error(`RATING_PANEL member "${p}" is not a known version`);
+      if (RATING_EXCLUDED.has(p)) throw new Error(`RATING_PANEL member "${p}" is in RATING_EXCLUDED`);
+      if (!args.versions.includes(p)) {
+        throw new Error(`RATING_PANEL member "${p}" is not in the rated set`);
+      }
+    }
+    if (!panel.has(ANCHOR)) {
+      throw new Error(`RATING_PANEL must include the anchor "${ANCHOR}" (so the graph is anchored)`);
+    }
+  }
+
+  // The comparison graph. Full mode / explicit lists → every pair. Panel mode →
+  // the panel clique + a spoke from each non-panel version to every panel member:
+  // a CONNECTED graph at O(N·k) instead of the O(N²) complete round-robin.
+  const pairList: [string, string][] = [];
+  for (let i = 0; i < args.versions.length; i++) {
+    for (let j = i + 1; j < args.versions.length; j++) {
+      const a = args.versions[i];
+      const b = args.versions[j];
+      if (!usePanel || panel.has(a) || panel.has(b)) pairList.push([a, b]);
+    }
+  }
+
+  const mode = usePanel ? `panel graph (k=${RATING_PANEL.length.toString()})` : "round-robin";
   console.log(
     `\nMonopoly — ratings ladder\n` +
       `Versions (${args.versions.length.toString()}): [${args.versions.join(", ")}]\n` +
-      `Anchor: ${ANCHOR} = 0   Round-robin: ${pairs.toString()} pairings × ${args.games.toString()} games\n` +
+      `Anchor: ${ANCHOR} = 0   ${mode}: ${pairList.length.toString()} pairings × ${args.games.toString()} games\n` +
       `Seeds: "${args.prefix}:*"   Workers: ${args.workers.toString()}   Max turns: ${args.maxTurns.toString()}\n`,
   );
 
@@ -237,28 +296,24 @@ async function main(): Promise<void> {
     let done = 0;
     let played = 0;
     let cached = 0;
-    for (let i = 0; i < args.versions.length; i++) {
-      for (let j = i + 1; j < args.versions.length; j++) {
-        const a = args.versions[i];
-        const b = args.versions[j];
-        const hit = getCached(cache, args.prefix, args.games, args.maxTurns, a, b);
-        let res: PairResult;
-        if (hit) {
-          res = hit;
-          cached++;
-        } else {
-          res = await pairing(pool, a, b, args.prefix, args.games, args.maxTurns);
-          setCached(cache, args.prefix, args.games, args.maxTurns, res);
-          // Persist after every newly-played pairing so a long run is resumable.
-          saveCache(cache);
-          played++;
-        }
-        results.push(res);
-        done++;
-        process.stderr.write(
-          `\r  ${done.toString()}/${pairs.toString()} pairings  (${res.a} ${res.aWins.toString()}–${res.bWins.toString()} ${res.b})${hit ? " [cached]" : ""}`.padEnd(70),
-        );
+    for (const [a, b] of pairList) {
+      const hit = getCached(cache, args.prefix, args.games, args.maxTurns, a, b);
+      let res: PairResult;
+      if (hit) {
+        res = hit;
+        cached++;
+      } else {
+        res = await pairing(pool, a, b, args.prefix, args.games, args.maxTurns);
+        setCached(cache, args.prefix, args.games, args.maxTurns, res);
+        // Persist after every newly-played pairing so a long run is resumable.
+        saveCache(cache);
+        played++;
       }
+      results.push(res);
+      done++;
+      process.stderr.write(
+        `\r  ${done.toString()}/${pairList.length.toString()} pairings  (${res.a} ${res.aWins.toString()}–${res.bWins.toString()} ${res.b})${hit ? " [cached]" : ""}`.padEnd(70),
+      );
     }
     process.stderr.write("\n");
 

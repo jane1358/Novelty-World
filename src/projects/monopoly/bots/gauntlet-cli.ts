@@ -1,7 +1,7 @@
 import process from "node:process";
 import { formatGauntlet, type GauntletProgress, runGauntlet } from "./gauntlet";
 import { defaultWorkerCount, WorkerPool } from "./parallel";
-import { RATING_EXCLUDED, VERSIONS } from "./versions";
+import { RATING_EXCLUDED, RATING_PANEL, VERSIONS } from "./versions";
 
 /** A live progress line for a gauntlet run (so a long run isn't a black box). On a
  *  TTY it rewrites one line in place (`\r`); when captured to a file/pipe it prints
@@ -56,6 +56,7 @@ function makeProgressReporter(): (p: GauntletProgress) => void {
  *    npm run sim:gauntlet -- claude-v3                # candidate claude-v3 vs the field
  *    npm run sim:gauntlet -- claude-v3 --base claude-v2   # must beat claude-v2 specifically
  *    npm run sim:gauntlet -- claude-v3 --field claude-v1,claude-v2  # explicit field
+ *    npm run sim:gauntlet -- jane-v3 --base claude-v36 --panel   # CROWN GATE: field = anchor panel
  *    npm run sim:gauntlet -- claude-v8 --with-v1      # add the claude-v1 floor audit back
  *    npm run sim:gauntlet -- claude-v3 --prefix holdout   # held-out seed stream
  *    npm run sim:gauntlet -- claude-v3 --margin 20 --alpha 0.05 --beta 0.05
@@ -64,7 +65,10 @@ function makeProgressReporter(): (p: GauntletProgress) => void {
  *  The field defaults to every known version except `dumb` (a null stub — never
  *  gauntleted), `claude-v1` (the floor — dominated and slow; opt back in with
  *  `--with-v1`, see EVOLUTION.md Decision 8), and the candidate; base defaults to
- *  the latest. */
+ *  the latest. `--panel` sets the field to the ANCHOR PANEL (`RATING_PANEL`) — the
+ *  CROWN GATE: a candidate is accepted only if it beats its base AND regresses
+ *  against no panel member, so a non-transitive COUNTER to the champion can't steal
+ *  the crown (see EVOLUTION.md "Non-transitivity & the crown"). `--field` overrides. */
 
 interface Args {
   candidate: string;
@@ -80,6 +84,8 @@ interface Args {
   workers: number;
   batch?: number;
   withV1: boolean;
+  /** Use the ANCHOR PANEL (`RATING_PANEL`) as the field — the crown gate. */
+  panel: boolean;
 }
 
 function num(argv: readonly string[], i: number, fallback: number): number {
@@ -100,6 +106,7 @@ function parseArgs(argv: readonly string[]): Args {
     maxTurns: 2000,
     workers: defaultWorkerCount(),
     withV1: false,
+    panel: false,
   };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -115,6 +122,7 @@ function parseArgs(argv: readonly string[]): Args {
     else if (arg === "--workers") a.workers = num(argv, ++i, a.workers);
     else if (arg === "--batch") a.batch = num(argv, ++i, 0);
     else if (arg === "--with-v1") a.withV1 = true;
+    else if (arg === "--panel") a.panel = true;
     else if (arg.startsWith("--")) throw new Error(`unknown flag "${arg}"`);
     else positional.push(arg);
   }
@@ -142,13 +150,17 @@ async function main(): Promise<void> {
   // capped-game bottleneck). `claude-v1` is the published FLOOR, re-includable for an
   // occasional audit with `--with-v1`; any other excluded version stays out (force it
   // in with an explicit `--field` if ever needed).
+  // Field precedence: explicit `--field` > `--panel` (the anchor-panel crown gate) >
+  // the default whole archive. `--panel` drops the candidate if it's itself a member.
   const field =
     args.field ??
-    known.filter((v) => {
-      if (v === "dumb" || v === args.candidate) return false;
-      if (v === "claude-v1") return args.withV1;
-      return !RATING_EXCLUDED.has(v);
-    });
+    (args.panel
+      ? RATING_PANEL.filter((v) => v !== args.candidate)
+      : known.filter((v) => {
+          if (v === "dumb" || v === args.candidate) return false;
+          if (v === "claude-v1") return args.withV1;
+          return !RATING_EXCLUDED.has(v);
+        }));
   if (field.length === 0) throw new Error("empty field — nothing to test the candidate against");
   for (const v of field) {
     if (!known.includes(v)) throw new Error(`unknown field version "${v}"`);
