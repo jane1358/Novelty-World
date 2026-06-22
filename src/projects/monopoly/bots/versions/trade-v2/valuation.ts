@@ -89,8 +89,8 @@ const UTIL_PAIR_BONUS = 40;
 // Adaptive DENY: scales between DENY_MIN (when behind) and DENY_MAX (when ahead).
 // When ahead, deny aggressively to starve opponents. When behind, focus on
 // own development instead of paying premiums for denial.
-const DENY_MIN = 0.05;
-const DENY_MAX = 0.30;
+const DENY_MIN = 0.10;
+const DENY_MAX = 0.175;
 // Fixed midpoint for trades.ts RIVAL_THREAT_FACTOR (trade denial is state-independent)
 const DENY_FACTOR = (DENY_MIN + DENY_MAX) / 2; // 0.175
 
