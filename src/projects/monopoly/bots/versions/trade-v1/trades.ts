@@ -243,7 +243,7 @@ export class TradeEngine {
         // v3's constants: ACCEPT_MIN=1, ACCEPT_MARGIN=30, SURVIVAL_FACTOR=2.0
         const distress = sellerDistress(state, sId);
         const relief = 1 + distress * 2.0;
-        const gap = 1 + 30 - v3Verdict.delta; // ACCEPT_MIN + ACCEPT_MARGIN - delta
+        const gap = 2 - v3Verdict.delta; // ACCEPT_MIN+1 (just above accept threshold)
         const cashNeeded = Math.max(0, Math.ceil(gap / relief));
         totalCashNeeded += cashNeeded;
 
@@ -262,7 +262,7 @@ export class TradeEngine {
           if (v3Verdict.accept) continue;
           const distress = sellerDistress(state, sId);
           const relief = 1 + distress * 2.0;
-          const gap = 1 + 30 - v3Verdict.delta;
+          const gap = 2 - v3Verdict.delta;
           const cashNeeded = Math.max(0, Math.ceil(gap / relief));
           cashDelta[sId] = (cashDelta[sId] ?? 0) + cashNeeded;
         }
@@ -374,7 +374,7 @@ export class TradeEngine {
         // Sweeten with cash — holder needs (ACCEPT_MIN + ACCEPT_MARGIN - delta) / relief
         const distress = sellerDistress(state, holder);
         const relief = 1 + distress * 2.0;
-        const gap = 31 - holderAcceptMe.delta; // ACCEPT_MIN + ACCEPT_MARGIN
+        const gap = 2 - holderAcceptMe.delta; // just above ACCEPT_MIN
         const cashNeeded = Math.max(0, Math.ceil(gap / relief));
         if (myCash - cashNeeded < 0) continue;
         const denyTerms: TradeTerms = {
