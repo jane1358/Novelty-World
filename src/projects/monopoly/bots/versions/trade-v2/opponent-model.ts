@@ -6,26 +6,36 @@ import { positionValue } from "./valuation";
  *
  * Kyle's principle: "We don't care what eval THEY use, we just know OURS is
  * the best. We figure out their eval by offering trades and seeing what they
- * say yes and no to."
+ * say yes and no to. If we find a net positive diff in our eval vs what they
+ * say yes and no to, that's when we get them."
  *
- * For each opponent we maintain an accept threshold: the minimum positionValue
- * delta (from OUR perspective on THEIR behalf) that we've observed them accept.
- * No other bot's logic is used — pure observation.
+ * Implementation: We use OUR positionValue to compute what a trade is worth to
+ * each opponent. We then learn each opponent's ACCEPT_MARGIN — the minimum
+ * positionValue delta they'll accept. claude-v36 assumes a fixed ACCEPT_MARGIN
+ * for all opponents; trade-v2 LEARNS it per opponent from trade history.
+ *
+ * This is NOT using another bot's logic — positionValue is our own valuation
+ * function. We're applying it to predict what opponents will do, then refining
+ * from observations.
  */
 
 interface Observation {
+  /** Our positionValue delta for the opponent on this trade. */
   ourEvalDelta: number;
+  /** Did they accept? */
   accepted: boolean;
   turn: number;
 }
 
 interface PlayerModel {
   observations: Observation[];
-  threshold: number;
+  /** Learned accept margin. Starts at claude-v36's default (30). */
+  acceptMargin: number;
 }
 
-const INITIAL_THRESHOLD = 30;
-const THRESHOLD_FLOOR = 5;
+/** claude-v36's ACCEPT_MARGIN — the default we start from. */
+const DEFAULT_MARGIN = 30;
+const MIN_MARGIN = 1;
 const MAX_OBS = 20;
 
 export class OpponentModel {
@@ -37,16 +47,24 @@ export class OpponentModel {
     for (const turn of state.turns) {
       for (const event of turn.events) {
         if (event.kind === "trade") {
+          // Completed trade — all participants accepted.
+          // Record for each property recipient.
           for (const [, toId] of Object.entries(event.propertyTo)) {
             if (toId === pid) continue;
             const terms = this.eventToTerms(event);
-            this.recordFromTerms(state, toId, terms, turn.turn, true);
+            this.observe(state, toId, terms, turn.turn, true);
+          }
+          // Also record for cash recipients who didn't get property
+          for (const [cashId] of Object.entries(event.cashDelta)) {
+            if (cashId === pid) continue;
+            const terms = this.eventToTerms(event);
+            this.observe(state, cashId, terms, turn.turn, true);
           }
         } else if (event.kind === "trade-declined") {
           const decliner = event.declinedBy;
           if (decliner === pid) continue;
           const terms = this.eventToTerms(event);
-          this.recordFromTerms(state, decliner, terms, turn.turn, false);
+          this.observe(state, decliner, terms, turn.turn, false);
         }
       }
     }
@@ -62,8 +80,8 @@ export class OpponentModel {
     };
   }
 
-  /** Record an observation for a player. */
-  private recordFromTerms(
+  /** Record an observation and recalibrate. */
+  private observe(
     state: GameState,
     playerId: string,
     terms: TradeTerms,
@@ -73,7 +91,7 @@ export class OpponentModel {
     const ourEvalDelta = this.ourEvalFor(state, playerId, terms);
     let model = this.models.get(playerId);
     if (!model) {
-      model = { observations: [], threshold: INITIAL_THRESHOLD };
+      model = { observations: [], acceptMargin: DEFAULT_MARGIN };
       this.models.set(playerId, model);
     }
     model.observations.push({ ourEvalDelta, accepted, turn });
@@ -102,7 +120,9 @@ export class OpponentModel {
     return { ...state, ownership, players };
   }
 
-  /** Adjust threshold based on observations. */
+  /** Adjust acceptMargin based on observations.
+   *  An accepted trade at delta D means their margin <= D.
+   *  A rejected trade at delta D means their margin > D. */
   private recalibrate(playerId: string): void {
     const model = this.models.get(playerId);
     if (!model || model.observations.length === 0) return;
@@ -118,31 +138,31 @@ export class OpponentModel {
       }
     }
 
+    // If we've seen both, the margin sits between highest accept and lowest reject.
     if (highestAccept > -Infinity && lowestReject < Infinity) {
-      model.threshold = Math.max(THRESHOLD_FLOOR, highestAccept + 1);
+      // Margin is just above the highest delta they accepted.
+      model.acceptMargin = Math.max(MIN_MARGIN, Math.round(highestAccept));
     } else if (highestAccept > -Infinity) {
+      // Only accepts — they're at least as loose as the lowest delta accepted.
       const lowestAccept = Math.min(
         ...model.observations.filter((o) => o.accepted).map((o) => o.ourEvalDelta),
       );
-      model.threshold = Math.max(THRESHOLD_FLOOR, Math.min(lowestAccept, INITIAL_THRESHOLD));
-    } else if (lowestReject < Infinity) {
-      const highestReject = Math.max(
-        ...model.observations.filter((o) => !o.accepted).map((o) => o.ourEvalDelta),
-      );
-      model.threshold = Math.max(INITIAL_THRESHOLD, highestReject + 10);
+      // Lower the margin toward what we've observed, but stay conservative.
+      model.acceptMargin = Math.max(MIN_MARGIN, Math.min(lowestAccept, DEFAULT_MARGIN));
     }
+    // If only rejects, keep the default — don't raise based on limited data.
   }
 
   /** Would this player accept a trade with the given OUR-eval delta? */
   wouldAccept(playerId: string, ourEvalDelta: number): boolean {
     const model = this.models.get(playerId);
-    const threshold = model ? model.threshold : INITIAL_THRESHOLD;
-    return ourEvalDelta >= threshold;
+    const margin = model ? model.acceptMargin : DEFAULT_MARGIN;
+    return ourEvalDelta >= margin;
   }
 
-  /** Get the current estimated threshold for a player. */
-  getThreshold(playerId: string): number {
+  /** Get the learned accept margin for a player. */
+  getAcceptMargin(playerId: string): number {
     const model = this.models.get(playerId);
-    return model ? model.threshold : INITIAL_THRESHOLD;
+    return model ? model.acceptMargin : DEFAULT_MARGIN;
   }
 }

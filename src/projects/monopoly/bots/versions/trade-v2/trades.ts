@@ -357,7 +357,7 @@ function sweetenForOpponent(
 ): TradeTerms | null {
   const after = postTradeState(state, baseTerms);
   const oppDelta = positionValue(after, oppId) - positionValue(state, oppId);
-  const threshold = model.getThreshold(oppId);
+  const threshold = model.getAcceptMargin(oppId);
   if (oppDelta >= threshold) return baseTerms;
   const gap = threshold - oppDelta;
   if (gap <= 0) return baseTerms;
