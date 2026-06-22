@@ -304,24 +304,40 @@ export class TradeEngine {
           if (oppMissing === undefined || state.ownership[oppMissing] !== pid) continue;
           if (builtLotsInGroup(oppMissing, (p) => developmentLevel(state, p)).length > 0) continue;
 
-          const swapTerms: TradeTerms = {
+          const baseSwapTerms: TradeTerms = {
             propertyTo: { [single.pos]: pid, [oppMissing]: oppId },
             gojfTo: {},
             cashDelta: {},
           };
-          if (declinedWithoutImprovement(state, pid, swapTerms)) continue;
+          if (declinedWithoutImprovement(state, pid, baseSwapTerms)) continue;
 
-          const after = postTradeState(state, swapTerms);
+          // Predict opponent acceptance with jane-v3's ACTUAL evaluateTrade.
+          const oppSwapVerdict = v3EvaluateTrade(state, oppId, baseSwapTerms);
+
+          let finalSwapTerms = baseSwapTerms;
+          if (!oppSwapVerdict.accept) {
+            // Sweeten with cash. jane-v3 needs delta > 1 to accept.
+            const gap = 2 - oppSwapVerdict.delta;
+            if (gap <= 0) continue; // Still won't accept even with tiny cash
+            const distress = sellerDistress(state, oppId);
+            const relief = 1 + distress * 2.0;
+            const cashNeeded = Math.max(0, Math.ceil(gap / relief));
+            if (myCash - cashNeeded < 0) continue; // Can't afford
+            finalSwapTerms = {
+              ...baseSwapTerms,
+              cashDelta: { [pid]: -cashNeeded, [oppId]: cashNeeded },
+            };
+          }
+
+          const after = postTradeState(state, finalSwapTerms);
           const mySwapDelta = evalDelta(state, after, pid, myWeights);
-          const oppSwapWeights = this.model.getWeights(oppId);
-          const oppSwapDelta = evalDelta(state, after, oppId, oppSwapWeights);
 
-          if (mySwapDelta > 0 && this.model.wouldAccept(oppId, oppSwapDelta)) {
+          if (mySwapDelta > 0) {
             candidates.push({
-              terms: swapTerms,
+              terms: finalSwapTerms,
               myDelta: mySwapDelta,
               opponentId: oppId,
-              opponentDelta: oppSwapDelta,
+              opponentDelta: oppSwapVerdict.delta,
               reason: `Swapping my ${colorName(d)} for ${spaceName(single.pos)} — both sides complete.`,
             });
           }
