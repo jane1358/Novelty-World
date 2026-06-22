@@ -1,5 +1,5 @@
 // ===========================================================================
-// jane-v5 policy — Monte Carlo decision-making.
+// monte-carlo-v1 policy — Monte Carlo decision-making.
 //
 // PARADIGM SHIFT: Instead of hand-coding valuations ("is this property worth
 // buying?"), we SIMULATE the consequences of each choice and pick the action
@@ -28,10 +28,10 @@ import {
   monteCarloTradeVote,
 } from "./montecarlo";
 
-/** jane-v5 — Monte Carlo enhanced. Delegates buy, jail, auction, and trade
+/** monte-carlo-v1 — Monte Carlo enhanced. Delegates buy, jail, auction, and trade
  *  vote decisions to MC forward simulation; everything else falls through to
  *  jane-v3's proven policy. */
-export function janeV5Bot(state: GameState, playerId: string): BotDecision | null {
+export function monteCarloV1Bot(state: GameState, playerId: string): BotDecision | null {
   // Try Monte Carlo at the four key decision points.
   if (state.turn.phase === "buy-decision") {
     const mcResult = monteCarloBuy(state, playerId);

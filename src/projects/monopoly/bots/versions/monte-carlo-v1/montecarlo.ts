@@ -1,5 +1,5 @@
 // ===========================================================================
-// Monte Carlo engine for jane-v5.
+// Monte Carlo engine for monte-carlo-v1.
 //
 // At each key decision point (buy, jail, auction, trade vote), enumerate the
 // legal actions, simulate N rollouts from each, and pick the action with the
