@@ -1,4 +1,5 @@
 // ===========================================================================
+import { OpponentModel } from "./opponent-model";
 // jane-v2 SNAPSHOT — fork of jane-v1's trades.ts (see EVOLUTION.md).
 // One constant changed from jane-v1: SURVIVAL_FACTOR 0.4→1.5 — each dollar of
 // cash is worth up to $2.50 in positionValue to a fully distressed seller.
@@ -268,6 +269,67 @@ function declinedWithoutImprovement(
   return false;
 }
 
+/** Add the minimal cash sweetener (to whoever's short) that makes `oppId` accept
+ *  the base asset moves, or return the base terms unchanged if they already gain.
+ *  Returns null if I can't afford the sweetener without going cash-negative. */
+function sweetenFor(
+  state: GameState,
+  pid: string,
+  oppId: string,
+  base: TradeTerms,
+  margin: number = ACCEPT_MARGIN,
+): TradeTerms | null {
+  const oppDelta = evaluateTrade(state, oppId, base).delta;
+  if (oppDelta >= margin) return base; // they already want it
+  // v28: distressed sellers need less sweetening — the survival bonus of the
+  //  incoming cash itself closes part of the gap. Cash is worth (1+relief)×
+  //  face to them, so divide the gap by that factor.
+  const relief = 1 + sellerDistress(state, oppId) * SURVIVAL_FACTOR;
+  const cash = Math.ceil((margin - oppDelta) / relief);
+  const myCash = state.players.find((p) => p.id === pid)?.cash ?? 0;
+  if (myCash - cash < 0) return null; // can't fund it in cash (v1: no mortgage-to-fund)
+  return { ...base, cashDelta: { [pid]: -cash, [oppId]: cash } };
+}
+
+/** N-way generalization of `sweetenFor`: pay EVERY seller their break-even on the
+ *  base asset moves in one deal, funded by `pid`. Each seller's minimum is
+ *  computed independently on the cash-free base — a seller's valuation depends
+ *  only on the property moves and ITS OWN cash, and no seller gains a monopoly
+ *  from this deal (only `pid` does), so one seller's sweetener never shifts
+ *  another's break-even; the per-seller minima compose into one payable trade.
+ *  Returns the base unchanged when no seller needs cash, or null if `pid` can't
+ *  fund the total in cash without going negative (v3, like v2, has no
+ *  mortgage-to-fund path — that's a separate roadmap item). */
+function sweetenForAll(
+  state: GameState,
+  pid: string,
+  sellers: readonly string[],
+  base: TradeTerms,
+  margin: number = ACCEPT_MARGIN,
+): TradeTerms | null {
+  const sweeteners: Record<string, number> = {};
+  let total = 0;
+  for (const sId of sellers) {
+    const delta = evaluateTrade(state, sId, base).delta;
+    if (delta >= margin) continue; // already a gain for them, no cash needed
+    // v28: distressed sellers need less sweetening.
+    const relief = 1 + sellerDistress(state, sId) * SURVIVAL_FACTOR;
+    const cash = Math.ceil((margin - delta) / relief);
+    sweeteners[sId] = cash;
+    total += cash;
+  }
+  if (total === 0) return base;
+  const myCash = state.players.find((p) => p.id === pid)?.cash ?? 0;
+  if (myCash - total < 0) return null; // can't fund it in cash (no mortgage-to-fund)
+  return { ...base, cashDelta: { ...sweeteners, [pid]: -total } };
+}
+
+/** Strict proposability check — mirrors the engine's propose validation so a
+ *  built offer is NEVER rejected by the route (a rejected drive would stall the
+ *  trade-building phase). Requires: every moved lot owned, building-free, and
+ *  reassigned to a different active player; cash balances to zero; ≥2 parties;
+ *  and — stricter than the engine on purpose — everyone stays cash-non-negative,
+ *  so the bot only proposes deals all parties can pay outright. */
 function isProposable(state: GameState, terms: TradeTerms): boolean {
   const active = (id: string): boolean => {
     const p = state.players.find((pl) => pl.id === id);
@@ -338,89 +400,47 @@ interface Candidate {
  *  lot short of a set whose completer sits with a third-party holdout, a denial buy
  *  of that lot (Offer C). At most one attempt per turn group; the highest
  *  denial-augmented delta wins. */
-
-// ─── Observation-based sweetening helpers ────────────────────────────────────
-
-import { OpponentModel } from "./opponent-model";
-
-/**
- * Add cash to make a trade acceptable to a specific opponent, based on our
- * OpponentModel of their threshold. We compute OUR positionValue delta for
- * THEM, then add cash until it exceeds their learned threshold.
- */
-function sweetenForOpponent(
-  state: GameState,
-  pid: string,
-  oppId: string,
-  baseTerms: TradeTerms,
-  model: OpponentModel,
-): TradeTerms | null {
-  const after = postTradeState(state, baseTerms);
-  const oppDelta = positionValue(after, oppId) - positionValue(state, oppId);
-  const threshold = model.getAcceptMargin(oppId);
-  if (oppDelta >= threshold) return baseTerms;
-  const gap = threshold - oppDelta;
-  if (gap <= 0) return baseTerms;
-  const myCash = state.players.find((p) => p.id === pid)?.cash ?? 0;
-  if (myCash < gap) return null;
-  return {
-    ...baseTerms,
-    cashDelta: {
-      ...baseTerms.cashDelta,
-      [pid]: (baseTerms.cashDelta[pid] ?? 0) - gap,
-      [oppId]: (baseTerms.cashDelta[oppId] ?? 0) + gap,
-    },
-  };
-}
-
-function sweetenForAllOpponents(
-  state: GameState,
-  pid: string,
-  sellers: string[],
-  baseTerms: TradeTerms,
-  model: OpponentModel,
-): TradeTerms | null {
-  let terms: TradeTerms | null = { ...baseTerms, cashDelta: { ...baseTerms.cashDelta } };
-  for (const sId of sellers) {
-    terms = sweetenForOpponent(state, pid, sId, terms!, model);
-    if (terms === null) return null;
-  }
-  return terms;
-}
-
-// ─── Observation-based proposeBestTrade ──────────────────────────────────────
-
 export function proposeBestTrade(
   state: GameState,
   pid: string,
 ): { terms: TradeTerms; reason: string } | null {
   if (proposedThisTurn(state, pid)) return null;
 
-  const model = new OpponentModel();
-  model.reconstruct(state, pid);
+  const oppModel = new OpponentModel();
+  oppModel.reconstruct(state, pid);
 
   const candidates: Candidate[] = [];
 
   for (const color of COLORS_BY_WEIGHT) {
     const positions = groupPositions(color);
     const owned = ownedInColor(state, pid, color);
+    // Only complete a set I already have a STAKE in (a near-monopoly); buying a
+    // whole color from scratch isn't this engine's job.
     if (owned === 0 || owned === positions.length) continue;
 
+    // Gather every lot I'm missing. Each must be owned by an active opponent and
+    // building-free, or the set can't be completed by a trade right now (an
+    // unowned lot is a normal buy; a built lot can't be reassigned).
     const missingLots: { pos: number; owner: string }[] = [];
     let tradable = true;
     for (const pos of positions) {
       if (state.ownership[pos] === pid) continue;
       const owner = state.ownership[pos];
-      if (!owner || owner === pid) { tradable = false; break; }
+      if (!owner || owner === pid) { tradable = false; break; } // unowned → just buy it
       if (builtLotsInGroup(pos, (p) => developmentLevel(state, p)).length > 0) {
-        tradable = false; break;
+        tradable = false;
+        break;
       }
       missingLots.push({ pos, owner });
     }
     if (!tradable || missingLots.length === 0) continue;
+    const sellers = new Set(missingLots.map((m) => m.owner));
+    const single = missingLots.length === 1 ? missingLots[0] : undefined;
 
-    if (missingLots.length === 1) {
-      const single = missingLots[0];
+    // Offer A — mutual completion (only when I'm exactly one lot short): a color
+    // where the single seller is themselves one short and I hold the lot they
+    // need. Both sides walk away with a monopoly, no cash required.
+    if (single !== undefined) {
       const oppId = single.owner;
       for (const d of COLORS_BY_WEIGHT) {
         if (d === color) continue;
@@ -429,36 +449,53 @@ export function proposeBestTrade(
         const oppMissing = dPos.find((pos) => state.ownership[pos] !== oppId);
         if (oppMissing === undefined || state.ownership[oppMissing] !== pid) continue;
         if (builtLotsInGroup(oppMissing, (p) => developmentLevel(state, p)).length > 0) continue;
-        const swapBase: TradeTerms = {
-          propertyTo: { [single.pos]: pid, [oppMissing]: oppId }, gojfTo: {}, cashDelta: {},
-        };
-        const swap = sweetenForOpponent(state, pid, oppId, swapBase, model);
-        if (swap !== null && isProposable(state, swap)) {
-          const mine = evaluateTrade(state, pid, swap);
-          if (mine.accept) {
-            candidates.push({ terms: swap, delta: mine.delta,
-              reason: `Swapping my ${colorName(d)} for ${spaceName(single.pos)} — both complete a monopoly.` });
-          }
+        const swap = sweetenFor(
+          state,
+          pid,
+          oppId,
+          { propertyTo: { [single.pos]: pid, [oppMissing]: oppId }, gojfTo: {}, cashDelta: {} },
+          oppModel.getAcceptMargin(oppId),
+        );
+        if (swap !== null) {
+          candidates.push({
+            terms: swap,
+            delta: 0,
+            reason: `Proposing a swap — my ${colorName(d)} lot for ${spaceName(single.pos)}, so we each complete a monopoly.`,
+          });
         }
       }
     }
 
+    // Offer B — buy EVERY missing lot in one deal, paying each seller their
+    // v2-priced break-even. One seller / one lot is v2's "cash for the completer";
+    // two-plus missing lots (held by one owner or several) is v3's N-way
+    // completion — the shape that closes a 1-1-1 split or a two-short set, which
+    // no single 2-way deal can resolve.
     const propertyTo: Record<number, string> = {};
     for (const m of missingLots) propertyTo[m.pos] = pid;
-    const sellers = [...new Set(missingLots.map((m) => m.owner))];
-    const buyBase: TradeTerms = { propertyTo, gojfTo: {}, cashDelta: {} };
-    const buy = sweetenForAllOpponents(state, pid, sellers, buyBase, model);
-    if (buy !== null && isProposable(state, buy)) {
-      const mine = evaluateTrade(state, pid, buy);
-      if (mine.accept) {
-        const reason = missingLots.length === 1
-          ? `Buying ${spaceName(missingLots[0].pos)} to complete my ${colorName(color)} monopoly.`
-          : `Buying ${missingLots.length} ${colorName(color)} lots to complete the set.`;
-        candidates.push({ terms: buy, delta: mine.delta, reason });
-      }
+    const minMargin = Math.min(...[...sellers].map((s) => oppModel.getAcceptMargin(s)));
+    const buy = sweetenForAll(state, pid, [...sellers], {
+      propertyTo,
+      gojfTo: {},
+      cashDelta: {},
+    }, minMargin);
+    if (buy !== null) {
+      const reason =
+        single !== undefined
+          ? `Offering cash for ${spaceName(single.pos)} to complete my ${colorName(color)} monopoly.`
+          : `Buying the ${missingLots.length.toString()} missing ${colorName(color)} ` +
+            `from ${sellers.size === 1 ? "its owner" : `${sellers.size.toString()} owners`} to complete the monopoly.`;
+      candidates.push({ terms: buy, delta: 0, reason });
     }
   }
 
+  // Offer C — TRADE-TO-DENY (v5). For each rival one lot short of a set whose
+  // last lot sits with a THIRD-PARTY holdout, buy that lot to ME purely to block
+  // the completion. It doesn't complete my own set, so its worth is the
+  // `DENY_FACTOR` premium on the rival set I'm preventing — the credit
+  // `acquisitionValue` applies on a landing/auction denial but construction never
+  // did. The rival is NOT a party (only the holdout and I are), so it can't veto
+  // its own denial.
   for (const opp of activeOpponents(state, pid)) {
     for (const color of COLORS_BY_WEIGHT) {
       const positions = groupPositions(color);
@@ -467,34 +504,49 @@ export function proposeBestTrade(
       if (missing.length !== 1) continue;
       const pos = missing[0];
       const holder = state.ownership[pos];
+      // The completer must sit with a third-party holdout (not me, not the rival)
+      // and be building-free, or there's nothing for me to buy to deny.
       if (!holder || holder === pid || holder === opp.id) continue;
       if (builtLotsInGroup(pos, (p) => developmentLevel(state, p)).length > 0) continue;
+      // v14 PHANTOM-DENIAL GATE: only deny a completer the rival could REALISTICALLY
+      // acquire from its current holder. If it can't (a non-rival holder already
+      // blocks it, or completing the set isn't worth the cost to pry it loose), the
+      // rival is already blocked and this buy is a worthless relocation among
+      // non-rivals — the bot→bot hot-potato. Skip it.
       if (!rivalCanAcquire(state, opp.id, pos, holder)) continue;
-      const denyBase: TradeTerms = { propertyTo: { [pos]: pid }, gojfTo: {}, cashDelta: {} };
-      const deny = sweetenForOpponent(state, pid, holder, denyBase, model);
-      if (deny !== null && isProposable(state, deny)) {
-        const mine = evaluateTrade(state, pid, deny);
-        candidates.push({ terms: deny, delta: mine.delta,
-          denyBonus: Math.round(monopolyBonus(color) * DENY_FACTOR),
-          reason: `Buying ${spaceName(pos)} to deny ${opp.name} the ${colorName(color)} monopoly.` });
-      }
+      const buy = sweetenFor(state, pid, holder, {
+        propertyTo: { [pos]: pid },
+        gojfTo: {},
+        cashDelta: {},
+      }, oppModel.getAcceptMargin(holder));
+      if (buy === null) continue;
+      const holderName = state.players.find((p) => p.id === holder)?.name ?? "its owner";
+      candidates.push({
+        terms: buy,
+        delta: 0,
+        denyBonus: Math.round(monopolyBonus(color) * DENY_FACTOR),
+        reason: `Buying ${spaceName(pos)} from ${holderName} to deny ${opp.name} the ${colorName(color)} monopoly.`,
+      });
     }
   }
 
   let best: { cand: Candidate; effective: number } | null = null;
   for (const cand of candidates) {
-    if (declinedWithoutImprovement(state, pid, cand.terms)) continue;
+    if (!isProposable(state, cand.terms)) continue;
+    const mine = evaluateTrade(state, pid, cand.terms);
     const denyBonus = cand.denyBonus ?? 0;
-    const effective = cand.delta + denyBonus;
-    if (effective <= ACCEPT_MIN) continue;
+    // Denial candidates use the denial-augmented gate (the blocked rival set is
+    // worth DENY_FACTOR×bonus to me even though the lot doesn't complete my own
+    // set); completion candidates keep v3's standard accept gate. The ranking
+    // metric is the same augmented delta for both, so a strong denial can outrank
+    // a weak completion and a real completion always outranks an equal denial.
+    const effective = mine.delta + denyBonus;
+    if (denyBonus > 0 ? effective <= ACCEPT_MIN : !mine.accept) continue;
+    // Counterparty model: every other named party must plausibly accept too. The
+    // denied rival isn't a party here, so it's never consulted — the asymmetry.
     const others = [...tradeParticipants(state, cand.terms)].filter((id) => id !== pid);
-    let allAccept = true;
-    for (const oppId of others) {
-      const after = postTradeState(state, cand.terms);
-      const oppDelta = positionValue(after, oppId) - positionValue(state, oppId);
-      if (!model.wouldAccept(oppId, oppDelta)) { allAccept = false; break; }
-    }
-    if (!allAccept) continue;
+    if (!others.every((id) => evaluateTrade(state, id, cand.terms).accept)) continue;
+    if (declinedWithoutImprovement(state, pid, cand.terms)) continue;
     if (best === null || effective > best.effective) {
       best = { cand, effective };
     }
