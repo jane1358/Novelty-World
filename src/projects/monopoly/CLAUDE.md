@@ -212,7 +212,7 @@ plus a registry entry. Current strategies:
   the **overall best** (highest Elo across families — also the `addBot`/`freshGame`
   default, `DEFAULT_BOT_VERSION`), each **family's best** (highest Elo within it),
   and every family's **full version list**. A version with **no Elo** (excluded or
-  not-yet-rated — `RATING_EXCLUDED`, e.g. `claude-v1`) renders **deprecated**
+  not-yet-rated — `RATING_EXCLUDED`, e.g. `claude-v1`, `gemini-v1`) renders **deprecated**
   (struck-through, disabled). The lobby is **Elo-only** — it shows the *strongest*
   bot, never a "champion": crowning a champion and picking an evolution *substrate*
   are separate, confidence-gated decisions that live in `bots/EVOLUTION.md`, not the
@@ -374,6 +374,12 @@ dev-ops.ts / dev.ts   dev-only state transforms + hotkeys
 bots/registry.ts      botFor(botStrategy) -> policy ("dumb" or a version label); re-exports the contract
 bots/decision.ts      Bot / BotDecision contract + move() wrapper
 bots/dumb.ts          dumb (reactive baseline) policy
+bots/features.ts      PURE seat-relative state encoder for a learned bot — encode(state, playerId) -> fixed-width Float32Array (FEATURE_COUNT / FEATURE_NAMES). Phase 1 of the ML path; input half
+bots/candidates.ts    PURE legal-action enumerator + applyCandidate (1-ply lookahead) for a learned bot — legalCandidates(state, playerId). Phase 1 of the ML path; action half (combinatorial trade/manage construction is a documented heuristic seam)
+bots/value-net-stub.ts  the hybrid loop wired end-to-end — valueNetBot(value) picks argmax over legalCandidates by 1-ply lookahead; heuristicValue + valueNetStubBot bind it to a hand-written value (swap in V(encode(...)) to get the learned bot). Field it via the `value-stub` sim token. NOT a registry/ladder strategy — a prototype
+bots/value-policy.ts  the full-capability agent — valuePolicyBot(value) = valueNetBot + opening intermissions: arm `trade` (drive trade-search → propose) and `manage` (develop monopolies), preferring trade-then-build in one turn-group. Field via the `value-policy` sim token. Next slices: raise-to-buy/auction willingness
+bots/trade-search.ts  value-guided TRADE CONSTRUCTION — bestTrade(state, pid, value) builds the best monopoly-completing draft the counterparty would accept (mutual-completion swap / cash purchase, sweetener solved by binary search on the opponent's value). Same search the rule-based bots do, scored by any ValueFn
+bots/RL-DESIGN.md     LEARNED-BOT design & handoff — the goal (ML bot to beat the rule-based archive), the target architecture (policy+value+MCTS, factored atomic action vocabulary), what's built vs needed, and the ordered next steps. READ THIS before any learned-bot/ML/training work (it's self-contained for a fresh session)
 bots/roles.ts         LOBBY_BOTS — the lobby offering DERIVED from the Elo ladder (overall best, per-family best, full lists, deprecation) + DEFAULT_BOT_VERSION; only hand-maintained data is FAMILY_SPECS
 bots/simulate.ts      headless self-play driver (per-seat Contenders / strategies)
 bots/simulate-cli.ts  `npm run sim` — watch one bot self-play game (roster, seed, --log)
@@ -392,7 +398,7 @@ bots/ratings-cli.ts   `npm run sim:ratings` — cached round-robin Elo over the 
 bots/ratings.ts       GENERATED strength ladder (BOT_RATINGS, claude-v2=0); the lobby derives from this; see bots/CLAUDE.md "Lobby strength ratings"
 bots/ratings-cache.json  GENERATED pairwise-result cache for sim:ratings (so each new version only plays its own column)
 bots/versions/        version archive (EVOLUTION.md): self-contained bot snapshots; the source of truth for all policy code. Labels are namespaced per lineage: claude-vN, jane-vN, gemini-vN
-bots/versions/index.ts  VERSIONS map + versionBot() + RATING_EXCLUDED (versions left unrated → deprecated, e.g. claude-v1)
+bots/versions/index.ts  VERSIONS map + versionBot() + RATING_EXCLUDED (versions left unrated → deprecated, e.g. claude-v1, gemini-v1)
 bots/versions/claude-v1/     claude-v1 snapshot: original champion, frozen — archived, EXCLUDED from the default field (stalls games); claude-v2 is the floor
 bots/versions/claude-v2/     claude-v2 snapshot (rival-threat pricing) + its tests
 bots/versions/claude-v3/     claude-v3 snapshot (N-way trades) — accepted as substrate (win-neutral vs claude-v2)
