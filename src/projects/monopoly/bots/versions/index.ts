@@ -53,6 +53,11 @@ import { geminiV1Bot } from "./gemini-v1";
 // idea under exploration; see EVOLUTION.md "Bot lineages". (trade-v1 was authored
 // on Jane but lives under `trade-v` because the trade paradigm is what it's about.)
 import { tradeV1Bot } from "./trade-v1";
+// Search lineage — a PARADIGM-named family (like trade-v): namespaced by the
+// SYSTEM its versions explore — TRUNCATED-ROLLOUT / lookahead search (the first
+// non-greedy bot in the archive) — not by the authoring machine. Authored by
+// Claude Code, filed under the paradigm. See EVOLUTION.md "Bot lineages".
+import { searchV1Bot } from "./search-v1";
 
 // ---------------------------------------------------------------------------
 // The version archive. Every bot snapshot the simulator can field by name, for
@@ -112,6 +117,7 @@ export const VERSIONS: Readonly<Record<string, Bot>> = {
   "jane-v4": janeV4Bot,
   "gemini-v1": geminiV1Bot,
   "trade-v1": tradeV1Bot,
+  "search-v1": searchV1Bot,
   dumb: dumbBot,
 };
 
