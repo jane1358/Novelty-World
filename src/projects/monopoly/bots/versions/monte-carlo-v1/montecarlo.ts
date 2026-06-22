@@ -17,7 +17,7 @@
 
 import { apply, autoStep, netWorth, BID_INCREMENT } from "../../../engine";
 import { driveOp, type BotResolver } from "../../../pacing";
-import { janeV3Bot } from "../jane-v3";
+import { janeV3Bot } from "./base-bot";
 import type { BotDecision } from "../../decision";
 import type { GameState, Intent } from "../../../types";
 

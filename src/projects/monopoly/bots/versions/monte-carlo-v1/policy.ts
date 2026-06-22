@@ -18,7 +18,8 @@
 // (these fire less frequently than buy decisions). Engine optimization from
 // Kyle would significantly speed this up.
 // ===========================================================================
-import { janeV3Bot } from "../jane-v3";
+// Standalone copy of jane-v3 bot for non-MC fallback decisions.
+import { janeV3Bot } from "./base-bot";
 import type { GameState } from "../../../types";
 import type { BotDecision } from "../../decision";
 import {
