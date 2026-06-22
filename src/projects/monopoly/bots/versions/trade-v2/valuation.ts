@@ -75,7 +75,7 @@ const COLORS_BY_WEIGHT: readonly PropertyColor[] = [
 /** Extra position value for HOLDING k railroads, beyond their raw asset base —
  *  railroad rent ($25/$50/$100/$200) jumps with each one owned, so the synergy
  *  of a second/third/fourth is real. Indexed by count (0–4). */
-const RAIL_SYNERGY: readonly number[] = [0, 0, 120, 280, 500];
+const RAIL_SYNERGY: readonly number[] = [0, 0, 70, 180, 380];
 
 /** Both utilities together are marginally better than one (10× vs 4× dice), but
  *  utilities are near-worthless for income — a small pair bonus only. */
