@@ -36,6 +36,13 @@ import {
 } from "./eval";
 import { OpponentModel } from "./opponent-model";
 
+// Import jane-v3's ACTUAL trade evaluation — this is what opponents use to
+// decide. By predicting acceptance with THEIR function instead of our own,
+// we see the asymmetric surplus: they undervalue the threat of our monopoly
+// completion (only 6.25% charge vs our full strategic valuation).
+import { evaluateTrade as v3EvaluateTrade } from "../jane-v3/trades";
+import { sellerDistress } from "../jane-v3/valuation";
+
 /** The post-trade state projection (ownership + cash deltas). */
 function postTradeState(state: GameState, terms: TradeTerms): GameState {
   const proj = projectTrade(state, terms);
@@ -220,21 +227,22 @@ export class TradeEngine {
       let totalCashNeeded = 0;
       let feasible = true;
 
+      // Predict seller acceptance using jane-v3's ACTUAL evaluateTrade.
+      // jane-v3 uses positionValue (no near-monopoly valuation) + only 6.25%
+      // rival threat charge. This means jane-v3 opponents will sell properties
+      // CHEAPER than our own eval predicts — that gap is the surplus.
       for (const sId of sellers) {
-        const sellerWeights = this.model.getWeights(sId);
-        const afterBase = postTradeState(state, baseTerms);
-        const sellerBaseDelta = evalDelta(state, afterBase, sId, sellerWeights);
-        const sellerThreshold = sellerWeights.acceptThreshold;
+        const v3Verdict = v3EvaluateTrade(state, sId, baseTerms);
+        if (v3Verdict.accept) continue; // They'd accept for free!
 
-        if (sellerBaseDelta >= sellerThreshold) continue; // they'd take it for free
-
-        // Need to sweeten with cash. But what WE think they need and what THEY
-        // actually need may differ — that's the whole point. Use their modeled
-        // weights to predict their valuation.
-        const gap = sellerThreshold - sellerBaseDelta;
-        // The cash sweetener's effect on their eval: each $1 of cash = +1 to their
-        // cash component (× cashWeight). So cash needed = gap / cashWeight.
-        const cashNeeded = Math.ceil(gap / sellerWeights.cashWeight);
+        // jane-v3's delta is what THEY see. Cash `c` increases their delta by
+        // c * (1 + distress * SURVIVAL_FACTOR). Solve for minimum c to clear
+        // their ACCEPT_MIN threshold + ACCEPT_MARGIN cushion.
+        // v3's constants: ACCEPT_MIN=1, ACCEPT_MARGIN=30, SURVIVAL_FACTOR=2.0
+        const distress = sellerDistress(state, sId);
+        const relief = 1 + distress * 2.0;
+        const gap = 1 + 30 - v3Verdict.delta; // ACCEPT_MIN + ACCEPT_MARGIN - delta
+        const cashNeeded = Math.max(0, Math.ceil(gap / relief));
         totalCashNeeded += cashNeeded;
 
         // Can we afford it?
@@ -247,15 +255,13 @@ export class TradeEngine {
       if (feasible) {
         // Build the full sweetened terms.
         const cashDelta: Record<string, number> = {};
-        let remaining = totalCashNeeded;
-        for (const m of missingLots) {
-          const sId = m.owner;
-          const sellerWeights = this.model.getWeights(sId);
-          const afterBase = postTradeState(state, baseTerms);
-          const sellerBaseDelta = evalDelta(state, afterBase, sId, sellerWeights);
-          if (sellerBaseDelta >= sellerWeights.acceptThreshold) continue;
-          const gap = sellerWeights.acceptThreshold - sellerBaseDelta;
-          const cashNeeded = Math.ceil(gap / sellerWeights.cashWeight);
+        for (const sId of sellers) {
+          const v3Verdict = v3EvaluateTrade(state, sId, baseTerms);
+          if (v3Verdict.accept) continue;
+          const distress = sellerDistress(state, sId);
+          const relief = 1 + distress * 2.0;
+          const gap = 1 + 30 - v3Verdict.delta;
+          const cashNeeded = Math.max(0, Math.ceil(gap / relief));
           cashDelta[sId] = (cashDelta[sId] ?? 0) + cashNeeded;
         }
         cashDelta[pid] = -totalCashNeeded;
