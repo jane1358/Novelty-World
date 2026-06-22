@@ -330,6 +330,91 @@ export class TradeEngine {
     }
 
 
+
+    // --- Offer Type 4: Sell to monopoly completer ---
+    // When we hold a lot that completes an opponent's monopoly and it's NOT
+    // part of any of our near-monopolies, we can sell it. Our multi-factor eval
+    // values it at assetBase (useless to us), but jane-v3's positionValue sees
+    // the monopoly completion value. The asymmetric surplus: we sell at what
+    // they think is fair (just above their ACCEPT_MIN), but we gain pure cash.
+    for (const opp of activeOpponents(state, pid)) {
+      for (const color of COLORS_BY_WEIGHT) {
+        const positions = groupPositions(color);
+        const oppOwned = ownedInColor(state, opp.id, color);
+        // Opponent must be exactly one lot short
+        if (oppOwned !== positions.length - 1) continue;
+        // Find the lot they're missing
+        const missing = positions.filter((pos) => state.ownership[pos] !== opp.id);
+        if (missing.length !== 1) continue;
+        const sellPos = missing[0];
+        // We must own it
+        if (state.ownership[sellPos] !== pid) continue;
+        // Must be building-free
+        if (builtLotsInGroup(sellPos, (p) => developmentLevel(state, p)).length > 0) continue;
+        // Check it's NOT part of any of our near-monopolies (don't sell our own completers!)
+        let useful = false;
+        for (const myColor of COLORS_BY_WEIGHT) {
+          const myPos = groupPositions(myColor);
+          const myOwned = ownedInColor(state, pid, myColor);
+          if (myOwned > 0 && myOwned < myPos.length) {
+            // We have a stake in this color
+            if (myPos.includes(sellPos) && state.ownership[sellPos] === pid) {
+              // This lot is in a color we have a stake in — don't sell it
+              useful = true;
+              break;
+            }
+          }
+        }
+        if (useful) continue;
+
+        // What would the opponent pay? Use jane-v3's evaluateTrade from their perspective.
+        const sellTerms: TradeTerms = {
+          propertyTo: { [sellPos]: opp.id },
+          gojfTo: {},
+          cashDelta: {},
+        };
+        const oppVerdict = v3EvaluateTrade(state, opp.id, sellTerms);
+        // The opponent gains the monopoly completion value. We need to charge
+        // them cash so their net delta is still positive (just above ACCEPT_MIN).
+        // Their delta without cash = oppVerdict.delta. We charge cash `c`:
+        // their effectiveDelta = delta - c (cash leaving their side).
+        // Wait — evaluateTrade already accounts for cash. We need to find cash `c`
+        // such that giving them the property AND taking c cash still leaves them
+        // at delta > ACCEPT_MIN.
+        //
+        // Actually jane-v3's evaluateTrade computes: positionValue(after) - positionValue(before)
+        // minus threatCost, plus distress bonus on cash received.
+        // When we SELL to them, THEY pay cash. So cashDelta[opp] < 0.
+        // Their delta = propertyGain - cashPaid. They accept if delta > 1.
+        // We want to charge the maximum that still leaves them accepting.
+        // Max cash = oppVerdict.delta - 2 (just above ACCEPT_MIN).
+        const maxCharge = oppVerdict.delta - 2;
+        if (maxCharge <= 0) continue; // Even free, they don't want it (threat too high)
+
+        // Charge them the max — pure surplus for us.
+        // But cap at their available cash.
+        const oppCash = state.players.find((p) => p.id === opp.id)?.cash ?? 0;
+        const charge = Math.min(maxCharge, oppCash);
+        if (charge <= 0) continue;
+
+        const terms: TradeTerms = {
+          propertyTo: { [sellPos]: opp.id },
+          gojfTo: {},
+          cashDelta: { [pid]: charge, [opp.id]: -charge },
+        };
+        if (declinedWithoutImprovement(state, pid, terms)) continue;
+
+        // Score from OUR perspective — it's pure cash gain.
+        const myDelta = evalDelta(state, postTradeState(state, terms), pid, myWeights);
+        if (myDelta > 0) {
+          candidates.push({
+            terms, myDelta, opponentId: opp.id, opponentDelta: oppVerdict.delta,
+            reason: `Selling ${spaceName(sellPos)} to ${opp.name ?? "opponent"} for $${charge} — it completes their ${colorName(color)} but is useless to me.`,
+          });
+        }
+      }
+    }
+
     // --- Offer Type 3: Denial Buy (block rival monopoly) ---
     // When a rival is one lot from completing a set, and that lot sits with a
     // THIRD-PARTY holder, we can buy it to block them. The asymmetric surplus:
