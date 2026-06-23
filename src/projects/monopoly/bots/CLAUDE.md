@@ -199,7 +199,41 @@ factory + `denialPositionCost` ported back in (same vector, one logical change).
 ring collapses (one lot's hops 15–99 → 1–6, reproduced in `claude-v39/policy.test.ts`)
 at **no cost**: gauntlet `--base opt-v4 --panel` = **EVEN vs opt-v4, BETTER vs all 8
 other panel members, zero regressions**. It's a non-regression, not a crown (EVEN, not
-better), and a clean substrate for the seller-side trade work in "Refinement targets" #3.
+better), and a clean substrate for the seller-side trade work below (the now-crowned
+`claude-v41`).
+
+### Pricing the seller side — "don't gift a monopoly for spendable-on-nothing cash" (claude-v41)
+
+The denial machinery above (buyer-side premium + `denialPositionCost`) patches the
+*symptom* of the hot-potato — bots that already hold/buy completers. **claude-v41** (the
+current champion, PR #1) addresses the *root*: bots were too willing to **sell**
+completers cheaply. A pro essentially never gifts a rival a monopoly for cash. Two
+changes, both in `evaluateTrade` (vector overrides in `claude-v41/index.ts`):
+
+- **Decouple `rivalThreatFactor` from `denyFactor` → 0.4.** The only term penalizing "I
+  handed a rival a set" is `rivalThreatCost = rivalThreatFactor × bonus`. It was *pinned*
+  to `denyFactor` (~0.317 on the opt base), so the bot priced its own harm at ~32% of the
+  rival's gain — why it sold completers for too little. `rivalThreatFactor` is **NOT** part
+  of the buyer/holder ring lockstep (that's `denyFactor`↔`denialPositionCost`);
+  `rivalThreatCost` fires only when the recipient *is* the completing rival, mutually
+  exclusive with `denialPositionCost`, so it tunes independently. **0.4 is the ceiling
+  before over-refusal:** `claude-v40` at 0.6 crushed denial-heavy bots but regressed vs
+  balanced traders (jane-v2, claude-v36) by refusing mutual-completion swaps, and
+  ≳1.0 deadlocks games to the turn cap. 0.4 SPRT-beat opt-v4 + the whole panel on both
+  streams; 0.6 washed.
+- **`deployabilityDiscount` (0.5) on incoming set-handover cash.** Cash is dollar-for-
+  dollar in `positionValue`, and the evaluator only ever valued cash *above* face (the
+  survival bonus). claude-v41 adds the other end: a **safe** seat with **no outlet** (no
+  near-monopoly, no buildable set, no mortgages to redeem) values incoming cash *below*
+  face, because idle cash earns nothing — so a fat cash offer no longer tempts a bot that
+  can't put the money to work. **This is NOT the rejected "cash-scaled monopoly value"**
+  (see "Considered and rejected"): that scaled *own-set value by own cash* and made the bot
+  timid about completing *its own* monopolies; this scales *the value of cash received* in a
+  deal that *enables a rival*, leaving own-set acquisition untouched. Watch for that
+  timidity failure mode if you tune it.
+
+The free side effect: a completer the bot would never sell cheaply is simply never
+proposed into the ring, so the hot-potato loses its fuel at the source.
 
 ## Randomness & the RNG seam
 
@@ -248,58 +282,16 @@ Ordered by impact. Each is a place the *current* policy leaves value on the tabl
    fully closed — both halves washed.** Mortgage-to-fund is a win-safe building block,
    not an edge.
 
-3. **Price the SELLER side of a set-handover properly — "don't gift a monopoly for
-   spendable-on-nothing cash" (OPEN — Kyle's thesis, 2026-06-23).** *Not yet built; the
-   single most promising untested trade idea, and it would make the hot-potato a
-   non-issue for free.* The thesis, plainly: **giving a rival a set is only OK if you (a)
-   get an equivalent set back, OR (b) are handed a LOT of cash AND have something
-   productive to spend it on — because cash that can't be turned into more cash is nearly
-   worthless.** Denial (the buyer-side premium + `denialPositionCost`) is a *patch* for the
-   real disease: bots are too willing to *sell* completers. Raise the seller's reluctance
-   enough and the completer never reaches the market, so there is nothing to deny and the
-   ring has no fuel — fixing the root, not the symptom (a pro essentially never gifts a
-   monopoly for cash).
-
-   How it maps to the engine (three conditions):
-   - **(a) equivalent set — already modeled.** `monopolyGain(me)` credits a set I also
-     complete, so a balanced mutual-completion swap nets positive and still passes. *Do
-     not break this.*
-   - **(b) a LOT of cash — underpriced today.** The *only* term penalizing "I handed a
-     rival a monopoly" is `rivalThreatCost = RIVAL_THREAT_FACTOR × bonus`, and
-     `RIVAL_THREAT_FACTOR` is pinned to `DENY_FACTOR` (0.317 on opt) — so the bot prices
-     its *own* harm at ~32% of what the rival *gains* (100%+ plus compounding rent). That
-     asymmetry is why bots sell completers for too little (e.g. 514j43 T41: a bot gifted
-     the human the light blues for $200 net). **Decouple `rivalThreatFactor` from
-     `denyFactor`** (it is NOT part of the buyer/holder ring lockstep — that's
-     `denyFactor`↔`denialPositionCost`; `rivalThreatCost` fires only when the recipient
-     *is* the completing rival, mutually exclusive with `denialPositionCost`) and raise it.
-     *Early signal:* a throwaway sweep on the claude-v39 base, `denyFactor` fixed at 0.317,
-     moved `rivalThreatFactor` 0.317→0.6 and lifted win share vs opt-v4 ~45%→~51% on one
-     130-seed stream (within-noise, directional). **Caveat: do NOT push it too high** —
-     `rivalThreatFactor` ≳ 1.0 made bots refuse all deals and games ran to the turn cap
-     (the trade-deadlock the games-must-be-decisive rule exists to prevent; it also
-     spawned the CPU-hogging never-terminating sims during exploration).
-   - **(c) the cash must be DEPLOYABLE — not modeled at all; the novel piece.** In
-     `positionValue` cash is dollar-for-dollar, and the trade evaluator only ever values
-     cash *above* face (the `sellerDistress`/`survivalFactor` survival bonus). There is no
-     term for the other end: a **safe** seat with **no outlet** (no near-monopoly to
-     complete, no undeveloped set to build, no mortgages to redeem) should value incoming
-     cash *below* face, because idle cash earns nothing. Add a **deployability discount**
-     on incoming cash *in a set-handover trade*, so a fat cash offer doesn't tempt a bot
-     that can't put the money to work. **This is NOT the rejected "cash-scaled monopoly
-     value"** (see "Considered and rejected") — that scaled *own-set value by own cash* and
-     injected timidity into completing your *own* monopolies; this scales *the value of
-     cash received* in a deal that *enables a rival*, leaving own-set acquisition
-     untouched. Watch for the same timidity failure mode when implementing.
-
-   The win it's after: fewer one-sided "set for cash" gifts (the human's edge in both
-   reviewed games), a stronger overall bot, and — as a free side effect — no trade-loop,
-   because rotating a completer you'd never sell cheaply is simply never proposed.
-   Acceptance is the usual gauntlet + SPRT vs opt-v4 on the v39 base. Build (b) and (c)
-   together as `claude-v40`; field via a decoupled vector + the new discount.
-
 When you close one of these, move it out of this list and fold the resulting
 behavior into the relevant section above.
+
+(Closed: **price the SELLER side of a set-handover** — Kyle's thesis "don't gift a
+monopoly for spendable-on-nothing cash," **CROWNED as `claude-v41`** (PR #1, the new
+champion). Built parts (b)+(c): decoupled `rivalThreatFactor` from `denyFactor` to
+**0.4** and added a **0.5 deployability discount** on incoming set-handover cash. The
+intermediate `claude-v40` at `rivalThreatFactor=0.6` over-refused balanced trades and
+washed; **0.4** is the sweet spot — SPRT BETTER vs opt-v4 and the whole panel on both
+streams. Folded into the **trades** section above ("Pricing the seller side").)
 
 (Closed: **unmortgage-and-redeploy idle capital** — the gap the 491-turn dev game
 exposed, where the leader held $11k and five monopolies but only the one set it

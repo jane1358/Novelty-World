@@ -727,6 +727,7 @@ bot as of this doc.
 
 | Version | Date | Hypothesis / change | Result vs. field | Status |
 |---------|------|---------------------|------------------|--------|
+| claude-v41 | 2026-06-23 | **Seller-side trade pricing — Refinement #3 (b)+(c)** (`versions/claude-v41/`, PR #1): the claude-v39 substrate (opt-v4 vector + restored `denialPositionCost`) plus Kyle's thesis "don't gift a monopoly for spendable-on-nothing cash." Two changes: **(b)** decouple `rivalThreatFactor` from `denyFactor` and set it to **0.4** (was pinned to ~0.317), so the bot prices its OWN harm in handing a rival a set nearer to what the rival gains; **(c)** a **`deployabilityDiscount` (0.5)** on incoming cash in a set-handover trade — a safe seat with no outlet values that cash below face. PR also shipped `claude-v40` (same idea at `rivalThreatFactor=0.6`, the author's failed intermediate — too aggressive, refuses balanced trades). Re-measured from current `main` (PR was NOT stale this time — merge-base = HEAD). | **CROWN GATE `--base opt-v4 --panel`, BOTH streams: ✅ ACCEPT.** SPRT BETTER vs base opt-v4 (55.7% train / 62.4% holdout) AND every panel member — claude-v2 65.7/67.5, claude-v5 72.0/76.7, claude-v17 71.7/74.8, claude-v35 67.7/70.3, jane-v2 55.4/55.0, claude-v36 54.8/52.7, opt-v2 54.4/53.5, jane-v4 53.9/56.0 — **9/9 BETTER, ZERO regressions on both streams.** Ladder Elo **+194.1** (top of the Claude family). PR's own claim REPRODUCED exactly. | **ACCEPTED — NEW CROWNED CHAMPION (crown + substrate, supersedes opt-v4).** First crown that addresses the *root* of the hot-potato (bots too willing to SELL completers) rather than the symptom (denial pricing the buy/hold side). NON-TRANSITIVITY NOTE: claude-v41 sits **#4 on the panel-graph Elo ladder** (behind opt-v3 +210.7 / opt-v4 +204.2 / opt-v2 +201.1) despite BEATING opt-v4 (56%) and opt-v2 (59%) HEAD-TO-HEAD — the opt trio crush the low floor slightly harder, so the global least-squares fit can't fully credit v41's direct edge (~6-Elo panel-fit noise). The crown is the head-to-head SPRT vs the field, NOT the global Elo rank — so it's the champion but NOT the lobby's Strongest/default (opt-v3 still tops the ladder). Added to RATING_PANEL. claude-v40 RECORDED at +125.5 (mid-pack — confirms 0.6 over-aggression). |
 | claude-v39 | 2026-06-23 | **Restore the holder-side denial price on the opt base** (`versions/claude-v39/`): the opt-v4 champion factory + `denialPositionCost` (the v35 symmetric-pricing fix the v36→opt line dropped), opt-v4 vector unchanged — ONE logical change. Motivated by real human-vs-bot games `514j43` + `16043u`, where two opt/claude bots hot-potatoed one completer 18–24× (the strong-set ring the `rivalCanAcquire` phantom gate doesn't catch) while the human just developed and won. | **Ring collapses** — one lot's hops 15–99 → 1–6 in the accumulator config (pinned in `policy.test.ts`). Gauntlet `--base opt-v4 --panel`: **EVEN vs opt-v4 (50.1%, ~2k games)**, **BETTER vs all 8 other panel members** (57–68%), **zero regressions**. Confirmed EVEN across 3 seed streams (50/52/54%). | **RECORDED, not crowned** — EVEN vs base (a clean non-regression, not a strict win), so a player-default-eligible ladder peer of the opt trio, not a crown. Value: removes a human-exploitable degenerate behavior at no measured cost; the clean substrate for Refinement-target #3 (seller-side trade pricing). NOTE: the deny-knob is NOT the Bot-2 lever — sweeping `denyFactor` down regressed (42–45% vs opt-v4), up plateaued then deadlocked; see Refinement-target #3 for the decoupled seller-side direction. |
 | opt-v4 | 2026-06-23 | **Maximin ES vs the COMPLETED 8-panel** (`versions/opt-v4/`): the opt-v3 fix in action — add jane-v4 (the bot opt-v3 counter-overfit against) to the panel, so the maximin search must beat opt-v2 AND jane-v4. A distinct robust vector (denial 0.317, hotelCushion 300→0, bonusScale 16.4k→22k). | **CROWN GATE vs base opt-v2, BOTH STREAMS: ✅ ACCEPT.** SPRT BETTER vs opt-v2 (57.1% train / 59.3% holdout), vs jane-v4 (58.1/57.7%), and vs every panel member; NO regressions. **Out-of-panel: NO regressions either** (jane-v3 56%, claude-v38 52%, claude-v30 80%, claude-v21 70%) — unlike opt-v3, it holds EVERYWHERE. | **ACCEPTED — NEW ROBUST CROWNED CHAMPION (crown + substrate, supersedes opt-v2).** Validates the methodology end-to-end: COMPLETING the panel (adding the counter's nemesis jane-v4) turned opt-v3's overfit-counter trap into a genuine robust improvement. The maximin loop + panel-completion + out-of-panel check is productively self-improving. Added to RATING_PANEL. |
 | opt-v3 | 2026-06-23 | **Maximin ES re-run with opt-v2 IN the panel** (`versions/opt-v3/`): the apparent "self-improving loop" step — add the champion opt-v2 to the panel so the maximin search must beat it. Found a DISTINCT aggressive vector (denial 0.29 vs opt-v2's 0.41, monopoly weight bonusScale 16.4k→24.8k, floorCap 300→100). | **Crown gate vs base opt-v2 (panel): SPRT BETTER both streams (55.9% train / 55.2% holdout vs opt-v2), no PANEL regressions, +12 panel-Elo. BUT the out-of-panel check REGRESSES vs jane-v4 (38%)** — jane-v4 is NOT in the panel. | **RECORDED, NOT crowned; opt-v2 stays champion.** The jane-v3 RPS-cycle trap, now at the OPTIMIZATION layer: maximin against an INCOMPLETE panel overfits into a non-transitive COUNTER that loses to the omitted strong bot. The `--panel` crown gate alone CAN'T catch it (jane-v4 isn't a member); the **out-of-panel sim:versus check is what caught it — run it on every ES candidate.** Fix for opt-v4: **add jane-v4 (+ other strong non-panel bots) to the optimization panel.** opt-v2's robustness (it beat jane-v4 54%, zero out-of-panel losses) is exactly what opt-v3 sacrificed. |
@@ -1051,33 +1052,36 @@ information (v12) wash; defence (v9/v13/v15) and over-pushing a denial parameter
 regress.
 
 **Champion (crown + substrate) status:** the SPRT-confirmed best is
-**`claude-v36`** (2026-06-21) — the first Claude-LABEL champion built on the Jane
-base: a single-knob fork of `jane-v2` (DENY_FACTOR 0.3 → 0.15) that is BETTER than
-`jane-v2` on BOTH seed streams (train 58.9% / +62.6 Elo, holdout 60.6% / +74.5 Elo,
-zero regressions; gauntlet `claude-v36 --base jane-v2 --field jane-v2`) and beats a
-targeted field of the strongest/denial-heaviest opponents with no regression
-(claude-v5 61.6%, claude-v35 53.6%, jane-v4 54.9%, gemini-v1 82.9%). It proves the
-denial knob was still over-weighted at jane-v2's 0.3 — exactly the over-investment
-the real 4-player human game (`game:review 2h0y0y`) showed killing a Claude bot.
-The PRIOR champion `jane-v2` (the FIRST non-Claude champion, PR #5, beat `claude-v35`
-on both streams) is now superseded.
-**The next version we evolve branches from the current champion `claude-v36` by default**
+**`claude-v41`** (2026-06-23, PR #1) — the claude-v39 substrate (opt-v4 vector +
+restored `denialPositionCost`) plus Kyle's **seller-side trade pricing** (Refinement
+#3): `rivalThreatFactor` decoupled from `denyFactor` to **0.4**, and a **0.5
+deployability discount** on incoming set-handover cash. Crown gate `--base opt-v4
+--panel`, BOTH streams: SPRT **BETTER vs opt-v4 (55.7% train / 62.4% holdout) AND every
+panel member, zero regressions** (9/9). It supersedes the prior crown `opt-v4` (the
+robust maximin-ES champion) and the whole opt trio as the crown — it addresses the
+*root* of the trade hot-potato (bots too willing to SELL completers) rather than the
+buy/hold-side denial patch.
+**Crown ≠ ladder-top here — a documented non-transitivity.** claude-v41 sits **#4 on
+the panel-graph Elo ladder** (opt-v3 +210.7, opt-v4 +204.2, opt-v2 +201.1, then
+claude-v41 +194.1) even though it BEATS opt-v4 (56%) and opt-v2 (59%) **head-to-head**:
+the opt trio crush the low floor slightly harder, so the global least-squares Elo fit
+can't fully credit v41's direct edge (~6-Elo panel-fit noise; see "Non-transitivity &
+the crown"). The crown is gated on the **head-to-head SPRT vs the panel field**, not the
+global Elo rank — so claude-v41 is the **champion + substrate**, but the lobby's
+player-facing **Strongest/default** stays `opt-v3` (the ladder top, itself a rejected
+non-robust counter — never crowned). This is the inverse of the usual ladder-topper-
+that-fails-crown case, and exactly why the three decisions are kept separate.
+**The next version we evolve branches from the current champion `claude-v41` by default**
 — improve the measured best directly. Lineages are just provenance (the machine a
 version was discovered on) and borrowing across them is free, so the substrate is the
 best base regardless of family. Branch from a different base only as a deliberate call
-— an archived building block to exploit, or to escape a local maximum. The first lead
-on `claude-v36` — "sweep DENY below 0.15 to bracket the optimum" — was **tried in
-`jane-v3` (DENY 0.0625) and the gradient turned out to be a CYCLE, not a slope**:
-jane-v3 beats claude-v36 head-to-head on both streams but LOSES to jane-v2 (DENY 0.3),
-which claude-v36 beats — a rock-paper-scissors loop (see "Non-transitivity & the
-crown"). So the denial knob has **no single global optimum**; pushing it lower just
-trades which opponent you counter. A future version chasing more win share should look
-to a **different axis** than denial level, or to an **opponent-adaptive / mixed
-denial** strategy (the game-theoretic answer to the cycle), not a lower constant.
-After regenerating `ratings.ts`, the lobby's player-facing **Strongest/default**
-(top of the Elo ladder) should also be `claude-v36` — crown and player-default
-realigned (see "Two bests"). Jane's own evolution is in `versions/jane-v2/index.ts`,
-not this Claude log.
+— an archived building block to exploit, or to escape a local maximum. The standing
+denial-knob lesson still holds: it is a **CYCLE, not a slope** (jane-v3 ▷ claude-v36 ▷
+jane-v2 ▷ jane-v3 — an RPS loop; see "Non-transitivity & the crown"), so a future
+version chasing more win share should look to a **different axis** than denial level (as
+claude-v41 did — the seller-side trade axis), or to an **opponent-adaptive / mixed
+denial** strategy, not a lower constant. Jane's own evolution is in
+`versions/jane-v2/index.ts`, not this Claude log.
 
 **`jane-v4`** (2026-06-21, PR #6) — **RECORDED + player default, NOT crowned, NOT substrate.**
 A textbook case of the three decisions diverging (see "Two bests"):

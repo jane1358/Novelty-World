@@ -38,6 +38,8 @@ import { claudeV35Bot } from "./claude-v35";
 import { claudeV36Bot } from "./claude-v36";
 import { claudeV38Bot } from "./claude-v38";
 import { claudeV39Bot } from "./claude-v39";
+import { claudeV40Bot } from "./claude-v40";
+import { claudeV41Bot } from "./claude-v41";
 // Jane lineage — a bot family distinct from Claude (see EVOLUTION.md "Bot
 // lineages"). Every lineage is namespaced by label prefix — `claude-vN`,
 // `jane-vN`, `gemini-vN`.
@@ -129,6 +131,8 @@ export const VERSIONS: Readonly<Record<string, Bot>> = {
   "claude-v36": claudeV36Bot,
   "claude-v38": claudeV38Bot,
   "claude-v39": claudeV39Bot,
+  "claude-v40": claudeV40Bot,
+  "claude-v41": claudeV41Bot,
   "jane-v1": janeV1Bot,
   "jane-v2": janeV2Bot,
   "jane-v3": janeV3Bot,
@@ -207,11 +211,21 @@ export const RATING_PANEL: readonly string[] = [
   // counter-overfit hole. It also spans a distinct strategy (the Jane trade-memory
   // line), which is exactly the panel's membership rule.
   "jane-v4",
-  // opt-v4 — the CURRENT robust champion (crown base). Maximin ES vs this very
-  // (completed) panel: SPRT-beats opt-v2 AND jane-v4 on both streams with NO panel
-  // OR out-of-panel regressions — the robust improvement opt-v3 wasn't. Added per
-  // "crown a champion → add it here."
+  // opt-v4 — the PRIOR robust champion (now superseded by claude-v41). Maximin ES vs
+  // this very (completed) panel: SPRT-beats opt-v2 AND jane-v4 on both streams with NO
+  // panel OR out-of-panel regressions — the robust improvement opt-v3 wasn't. Kept as
+  // the crown base claude-v41 was measured against and a strong distinct opt vector.
   "opt-v4",
+  // claude-v41 — the CURRENT crowned champion (crown base). claude-v39 substrate
+  // (opt-v4 vector + restored denialPositionCost) + Kyle's seller-side trade pricing
+  // (Refinement #3): rivalThreatFactor decoupled from denyFactor to 0.4 + a 0.5
+  // deployability discount on incoming set-handover cash. CROWN GATE `--base opt-v4
+  // --panel`, BOTH streams: SPRT BETTER vs opt-v4 (55.7% train / 62.4% holdout) AND
+  // every panel member, ZERO regressions. Added per "crown a champion → add it here."
+  // (NOTE: it sits #4 on the panel-graph Elo ladder behind opt-v3/v4/v2 despite
+  // BEATING opt-v4/opt-v2 head-to-head — panel-fit non-transitivity; the crown is the
+  // head-to-head SPRT result, not the global Elo rank. See EVOLUTION.md.)
+  "claude-v41",
 ];
 
 /** Resolve a version label to its policy, or throw with the known set listed —
