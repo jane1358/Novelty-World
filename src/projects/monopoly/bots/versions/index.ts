@@ -68,6 +68,9 @@ import { optV1Bot } from "./opt-v1";
 // opt-v2: same ES paradigm, but a CROWN-ALIGNED MAXIMIN fitness (lift the WORST
 // per-member matchup rather than aggregate win-share). See `versions/opt-v2/`.
 import { optV2Bot } from "./opt-v2";
+// opt-v3: the maximin ES re-run with opt-v2 ITSELF in the 7-member panel, so the
+// search had to beat the champion. A distinct aggressive vector. See `versions/opt-v3/`.
+import { optV3Bot } from "./opt-v3";
 
 // ---------------------------------------------------------------------------
 // The version archive. Every bot snapshot the simulator can field by name, for
@@ -130,6 +133,7 @@ export const VERSIONS: Readonly<Record<string, Bot>> = {
   "search-v1": searchV1Bot,
   "opt-v1": optV1Bot,
   "opt-v2": optV2Bot,
+  "opt-v3": optV3Bot,
   dumb: dumbBot,
 };
 
