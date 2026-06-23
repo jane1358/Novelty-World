@@ -188,11 +188,19 @@ export const RATING_PANEL: readonly string[] = [
   "claude-v35",
   "jane-v2",
   "claude-v36",
-  // opt-v2 — the NEW champion (and crown base going forward): the ES-optimized
-  // hyper-aggressive multi-axis regime, the current ceiling (~206 on the panel
-  // graph). Added per "when you crown a champion, add it here" so future versions
-  // are measured against it and the optimizer's maximin fitness must beat it.
+  // opt-v2 — the CHAMPION (crown base): the ES-optimized hyper-aggressive regime,
+  // robust (beats the whole archive out-of-panel, no losses). Added per "when you
+  // crown a champion, add it here." NOTE: opt-v3 SPRT-beat opt-v2 on the panel but
+  // REGRESSES vs jane-v4 (38%) — a panel-overfit counter, NOT crowned; so opt-v2 is
+  // the champion-in-panel.
   "opt-v2",
+  // jane-v4 — added per the opt-v3 lesson (see EVOLUTION.md "opt-v3"): it is the
+  // strong bot the maximin ES counter-overfit AGAINST when it was omitted. Putting
+  // it in the panel both (a) makes the ladder price opt-v3's jane-v4 weakness and
+  // (b) forces the next optimization (opt-v4) to keep beating jane-v4 — closing the
+  // counter-overfit hole. It also spans a distinct strategy (the Jane trade-memory
+  // line), which is exactly the panel's membership rule.
+  "jane-v4",
 ];
 
 /** Resolve a version label to its policy, or throw with the known set listed —
