@@ -61,6 +61,39 @@ export interface ParamVector {
   /** Worth/price multiple to MORTGAGE to fund a buy (`RAISE_WORTH_MULT`).
    *  v38 = 1.25. */
   raiseWorthMult: number;
+
+  // --- EXTENDED dimensions (appended at the END so older saved vectors still
+  //     unpack the original 15 correctly). All default to a NO-CHANGE value so
+  //     DEFAULT_PARAMS still reproduces claude-v38 exactly. ---
+
+  /** Per-color MULTIPLIER on that set's first-principles `MONOPOLY_BONUS`. Lets
+   *  the ES RE-SHAPE the set-value ranking (the strategic axis hand-tuning barely
+   *  touched). 1.0 = v38 (no change). One field per color. */
+  monoMultOrange: number;
+  monoMultRed: number;
+  monoMultLightBlue: number;
+  monoMultPink: number;
+  monoMultYellow: number;
+  monoMultDarkBlue: number;
+  monoMultGreen: number;
+  monoMultBrown: number;
+
+  /** Per-count railroad synergy values (`RAIL_SYNERGY[2..4]`), giving the ES
+   *  freedom over the synergy SHAPE that the single `railSynergyScale` could only
+   *  scale uniformly. Still multiplied by `railSynergyScale`. Defaults are the
+   *  v38 table: [70, 180, 380]. */
+  railSynergy2: number;
+  railSynergy3: number;
+  railSynergy4: number;
+
+  /** Liquid-to-worst-rent ratio at which `sellerDistress` reaches 0 (the "safe"
+   *  cushion above worst rent). v38 = 1.5. Shaping the distress ramp tunes how
+   *  much survival cash a distressed seller will pay for. */
+  distressSafeRatio: number;
+
+  /** The develop-floor every monopoly is brought to first in `planBuild`
+   *  (`SPREAD_FLOOR`). v38 = 3 (the best rent-per-dollar jump). */
+  spreadFloor: number;
 }
 
 /** The DEFAULT vector — claude-v38 verbatim. The parameterized bot built from
@@ -81,6 +114,19 @@ export const DEFAULT_PARAMS: ParamVector = {
   liquidityRiskGain: 250,
   dipWorthMult: 1.4,
   raiseWorthMult: 1.25,
+  monoMultOrange: 1.0,
+  monoMultRed: 1.0,
+  monoMultLightBlue: 1.0,
+  monoMultPink: 1.0,
+  monoMultYellow: 1.0,
+  monoMultDarkBlue: 1.0,
+  monoMultGreen: 1.0,
+  monoMultBrown: 1.0,
+  railSynergy2: 70,
+  railSynergy3: 180,
+  railSynergy4: 380,
+  distressSafeRatio: 1.5,
+  spreadFloor: 3,
 };
 
 /** Inclusive [min, max] bounds for each parameter — SANE ranges the ES respects.
@@ -103,6 +149,23 @@ export const PARAM_BOUNDS: Readonly<Record<keyof ParamVector, readonly [number, 
   liquidityRiskGain: [50, 600],
   dipWorthMult: [1.0, 2.5],
   raiseWorthMult: [1.0, 2.5],
+  // Per-color bonus multipliers: 0.3 (heavily discount a set) … 3.0 (treble it),
+  // wide enough to fully re-rank the eight sets in either direction.
+  monoMultOrange: [0.3, 3.0],
+  monoMultRed: [0.3, 3.0],
+  monoMultLightBlue: [0.3, 3.0],
+  monoMultPink: [0.3, 3.0],
+  monoMultYellow: [0.3, 3.0],
+  monoMultDarkBlue: [0.3, 3.0],
+  monoMultGreen: [0.3, 3.0],
+  monoMultBrown: [0.3, 3.0],
+  // Rail synergy values, bracketing the v38 table [70,180,380] with room to grow
+  // the compounding either way, kept monotone-friendly by overlapping ranges.
+  railSynergy2: [0, 200],
+  railSynergy3: [40, 450],
+  railSynergy4: [100, 800],
+  distressSafeRatio: [1.0, 3.0], // 1.0 (no safe cushion) … 3.0 (very cautious)
+  spreadFloor: [2, 4], // 2 (lean) … 4 (push every set higher before spreading)
 };
 
 /** The parameter names in a FIXED order — the canonical vector layout the ES
@@ -124,6 +187,19 @@ export const PARAM_KEYS: readonly (keyof ParamVector)[] = [
   "liquidityRiskGain",
   "dipWorthMult",
   "raiseWorthMult",
+  "monoMultOrange",
+  "monoMultRed",
+  "monoMultLightBlue",
+  "monoMultPink",
+  "monoMultYellow",
+  "monoMultDarkBlue",
+  "monoMultGreen",
+  "monoMultBrown",
+  "railSynergy2",
+  "railSynergy3",
+  "railSynergy4",
+  "distressSafeRatio",
+  "spreadFloor",
 ];
 
 /** Pack a vector into the fixed-order number array the ES operates on. */

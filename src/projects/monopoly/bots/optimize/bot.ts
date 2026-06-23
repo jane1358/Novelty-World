@@ -68,8 +68,6 @@ const COLORS_BY_WEIGHT: readonly PropertyColor[] = [
   "brown",
 ];
 
-const RAIL_SYNERGY_BASE: readonly number[] = [0, 0, 70, 180, 380];
-
 const JAIL_FEE = 50;
 
 const LANDING_PROB: Readonly<Record<number, number>> = {
@@ -95,7 +93,22 @@ function rent3House(pos: number): number {
 export function makeParamBot(p: ParamVector): Bot {
   // --- monopolyBonus, derived from the tunable BONUS_SCALE (claude-v38's ROI
   //     formula) — memoized once per bot since the inputs are static given `p`. ---
-  const railSynergy = RAIL_SYNERGY_BASE.map((v) => Math.round(v * p.railSynergyScale));
+  // Rail synergy: the per-count values [2..4], each still scaled uniformly by
+  // railSynergyScale. Defaults [70,180,380] × 1.0 reproduce the v38 table.
+  const railSynergyValues: readonly number[] = [0, 0, p.railSynergy2, p.railSynergy3, p.railSynergy4];
+  const railSynergy = railSynergyValues.map((v) => Math.round(v * p.railSynergyScale));
+  // Per-color multiplier on each set's computed bonus — the ES re-shapes the
+  // set-value ranking. All 1.0 by default (no change vs v38).
+  const monoMultByColor: Readonly<Record<PropertyColor, number>> = {
+    orange: p.monoMultOrange,
+    red: p.monoMultRed,
+    "light-blue": p.monoMultLightBlue,
+    pink: p.monoMultPink,
+    yellow: p.monoMultYellow,
+    "dark-blue": p.monoMultDarkBlue,
+    green: p.monoMultGreen,
+    brown: p.monoMultBrown,
+  };
   const monopolyBonusByColor: Record<PropertyColor, number> = (() => {
     const bonuses: Record<PropertyColor, number> = {
       orange: 0, red: 0, "light-blue": 0, yellow: 0,
@@ -108,7 +121,8 @@ export function makeParamBot(p: ParamVector): Bot {
         expectedRent += ((LANDING_PROB[pos] ?? 0) / 100) * rent3House(pos);
         capital += (ownablePrice(pos) ?? 0) + 3 * HOUSE_COST[color];
       }
-      bonuses[color] = capital > 0 ? Math.round((expectedRent / capital) * p.bonusScale) : 0;
+      const base = capital > 0 ? (expectedRent / capital) * p.bonusScale : 0;
+      bonuses[color] = Math.round(base * monoMultByColor[color]);
     }
     return bonuses;
   })();
@@ -212,9 +226,10 @@ export function makeParamBot(p: ParamVector): Bot {
       worstRent = Math.max(worstRent, rentEstimateAt(state, Number(posStr)));
     }
     if (worstRent === 0) return 0;
-    if (liquid >= worstRent * 1.5) return 0;
+    const safe = worstRent * p.distressSafeRatio;
+    if (liquid >= safe) return 0;
     if (liquid <= worstRent) return 1;
-    return (worstRent * 1.5 - liquid) / (worstRent * 0.5);
+    return (safe - liquid) / (safe - worstRent);
   }
 
   // --- build planning (claude-v38 verbatim, constants from `p`) ---
@@ -329,7 +344,7 @@ export function makeParamBot(p: ParamVector): Bot {
       myMonopolies.push({ color, positions, mortgagedMembers, locked, floorOf });
     }
 
-    const SPREAD_FLOOR = 3;
+    const SPREAD_FLOOR = p.spreadFloor;
     for (const m of myMonopolies) {
       const stop = m.locked ? 0 : m.floorOf + 1;
       const target = Math.max(stop, Math.min(SPREAD_FLOOR, want));
