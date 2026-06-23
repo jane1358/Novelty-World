@@ -86,9 +86,14 @@ convincing story. The session structure that keeps this honest and resumable:
    eventually, the gauntlet/SPRT in "Measurement"). A hypothesis that **fails to
    beat `vN` is a result, not a waste**: log it as **rejected** in the version log
    (a negative result others shouldn't re-walk) and carry a *different* lead
-   forward. Never ratchet in a regression because the narrative was good. When a
-   version *is* crowned, **also bump `CHAMPION_VERSION` in `bots/roles.ts`** — the
-   lobby's "Champion" pointer — in the same change (see "Coexistence & promotion").
+   forward. Never ratchet in a regression because the narrative was good. Two
+   distinct outcomes, never collapsed (see "Two bests"): running `npm run
+   sim:ratings` re-ranks the Elo ladder and may make `v(N+1)` the lobby's
+   **Strongest/default** automatically (ungated) — but it becomes the **crown** (and
+   the **default substrate** the next version branches from) **only on a confident
+   SPRT win** (gauntlet `BETTER` on both streams). A ladder-topper that's only EVEN
+   under SPRT is recorded and may be the player default, yet is **not** crowned and
+   **not** the default substrate.
 5. **End by handing off via the clipboard.** The session closes by writing a
    short **handoff prompt** for the next one — "continue the loop, build
    `v(N+1)` from `vN`, suggested hypothesis = … because …" — **straight onto the
@@ -263,54 +268,368 @@ Elo from the v3 run: **v3 +161.7, v2 +160.2, v1 0** — v3≈v2 (within noise), 
 v3-vs-v2 pairing (1500 decisive) ran almost cap-free (**5 draws / 1500, 0.3%**),
 while v3-vs-v1 capped ~22% — see the draw decision below.
 
+## Two bests: strongest vs crown vs substrate
+
+There are **two audiences** asking two different questions, and conflating them is
+the single biggest trap in this whole model. Keep them apart:
+
+| | **Strongest / default** | **Champion / crown** | **Substrate** |
+|---|---|---|---|
+| Audience | the player clicking Play | us (the authoring loop) | us (the authoring loop) |
+| Question | "which bot challenges me most?" | "which gain is REAL?" | "what do we evolve FROM next?" |
+| Metric | **Elo rank** (best estimate) | **SPRT-confirmed** improvement | **judgment** — champion is the default prior |
+| Gate | none — follows the ladder | confidence (both seed streams) | none hard — survey ALL families; default to the champion, free to branch elsewhere or start fresh |
+| Lives in | the lobby UI (`roles.ts`) | EVOLUTION.md + dev tooling | EVOLUTION.md + dev tooling |
+
+**Three INDEPENDENT decisions per version** — don't collapse them:
+
+1. **Record** — archive the snapshot? **Legal ⇒ always** (it's cheap, and the
+   archive is the source of truth). Registering it in `versions/index.ts` also makes
+   it appear in the lobby and earn an Elo on the next `sim:ratings`.
+2. **Crown** — is it the *measured best*? **Elo proposes, SPRT confirms.** A
+   point-estimate lead inside the noise is not a crown. The candidate must be a
+   confident SPRT win (`BETTER` on **both** seed streams) over its base **AND regress
+   against no member of the anchor-panel field** (`npm run sim:gauntlet -- <v> --base
+   <champion> --panel`). The no-regression half is **load-bearing**: beating the
+   *current champion alone is not enough*, because strength is non-transitive — a bot
+   can COUNTER the champion while losing to the rest of the field, so "beat the last
+   guy" would just rotate the crown around a cycle (see "Non-transitivity & the
+   crown"). The panel field is what stops such a counter from stealing the crown.
+3. **Substrate** — what do we EVOLVE the next bot FROM? **A judgment, not a rule.**
+   Survey ALL versions across ALL families and pick the base you can most improve —
+   usually the current champion, so that's the default prior, but nothing confines
+   it. Lineages are just *provenance* (the machine a version was discovered on), and
+   **borrowing/stealing across them is free** — winning is the only loyalty, and that
+   applies to the code as much as to in-game play. If a line of attack stalls (a run
+   of EVEN/rejected results = a local maximum), backing out to a different base — or
+   starting from scratch for fresh ideas — is the smart move. The one guard: *default*
+   to the confirmed champion, never an automatic jump to a within-noise ladder-topper
+   (see the ratchet, below); deviating is fine when it's a deliberate call.
+
+### Why substrate (and crown) are SPRT-gated: the complexity ratchet
+
+New bots branch FROM a prior bot. If the acceptance bar were "Elo not worse" (or a
+merely-higher point estimate), every change that doesn't visibly hurt would get to
+stay — **including a whole subsystem added for a within-noise wobble.** Over a
+lineage this compounds: each generation inherits the last's complexity plus its
+own, drifting toward a baroque bot barely better than a far simpler ancestor
+(classic evolutionary **bloat / neutral drift**). The fix is to treat added
+complexity as a **cost the gain must outweigh**: the *default* base is the
+SPRT-confirmed champion, never the nominal ladder-topper, so you never *silently*
+build on a within-noise gain. Choosing a different base is fine when it's a
+*deliberate* call (a building block to cash in, escaping a local maximum) — what the
+guard forbids is noise auto-promoting itself into the build line, not a considered
+branch elsewhere.
+
+**But flat-but-more-complex is still worth keeping as an ARCHIVED building block** —
+scaffolding a *future* lever can exploit (claude-v3's N-way trades, claude-v4's
+mortgage-tempo, jane-v4's trade-memory). The discipline: **park it in the archive,
+don't ratchet it into the substrate** until a later lever cashes it in.
+"**Recorded but not substrate**" is a real, valid, common state.
+
+### Elo vs SPRT — same currency, different jobs
+
+- **Bradley–Terry Elo** (the round-robin in `ratings.ts`) is the **effect size**: a
+  magnitude, one scalar per bot, fit across the whole field (handles
+  non-transitivity). It estimates "how good is each bot" but a point estimate alone
+  can't say "is this gap real."
+- **SPRT** (the gauntlet) is the **decision/significance test**: a `BETTER`/`EVEN`/
+  `WORSE` verdict about a *specific Elo gap* (its hypotheses are written in Elo, e.g.
+  H0 = −20, H1 = +20), with controlled false-accept/reject rates, spending games
+  adaptively. It answers "is A confidently better than B" cheaply.
+
+You want both: an effect size with no significance is "might be noise"; a verdict
+with no magnitude is "real, but how much?" Don't try to buy confidence by cranking
+ratings games — Elo SE shrinks only ~as 1/√N (≈17 Elo at 400 games/pairing), so
+trusting a ~+14 Elo gap would cost ~6–8× the rating compute *every* regeneration.
+SPRT with tight bands is the right tool for the crown/substrate question.
+
+### Non-transitivity & the crown — the jane-v3 RPS cycle (2026-06-22)
+
+`jane-v3` (PR #7) exposed a hole in the old crown rule and is why the gate now tests
+against a **field**, not just the predecessor. It's a two-constant fork of `jane-v2`
+(`DENY_FACTOR 0.3 → 0.0625`, `SURVIVAL_FACTOR 1.5 → 2.0`) — the "sweep DENY lower"
+lead on `claude-v36`. Re-measured on current `main`, the top of the archive turned
+out to be a **rock-paper-scissors cycle** (round-robin head-to-head, 400 games each):
+
+> **jane-v3 beats claude-v36 (55.8%) beats jane-v2 (57.8%) beats jane-v3 (54.4%)**
+
+The trap: the old crown gate ran `--field <champion>` (the *single* current champion).
+By that rule jane-v3 is `BETTER` vs claude-v36 on **both** streams (train 54.2% / +29.2
+Elo, holdout 59.3% / +65.2 Elo, no regressions in a one-bot field) → it would have been
+**wrongly crowned**. But it's not the measured best — it's a *counter* to claude-v36 that
+loses to jane-v2/jane-v4, sitting at **rank 4** on the Elo ladder (which fits across the
+whole field and so already prices the cycle correctly). Crowning it would just rotate the
+crown around the loop.
+
+**The fix: crown against the anchor-panel FIELD (`sim:gauntlet --panel`), reject on any
+regression.** Run against the panel, jane-v3 is `BETTER` vs claude-v2/v5/v17/v35 and the
+base claude-v36 but **WORSE vs jane-v2** (train 39.9%, holdout 39.7%) → **REJECT on both
+streams**; the panel's own champion is jane-v2, not jane-v3. The no-regression half of
+`accepted = improvesVsBase && regressions.length === 0` is exactly the cycle guard — a
+counter can clear the base but never clears the whole field.
+
+Two lasting lessons: (1) **the denial knob has no global optimum** — below claude-v36's
+0.15 it stops being a gradient and becomes matchup-dependent, so more win share must come
+from a *different axis* or from a **mixed / opponent-adaptive** denial (the game-theoretic
+answer to a cycle: a pure strategy is always counterable, a mixed one isn't); (2) **the
+player-facing ladder was right all along** — Bradley–Terry handles non-transitivity, so
+"rank 4" was the honest read; only the crown *rule* needed the field.
+
+### trade-v1 (PR #8) — recorded, not crowned; the first paradigm-named lineage (2026-06-22)
+
+`trade-v1` ("asymmetric valuation trade engine") forks jane-v3's non-trade logic and
+replaces only the trade decision points with an **eval-based opponent-modeling** engine:
+an `OpponentModel` (`opponent-model.ts`) calibrated from trade accept/reject history
+(`calibration.ts`), feeding five exploit angles (buy-side completion, min-payment fix,
+mutual swaps, denial buys, sell-side surplus) that all target the same gap — jane-v3
+charges only 6.25% of the monopoly bonus as the threat cost of completing a rival's set,
+so trade-v1 tries to extract that surplus. **The PR self-reported ~66–78% (4 SPRT passes)
+vs a stale jane-v3.** Re-measured on current `main`, that evaporated: trade-v1 is the
+**single weakest version in the 40-bot archive at −33.5 Elo**, *below the anchor floor
+claude-v2 (0.0)*, and the `--panel` crown gauntlet **REJECTs on both streams** — WORSE
+than base claude-v36 (train 39.0% / holdout 37.3%) and regressing against **every** panel
+member (jane-v2 24–30%, claude-v35 27–29%). Forking jane-v3 (+108 Elo) and rewriting its
+trades cost ~**140 Elo**: the asymmetric-extraction engine, as built, loses far more than
+it gains against the real field — the classic head-to-head-vs-one-stale-opponent trap, and
+here it doesn't even win that exchange now.
+
+**Verdict:** legal (pure + self-contained), so **recorded** in the archive and rated; it is
+neither the Strongest (dead last) nor crowned. **Building block to keep:** the
+**opponent-modeling calibration** (reconstruct per-player accept thresholds from trade
+history) is the genuinely novel piece and is exactly the *opponent-adaptive* direction the
+jane-v3 cycle points to — archived, available to borrow into a stronger base later; the
+trade engine wrapped around it here is not.
+
+**Lineage note:** trade-v1 is the first **paradigm-named** family — `trade-v` namespaces the
+*system it explores* (asymmetric-valuation trading), not its authoring machine (it was
+written on Jane). See "Bot lineages" above: a prefix can carve a family by provenance *or*
+by paradigm.
+
+## Paradigm experiments (2026-06-23): search lookahead + ES parameter optimization
+
+By v38 the heuristic-tuning loop was, by its own honest assessment, **near-converged**:
+38 Claude versions + jane/gemini/trade-v1 had swept every single-axis lever, and the
+top of the ladder (claude-v36 / claude-v38 / jane-v2) sat in a tight **~10-Elo
+non-transitive cluster** that no parameter nudge could confidently break. So this branch
+(`monopoly-search-paradigm`) deliberately left tuning behind and tried the **two
+paradigms the entire archive had never used** — a different *decision procedure* (search)
+and a different *search method over the strategy space* (machine optimization of the
+rule bot). Both are recorded; neither has crowned (yet); both produced sharp, durable
+lessons and reusable infrastructure.
+
+### `search-v1` — rollout policy improvement (the first non-greedy bot). RECORDED, not crowned.
+
+Every prior bot is a **greedy 1-ply** value-maximizer. `search-v1` (lineage `search-v`,
+paradigm-named) plays claude-v38 verbatim *except* at two high-leverage discrete decisions
+(buy-decision, incoming trade votes), where it runs a **truncated-rollout search** —
+Tesauro's TD-Gammon rollout policy improvement: enumerate ≤4 legal candidates (the base
+policy's own move **always included**, so search can only match-or-beat it — the trade-v1
+trap avoidance), score each by rolling the game forward with all seats on the base policy
+(R=12 seeded samples × horizon=30), leaf = my `positionValue` **share** among active
+players. All rollout RNG derives from `state.rngState` → determinism/replay intact.
+
+- **Result (sim:versus):** BEATS base claude-v38 **55% train / 60% holdout**; BEATS
+  champion claude-v36 **52.5%**; BEATS anchor claude-v2 **62.5%** — but **REGRESSES vs
+  jane-v2 (45%)**. By the crown rule (no panel regression — the jane-v3 RPS-cycle guard)
+  → **NOT crowned**: it is a **non-transitive counter**, beating the line it forked from
+  while losing to a different strong strategy.
+- **The load-bearing finding — horizon, i.e. leaf quality, is everything.** At horizon
+  10/20 the position-share leaf is **myopic**: buying lowers my share *now* (cash out,
+  opponents keep earning) while the rent payoff lands a board-lap later, so short rollouts
+  systematically flip buys into declines (27/29 overrides at horizon 10) — the exact passive
+  cash-hoarding the project fights. The win only appears at ~30 turns, when the payoff
+  registers inside the horizon. **Diagnosis: the ceiling is leaf-evaluation quality, not
+  search depth** — short rollouts of a hand-tuned base mostly re-derive that base's own
+  preferences. This is the strongest argument yet for a **learned value** at the leaf
+  (the `RL-DESIGN.md` direction): it would remove the myopia without paying for 30-turn
+  rollouts.
+- **Building block:** `versions/search-v1/search.ts` — a pure, deterministic, self-contained
+  truncated-rollout engine (`rolloutOnce` / `scoreState` / `searchBest` / `sampleRngState`),
+  composing with the existing `candidates.ts`/`applyCandidate` primitives. Reusable for any
+  rollout/MCTS bot. (commit `a16a8a0`.)
+
+### `opt-v1` — ES-optimized parameter vector (ML tooling boosting the rule bot). RECORDED, not crowned.
+
+The whole archive was hand-tuned **one or two constants at a time**, SPRT-gating each
+step — manual hill-climbing that structurally cannot explore *combinatorial* parameter
+interactions. `opt-v1` (lineage `opt-v`, paradigm-named for the **method**) applied a
+**Separable Natural Evolution Strategy (SNES)** to claude-v38's **full 15-parameter
+vector jointly** (`optimize/` harness: `params.ts`/`snes.ts`/`fitness.ts`/`worker.ts`/
+`bot.ts`; a `param-fidelity.test.ts` pins that the default vector reproduces claude-v38
+byte-for-byte, so the ES optimizes the *real* bot). Fitness = win-share vs the anchor
+panel. The frozen `opt-v1` reuses the *exact* parameterized factory bound to the winning
+vector (fidelity by construction, not hand-transcription).
+
+- **The winning vector is genuinely non-obvious** — it moved against the hand-tuned grain:
+  **denyFactor 0.15→0.39** (the whole recent trend was to *lower* denial!), bonusScale
+  16489→20956, railSynergyScale 1.0→1.41, jailDangerRent 350→150, raiseWorthMult 1.25→1.99,
+  survivalFactor 1.5→0.81, houseScarce 6→3 — a coordinated combination no one-axis sweep
+  would reach. **75.3% aggregate train win-share vs the panel** (baseline 58%).
+- **Crown gate (both streams): REJECT — but instructively.** opt-v1 is **EVEN vs the base
+  claude-v36** (49.7% train / 49.6% holdout) → fails "improve vs base." YET it has the
+  **highest panel Elo on both streams (Champion)** and — unlike search-v1 — **regresses
+  against NO panel member**, tying-or-beating *every* one including jane-v2 (52.5% train /
+  51.1% holdout). It crushes the weak members (v2 72–77%, v5 68–80%, v17 72–75%, v35 62–66%).
+- **The lesson — fitness must be crown-aligned.** The 75% aggregate was **inflated by the
+  easy wins**; the marginal battle vs the two strongest (v36, jane-v2) is a wash. Optimizing
+  *aggregate* win-share spent the ES's pressure on members it already beat, not on the hard
+  matchup the crown actually requires. (commit `dd51935`; fidelity via factory reuse.)
+
+### `opt-v2` — crown-aligned **maximin** ES. **NEW CROWNED CHAMPION (crown + substrate).**
+
+The direct fix for opt-v1's misalignment: optimize the **minimum per-member win-share**
+(`--fitness maximin`, commit `a616616`), measured in the **same 2v2 pairing shape as the
+crown gauntlet**, so the ES maximizes its *worst* matchup — forced to fight v36/jane-v2
+instead of padding against the weak members. It worked, decisively.
+
+- **Crown gate (`--base claude-v36 --panel`), BOTH streams: ✅ ACCEPT.** opt-v2 is SPRT
+  **BETTER vs every panel member on both streams, with NO regressions** — including the base
+  claude-v36 (**65.6% train / 59.6% holdout**) and jane-v2 (**68.2% / 66.7%**), the exact bot
+  that capped search-v1 and that opt-v1 could only tie. Panel Elo (claude-v36 = 0):
+  **opt-v2 +103 train / +89 holdout** — far clear of the field.
+- **Out-of-panel generalization (50 seeds each, opponents NOT in the optimization panel):**
+  opt-v2 BEATS all of them — claude-v38 54%, jane-v4 54%, jane-v3 64%, claude-v30 80%,
+  claude-v21 74%, claude-v29 80%. **Zero losses anywhere in the archive.** This is the
+  signature of *general* strength, NOT a non-transitive counter (which would win some / lose
+  others, like jane-v3). It is a real, defensible champion.
+- **Honest margin caveat:** opt-v2 was optimized vs the panel and the panel-graph Elo
+  (+89–103) **overstates** its edge over the strongest few — vs the toughest non-panel bots
+  (claude-v38, jane-v4) the true edge is ~**54% ≈ +28 Elo**, real but modest. It dominates the
+  mid-field and *beats* the top; the +100 is panel-inflated. The rigorous verdict is the
+  two-stream SPRT crown gate, which is clean.
+- **What it discovered — joint optimization found what one-axis tuning structurally couldn't:
+  a coherent HYPER-AGGRESSIVE profile across many axes at once.** denial UP (0.15→0.408),
+  voluntary reserve very thin (floorRentFraction 0.3→0.126), trades accepted on a tiny cushion
+  (acceptMargin 30→5), never hoard houses — always hotel (houseScarce 6→0), distressed-cash
+  weighted heavily (survivalFactor 1.5→2.556), cash deployed hard (raise/dip mults up). The
+  archive's entire arc was *"aggression beats defense"* (v17's thinner reserve, etc.); opt-v2
+  pushes aggression **further than any hand-tuned version dared, on five-plus axes
+  simultaneously** — precisely the combinatorial region a one-or-two-constant SPRT walk cannot
+  reach. **This is the headline result of the branch: the ES-as-mutation-operator, given a
+  crown-aligned (maximin) fitness, broke the heuristic frontier the hand-tuned loop had
+  declared converged.** (commit `d285df4`; faithful factory reuse like opt-v1.)
+
+### Meta-read and the open frontier
+
+Three things this branch established. (1) **Search genuinely beats greedy** — search-v1 over
+claude-v36 (52.5%) is a real, first-of-its-kind signal; its ceiling is leaf-evaluation quality
+(the horizon finding), pointing at a learned value. (2) **The hand-tuned frontier was NOT a hard
+cap** — it only looked converged because the search method (manual one-axis SPRT) couldn't see
+multi-axis combinations; a crown-aligned ES walked straight past it. (3) **Fitness alignment is
+everything** — opt-v1 (aggregate) only tied the champion; opt-v2 (maximin, = the crown metric)
+crushed it. The same vector space, a better objective.
+
+**How the maximin loop actually ran (2026-06-23):** opt-v2 (robust crown) → opt-v3 (re-run with
+opt-v2 in the panel: SPRT-beat opt-v2 but **counter-overfit**, losing to the omitted jane-v4 →
+recorded, not crowned) → **add jane-v4 to the panel** → **opt-v4** (beats opt-v2 AND jane-v4,
+NO out-of-panel regressions → ROBUST crown, supersedes opt-v2). Lesson proven: **panel-completion
++ the out-of-panel check converts the overfit-counter trap into a robust gain.** BUT the top is now
+a **non-transitive CLUSTER** (opt-v2/opt-v3/opt-v4 + jane-v4, all within ~12 Elo, cycling): the Elo
+ladder nominally ranks the latest *counter* (opt-v3) #1, while the *crown* (no-regression) correctly
+holds opt-v4. Further maximin rounds will likely keep cycling inside this cluster rather than
+dominate it, so **the next real gain is STRUCTURAL, not another parameter round.**
+
+Open structural leads from here:
+- **search-on-opt-v4:** put search-v1's rollout improvement on top of the opt-v4 base — combine
+  lookahead's edge with opt-v4's robustness. (Measurement is slow; rollout bot.) The most promising
+  way *out* of the parameter cluster.
+- **Expanded parameter space:** the ES only optimized claude-v38's 15 existing constants. The
+  optimizer has since been **widened to 28 dimensions** (commit `70b4888`: 8 per-color
+  `MONOPOLY_BONUS` multipliers + 3 rail-synergy values + `distressSafeRatio` + `spreadFloor`,
+  all fidelity-preserved) — a richer basin the maximin loop can climb. **Not yet run.**
+
+### In-flight handoff (2026-06-23) — two experiments queued, neither baked
+
+The durable pickup state, so a fresh session can resume from the repo alone (the loop's rule:
+state lives here, not in a pasted blob).
+
+**(A) `opt-v5` — a harvested 15-param maximin winner, NOT yet baked or validated.** Re-run of the
+maximin ES against the **9-member panel** (claude-v2/v5/v17/v35, jane-v2, claude-v36, opt-v2, jane-v4,
+**opt-v4**). Train maximin **54.5%** (baseline claude-v38 35.5%) — its worst matchup over the 9 panel
+members, *including opt-v4*, is >50% on the train seeds, so it is a genuine **candidate to beat the
+champion opt-v4** (same pattern by which opt-v4 beat opt-v2). The exact winning vector (SNES, maximin,
+9-panel, seed 1):
+```
+denyFactor 0.37993327623361783, bonusScale 18467.037936993464, railSynergyScale 1.2285592260282767,
+utilPairBonus 16.29118711197981, baseFloor 7.008983216778028, floorRentFraction 0.1,
+floorCap 161.54101792608975, hotelCushion 344.2221252625536, houseScarce 2.0115417088378957,
+jailDangerRent 150, acceptMargin 5, survivalFactor 1.6007327817476908,
+liquidityRiskGain 258.5361030857855, dipWorthMult 1.2653800365373533, raiseWorthMult 1.9729047015060546
+```
+**To finish opt-v5:** (1) bake — `cp -r versions/opt-v2 versions/opt-v5`, rewrite `index.ts`
+(`OPT_V5_PARAMS` = the vector above, `optV5Bot`, header), adapt `policy.test.ts`'s pinned vector,
+register in `versions/index.ts`. (It is a **15-param** vector, so opt-v2's copied `bot.ts` factory is
+the right one — no 28-param work needed.) (2) `npm run typecheck` + `lint` + the new `policy.test.ts`.
+(3) crown gate: `npm run sim:gauntlet -- opt-v5 --base opt-v4 --panel` on **both** streams (add
+`--prefix holdout`). (4) **MANDATORY out-of-panel check** (this is what caught opt-v3):
+`npm run sim:versus -- opt-v5 <jane-v3 | claude-v38 | claude-v30>` — must NOT regress. (5) If BETTER
+vs base on both streams AND no regressions **panel AND out-of-panel** → robust champion (run
+`sim:ratings`, add opt-v5 to `RATING_PANEL`, push); else record as recorded-not-crowned (a counter).
+
+**(B) The 28-param wide run — harness ready (`70b4888`), NOT started.** Launch:
+`npm run sim:optimize -- --pop 36 --gens 30 --games 990 --fitness maximin --workers 14 --seed 1`
+(~3–6 h; the space is bigger, hence the larger pop/gens). **Baking caveat:** a 28-param winner
+**cannot** bake from opt-v2's 15-param `bot.ts` — copy the **current** `optimize/bot.ts` (28-param
+factory) into the new snapshot dir and bind the 28-vector to it, then the same crown-gate +
+out-of-panel discipline as above. Note: opt-v5 and a wide run both write `optimize/best-vector.json`,
+so **run them one at a time** (or in separate worktrees).
+- **Out-of-distribution robustness:** opt-v2 is optimized vs THIS panel; a future check is its
+  strength vs a held-out *opponent* set and vs humans, to confirm the hyper-aggressive profile
+  isn't exploiting a shared bot blind spot. (It generalized across the archive, which is
+  encouraging, but the whole archive shares lineage.)
+
 ## Coexistence & promotion
 
-The production `claude` strategy (`registry.ts`) drives real online and dev
-games — but it owns **no** policy code. It is a **pointer into the version
-archive**: `bots/live.ts` exports `LIVE_VERSION`, and `registry.ts` resolves
-`claude` to that snapshot (`VERSIONS[LIVE_VERSION]`). So:
+A seat fields a **concrete version label** (`Player.botStrategy`), resolved by
+`registry.ts` `botFor` straight through `VERSIONS`. There is **no** curated
+production pointer any more — no `live.ts`, no `LIVE_VERSION`, no
+`CHAMPION_VERSION`. So:
 
-- experimental versions **run side-by-side** with the live bot in one process —
-  they're all just entries in `VERSIONS`, fielded by label by the tournament;
-- **promotion is a one-line change** — repoint `LIVE_VERSION` in `bots/live.ts`
-  (that file is the source of truth for what currently ships); no code copy, no
-  test churn (each version owns its tests under `versions/`);
-- **the live bot and the gauntlet floor are orthogonal.** Shipping a version
-  live is a product call; the floor (`v1`) and the measurement field are
-  unaffected — the gauntlet fields versions by label and anchors Elo at `v1`, so
-  `LIVE_VERSION` can never move a result. You can ship a version live **without**
-  making it the floor;
-- the archive reconstructs and runs any past version — `v1` included, now a real
-  frozen snapshot (`versions/v1/`), no longer an alias to the live file.
+- experimental versions **run side-by-side** in one process — they're all just
+  entries in `VERSIONS`, fielded by label by the tournament and the lobby alike;
+- **the player default is automatic and ungated.** Register a version + run
+  `npm run sim:ratings`; the regenerated Elo ladder (`bots/ratings.ts`) re-ranks
+  the field, and whoever tops it becomes the lobby's **Strongest/default**. No code
+  copy, no pointer to bump, no test churn (each version owns its tests under
+  `versions/`). **This is NOT the crown** — crowning needs SPRT (above);
+- **measurement and the anchor are orthogonal.** The Elo anchor (`claude-v2 = 0`)
+  only fixes the scale; it never has to be the best or the floor. Adding a version
+  can't move the anchor, so saved numbers stay comparable across regenerations;
+- the archive reconstructs and runs any past version — `claude-v1` included, a real
+  frozen snapshot (`versions/claude-v1/`).
 
-This inverts the old coupling where `v1` *aliased* the live policy file: the
-archive is now the single source of truth, and "live" and "floor" are two
-independent selectors over it.
+The archive is the single source of truth; the Elo ladder is the single source of
+**player-facing rank**; the SPRT verdict is the single source of **crown/substrate**.
 
-### The three lobby pointers (Claude / Champion / Latest)
+### The lobby is derived, not curated
 
-The lobby lets a player field a bot under **three named pointers**, declared as
-data in `bots/roles.ts` (`BOT_ROLES`) and resolved through `registry.ts`. They
-are **live pointers**: a seat stores its *role* (`claude` / `champion` /
-`latest`), not a frozen version, so it always plays whatever the pointer names
-in the deployed code — retargeting one moves every seat using it on the next
-deploy. Each is moved by a different hand:
+The lobby offering (`bots/roles.ts` `LOBBY_BOTS`) is computed entirely from the
+archive + the generated Elo ladder, **Elo-only, no hand-edited pointers**, and
+**never surfaces the crown** to players:
 
-- **Claude** → `LIVE_VERSION` (`bots/live.ts`) — the hand-picked shipped bot. A
-  product call on a **human green light**, as above.
-- **Champion** → `CHAMPION_VERSION` (`bots/roles.ts`) — the best by measurement.
-  **Re-pointing this is the code half of the acceptance ritual:** when a `vN`
-  clears the bar and the version log below crowns it the new champion, bump
-  `CHAMPION_VERSION` to that label in the same change. (The loop advancing the
-  champion needs no human green light — only the *Live* pointer does.)
-- **Latest** → `LATEST_VERSION` (`bots/roles.ts`) — the newest snapshot,
-  **derived** from `VERSIONS`. Nobody edits it; registering a version in
-  `versions/index.ts` makes it the latest automatically.
+- **Strongest** — highest Elo across all families. The lobby default and the
+  `addBot`/`freshGame` seat (`DEFAULT_BOT_VERSION`). No confidence gate.
+- **Best of each family** — highest Elo within that family.
+- **Full version list per family** — every registered label, oldest → newest.
+- **Deprecated** — any version with no Elo (excluded via `RATING_EXCLUDED`, or
+  not-yet-rated): rendered struck-through and unselectable.
 
-So Champion, Live, and Latest are three independent selectors over the same
-archive, and can all name different versions (today: Live = Champion = `v17`,
-Latest = `v18`). `dumb` remains a resolvable strategy for the simulator/gauntlet
-but is no longer offered in the lobby.
+A seat stores the **exact version label** it plays. Adding a family is one row in
+`FAMILY_SPECS` (`roles.ts`); adding a version is one entry in `versions/index.ts`.
+`dumb` remains a resolvable strategy for the simulator/gauntlet but is not offered
+in the lobby.
+
+**Lineage prefixes name a machine OR a paradigm (2026-06-22).** Originally a prefix
+meant the **authoring machine** (`claude-v`/`jane-v`/`gemini-v` — provenance). The
+`trade-v` lineage (PR #8) generalizes that: a prefix can instead namespace a
+**system/paradigm a line of versions explores** — here an asymmetric-valuation trade
+engine — independent of who authored it (`trade-v1` was written on Jane). The rule a
+prefix self-documents what the lineage IS still holds; for a paradigm family that's
+the *idea*, not the author. Provenance and paradigm are both legitimate ways to carve
+a family — pick whichever the lineage is actually *about*. (This doesn't change the
+substrate rule: lineages remain non-silos, and a paradigm family's good subsystems are
+free to borrow into any base — see "Two bests".)
 
 ## Decisions (locked 2026-06-19)
 
@@ -319,11 +638,12 @@ but is no longer offered in the lobby.
    change *anything*. We do **not** pre-extract shared "bot libraries" — that would
    trap future versions into logic we may want to drop. Only genuinely stable,
    non-strategic facts (board geometry, space names, the official net-worth
-   calculation) live in shared infrastructure. **The live bot is a pointer, not a
-   copy:** `bots/live.ts`'s `LIVE_VERSION` names which archived snapshot
-   `registry.ts` ships, so promotion is a one-line repoint **only on a human
-   green light** and never redefines the gauntlet floor (`v1`). Every version —
-   `v1` included — is a self-contained snapshot under `versions/`, so we can
+   calculation) live in shared infrastructure. **What the lobby fields is derived,
+   not copied:** a seat stores a concrete version label and `registry.ts` `botFor`
+   resolves it through `VERSIONS`; the "best" picks are the highest-Elo labels from
+   the generated ladder (`ratings.ts`), so promotion is just the next
+   `sim:ratings` — no pointer, no green light. Every version — `claude-v1`
+   included — is a self-contained snapshot under `versions/`, so we can
    always run and branch from any of them.
 2. **Evaluation target — gauntlet + Elo, decided by SPRT** (see Measurement), not
    head-to-head-with-predecessor only.
@@ -382,6 +702,22 @@ but is no longer offered in the lobby.
    `dumb`** (which measures nothing and is hard-rejected from any field). v1 remains
    in `VERSIONS` and fully runnable; only the *default* field changed.
 
+9. **`gemini-v1` is DEPRECATED — ✅ TAKEN (2026-06-21, by Kyle).** Same cost
+   reasoning as Decision 8, applied to the worst bot in the archive. `gemini-v1` sits
+   ~150 Elo below the field (the lowest by a wide margin) *and* is the capped-game
+   bottleneck: its pairings run to the 2000-turn cap and each one is a ~6-min slog
+   that swamps any ratings/gauntlet run for near-zero signal (it dominated the
+   focused `claude-v36` ratings run until it was dropped, cutting that run from ~30
+   min to ~25 s). So it's added to **`RATING_EXCLUDED`** — unrated, rendered
+   deprecated in the lobby, and dropped from the gauntlet's default field (the field
+   filter now excludes the whole `RATING_EXCLUDED` set generically, not just
+   `claude-v1`; there's no `--with-gemini` opt-in — force it back with an explicit
+   `--field` if ever needed). It is the **sole Gemini version**, so this deprecates
+   the **entire Gemini family** in the lobby — intended. Like `claude-v1`, this is
+   **purely a cost optimization**: `gemini-v1` is a real strategy (a whole lineage's
+   v1), stays in `VERSIONS`, and remains fully runnable; only its rating/default-field
+   participation changed. The `RATING_EXCLUDED` set is now `{claude-v1, gemini-v1}`.
+
 ## Version log
 
 The running record of bot versions and how each fared against the field — **both
@@ -391,6 +727,14 @@ bot as of this doc.
 
 | Version | Date | Hypothesis / change | Result vs. field | Status |
 |---------|------|---------------------|------------------|--------|
+| claude-v39 | 2026-06-23 | **Restore the holder-side denial price on the opt base** (`versions/claude-v39/`): the opt-v4 champion factory + `denialPositionCost` (the v35 symmetric-pricing fix the v36→opt line dropped), opt-v4 vector unchanged — ONE logical change. Motivated by real human-vs-bot games `514j43` + `16043u`, where two opt/claude bots hot-potatoed one completer 18–24× (the strong-set ring the `rivalCanAcquire` phantom gate doesn't catch) while the human just developed and won. | **Ring collapses** — one lot's hops 15–99 → 1–6 in the accumulator config (pinned in `policy.test.ts`). Gauntlet `--base opt-v4 --panel`: **EVEN vs opt-v4 (50.1%, ~2k games)**, **BETTER vs all 8 other panel members** (57–68%), **zero regressions**. Confirmed EVEN across 3 seed streams (50/52/54%). | **RECORDED, not crowned** — EVEN vs base (a clean non-regression, not a strict win), so a player-default-eligible ladder peer of the opt trio, not a crown. Value: removes a human-exploitable degenerate behavior at no measured cost; the clean substrate for Refinement-target #3 (seller-side trade pricing). NOTE: the deny-knob is NOT the Bot-2 lever — sweeping `denyFactor` down regressed (42–45% vs opt-v4), up plateaued then deadlocked; see Refinement-target #3 for the decoupled seller-side direction. |
+| opt-v4 | 2026-06-23 | **Maximin ES vs the COMPLETED 8-panel** (`versions/opt-v4/`): the opt-v3 fix in action — add jane-v4 (the bot opt-v3 counter-overfit against) to the panel, so the maximin search must beat opt-v2 AND jane-v4. A distinct robust vector (denial 0.317, hotelCushion 300→0, bonusScale 16.4k→22k). | **CROWN GATE vs base opt-v2, BOTH STREAMS: ✅ ACCEPT.** SPRT BETTER vs opt-v2 (57.1% train / 59.3% holdout), vs jane-v4 (58.1/57.7%), and vs every panel member; NO regressions. **Out-of-panel: NO regressions either** (jane-v3 56%, claude-v38 52%, claude-v30 80%, claude-v21 70%) — unlike opt-v3, it holds EVERYWHERE. | **ACCEPTED — NEW ROBUST CROWNED CHAMPION (crown + substrate, supersedes opt-v2).** Validates the methodology end-to-end: COMPLETING the panel (adding the counter's nemesis jane-v4) turned opt-v3's overfit-counter trap into a genuine robust improvement. The maximin loop + panel-completion + out-of-panel check is productively self-improving. Added to RATING_PANEL. |
+| opt-v3 | 2026-06-23 | **Maximin ES re-run with opt-v2 IN the panel** (`versions/opt-v3/`): the apparent "self-improving loop" step — add the champion opt-v2 to the panel so the maximin search must beat it. Found a DISTINCT aggressive vector (denial 0.29 vs opt-v2's 0.41, monopoly weight bonusScale 16.4k→24.8k, floorCap 300→100). | **Crown gate vs base opt-v2 (panel): SPRT BETTER both streams (55.9% train / 55.2% holdout vs opt-v2), no PANEL regressions, +12 panel-Elo. BUT the out-of-panel check REGRESSES vs jane-v4 (38%)** — jane-v4 is NOT in the panel. | **RECORDED, NOT crowned; opt-v2 stays champion.** The jane-v3 RPS-cycle trap, now at the OPTIMIZATION layer: maximin against an INCOMPLETE panel overfits into a non-transitive COUNTER that loses to the omitted strong bot. The `--panel` crown gate alone CAN'T catch it (jane-v4 isn't a member); the **out-of-panel sim:versus check is what caught it — run it on every ES candidate.** Fix for opt-v4: **add jane-v4 (+ other strong non-panel bots) to the optimization panel.** opt-v2's robustness (it beat jane-v4 54%, zero out-of-panel losses) is exactly what opt-v3 sacrificed. |
+| opt-v2 | 2026-06-23 | **Crown-aligned MAXIMIN ES** (`versions/opt-v2/`, lineage `opt-v`): re-run the SNES joint optimization of claude-v38's 15-param vector with fitness = the MINIMUM per-member win-share vs the panel (same 2v2 shape as the crown gauntlet), fixing opt-v1's aggregate-fitness misalignment. Hyper-aggressive multi-axis winner: denial 0.15→0.408, reserve fraction 0.3→0.126, acceptMargin 30→5, houseScarce 6→0 (always-hotel), survivalFactor 1.5→2.56. | **CROWN GATE BOTH STREAMS: ✅ ACCEPT.** SPRT BETTER vs base claude-v36 (train 65.6% / holdout 59.6%) AND every panel member incl jane-v2 (68/67%), NO regressions. Out-of-panel: beats claude-v38/jane-v4/v30/v21/v29 (54–80%, ZERO losses in the archive). Panel Elo **+103/+89 over v36** (panel-inflated; honest edge vs the strongest ~+28). Ladder **#1 at 206**. | **ACCEPTED — NEW CROWNED CHAMPION (crown + substrate).** First crown of the branch; broke the "converged" hand-tuned frontier via a multi-axis combo one-axis SPRT tuning structurally couldn't reach. Added to RATING_PANEL. |
+| opt-v1 | 2026-06-23 | **ES joint param-optimization, AGGREGATE fitness** (`versions/opt-v1/`): SNES over claude-v38's 15-param vector, fitness = win-share vs the anchor panel — the first "ML-tooling boosts the rule bot" version. Non-obvious winner (denial UP 0.15→0.387, against the hand-tuned trend). Faithful factory reuse (bound vector). | **Crown gate BOTH streams: REJECT.** EVEN vs base claude-v36 (49.7/49.6%) but highest panel Elo + NO regressions (ties/beats every member incl jane-v2). 75% train fitness inflated by crushing the WEAK members. Ladder #2 at 168. | **RECORDED, not crowned.** Lesson: aggregate fitness is misaligned with the crown (pads easy wins) → motivated opt-v2's maximin. |
+| search-v1 | 2026-06-23 | **Rollout policy improvement** (`versions/search-v1/`, lineage `search-v`): the FIRST non-greedy bot — truncated-rollout search (TD-Gammon style) over claude-v38 at the buy + trade-vote decisions; the champion's own move is ALWAYS a candidate (safety, so search can only match-or-beat greedy). Horizon=30 (load-bearing). | **Beats base v38 55%/60%, champion v36 52.5%, anchor 62.5% — but REGRESSES vs jane-v2 (45%).** Ladder #6 at 108 (Bradley-Terry correctly discounts the jane-v2 loss). | **RECORDED, not crowned** — a non-transitive counter (the jane-v3 pattern). Lesson: lookahead beats greedy, but leaf-eval QUALITY (horizon-sensitive myopia) is the ceiling → points at a learned value. Building block: `search.ts` rollout engine. |
+| jane-v3 | 2026-06-22 | **DENY_FACTOR 0.3 → 0.0625, SURVIVAL_FACTOR 1.5 → 2.0** (PR #7, `versions/jane-v3/`): a two-constant fork of `jane-v2` chasing the "sweep DENY below claude-v36's 0.15" lead — push denial near zero. Self-contained graft onto current `main` (PR branched from stale `324bd2c`); legality clean (deterministic, no cross-version imports). Diff vs jane-v2 is exactly the two constants. | **RECORDED on the ladder at rank 4/39** (Elo 95.8 full-RR / 109.5 panel — below champion claude-v36 132.7, and 3rd in the Jane family behind jane-v2 and jane-v4). **Crown gate `--panel` (anchor-panel field), BOTH streams: REJECT.** BETTER vs base claude-v36 (train 54.2% / +29.2 Elo, holdout 59.3% / +65.2 Elo) and vs claude-v2/v5/v17/v35, but **WORSE vs jane-v2** (train 39.9%, holdout 39.7%); field champion = jane-v2. The PR's own (stale, single-opponent) claim of +28.6/+66.8 vs claude-v36 REPRODUCED — but it only ever measured vs claude-v36. | **RECORDED, NOT CROWNED.** A non-transitive COUNTER to claude-v36, not a global improvement: jane-v3 ▷ claude-v36 ▷ jane-v2 ▷ jane-v3 is an RPS cycle (see "Non-transitivity & the crown"). Champion/substrate stays **claude-v36**. Archived building block: sub-0.15 denial as a known claude-v36 counter / seed for a future **mixed-denial** bot. This PR is what motivated the crown-gate-vs-field fix (panel field) and the anchor-panel rating refactor. |
+| claude-v36 | 2026-06-21 | **DENY_FACTOR 0.3 → 0.15 — denial STILL over-weighted** (`versions/claude-v36/valuation.ts`): branched from the cross-lineage champion **jane-v2** (substrate per "Two bests" — borrowing across lineages is free; the FIRST Claude-label version on the Jane base, since the Claude line's own v35 sits behind jane-v2). jane-v2's single biggest discovery was halving the denial knob 0.6→0.3 (+71 Elo vs v29: "wasting resources blocking opponents"); it then moved to the reserve/cushion axes and **never swept DENY below 0.3** (no record in the repo). DENY 0.6→0.3 is the STEEPEST single-parameter gradient in the whole log, so the optimum may sit lower. This is the direct, gauntlet-actionable lesson from the real 4-player game vs humans (`npm run game:review -- 2h0y0y`): a Claude bot (Rebecca) mortgaged THREE lots to deny-buy Boardwalk, left itself no liquidity buffer, and that over-leverage killed it (finished last). Halving again (0.3→0.15) mirrors jane's own 0.6→0.3 step; the bot still books a real (thinner) premium for a rival's last open lot — v5 proved denial has genuine positive value, so this sharpens self-focus without abandoning it. Single variable; everything else jane-v2 verbatim. | **BETTER vs jane-v2 (base) on BOTH streams, NO regressions:** train 58.9% (205–143, 348 decisive, 0 draws, +62.6 Elo), holdout 60.6% (172–112, 284 decisive, 0 draws, +74.5 Elo) — near-identical streams (real, not noise). Targeted field (train) BETTER vs ALL: claude-v5 (heavy-denial 0.6) 61.6%, claude-v35 53.6%, jane-v4 54.9%, gemini-v1 82.9%; Elo (jane-v2=0) **claude-v36 +27.7 — top of field**, no regressions. | **ACCEPTED — NEW CROSS-LINEAGE CHAMPION (crown + substrate).** Confirms denial was over-weighted even at jane-v2's 0.3: another step down transfers win share with NO regression against the denial-heavy claude-v5 (in fact BETTER, 61.6%) — there was no non-transitive denial-sensitivity trap. The first Claude-lineage champion since the line adopted the Jane base; the game's "denial over-investment is fatal" lesson is the one that the gauntlet rewards (its develop-faster / keep-a-buffer lessons map onto the already-rejected v4/v9/v19 — the "eval blind spot": those matter vs HUMANS but wash vs the bot field). Base for the next version. The DENY optimum is now somewhere **≤0.15** — a future version should sweep lower and bracket it (as v18 did the reserve). |
 | v31 | 2026-06-21 | **From-scratch DISTRESS grab — corner (A)** (`versions/v31/trades.ts` `proposeBestTrade` Offer E): extend the proven distress-discount lever to a whole-set buy. v29 buys a distressed rival's COMPLETER for a set the bot is one short of; v31 opens a from-scratch grab — when a GENUINELY DISTRESSED opponent owns a WHOLE, building-free monopoly of a color the bot holds NONE of, buy the entire set at the distress-discounted price and take it off the board. v24 proved a FAIR-PRICE from-scratch grab washes (positive-sum); the new `isDistressed` gate was meant to make it UNDERPRICED (the winning condition). Held + developed, never relocated (a complete monopoly has no third party to bounce to). Gated by `worthAcquiring` (real prize ≥ 100, stays above the rent reserve). Branched from champion v29; isolated to Offer E. `v31/acquire.test.ts` pins the structural finding (below). | **REJECTED on triage — EVEN vs v29 (base): 49.4% win share (1540–1578, 3118 decisive, 27 draws, confident EVEN, LLR impr −7.35 / regr −2.98).** Elo (v29=0) **v31 −4.2 ≈ v29 0**; no regression. No holdout (triage rejects on no-improvement). | **rejected** (win-neutral); champion stays **v29**. **Offer E is -EV by CONSTRUCTION and self-rejects — it never fires positively, so v31 plays identically to v29.** The proof (pinned in `acquire.test.ts`): the distress discount only erases the seller's rival-THREAT premium (the cost of arming the buyer); it does NOT discount the set's own `monopolyBonus`. When the buyer takes a WHOLE monopoly that bonus transfers ~1:1 — the seller loses exactly what the buyer gains — so the buyer's gain never clears the seller's discounted break-even plus the accept margin (measured: buyer gain +1120 vs seller discounted loss −1120 → net −30 after the $30 margin). **The asymmetry that made v29's Offer B win has no analogue here:** Offer B buys the LAST lot and banks the WHOLE bonus for one lot's price; a whole-set buy carries the bonus proportionally in every lot, so it is a fair (washing) transfer even at maximal distress — exactly v24's "intact-monopoly buy is -EV and self-rejects" lesson, and distress doesn't change it because the only thing it discounts (the threat premium) is precisely what cancels the buyer's gain. The ONLY way to make it clear would be to discount the bare set's own `monopolyBonus` by the owner's cash — the **cash-scaled-monopoly-value** idea that `bots/CLAUDE.md` explicitly considered and rejected. **Corner (A) is a closed dead end.** `v31/acquire.test.ts` pins the -EV self-reject. |
 | v33 | 2026-06-21 | **STRONG-set hot-potato — marginal-denial price gate** (`versions/v33/trades.ts`): a CORRECTNESS attempt for a live-game bug (Finding 2). A 4-player online game (a cash-rich HUMAN one dark-blue short, Boardwalk at a bot holdout) showed v14's gate closes only the WEAK-set ring: for a strong set + liquid rival, `rivalCanAcquire` PASSES, so each bot re-books the DENY premium and the completer hot-potatoes bot→bot until the rival buys in. v33 added a second, destination-side gate: fire only if the rival could acquire from the holder but NOT from ME after the buy (i.e. my buy actually makes it unreachable). Branched from champion v29; isolated to Offer C. `v33/phantom-denial.test.ts` pins the dark-blue repro + the distressed-holder denial that survives. | **REJECTED — WORSE vs v29: 47.5% (1198–1322, 2520 decisive, confident REGRESSION, −15.1 Elo).** Also WORSE vs v17 (47.0%). | **rejected** (regression). The gate keyed on the RIVAL'S WEALTH, so it deleted not just churn hops but the whole class of rich-rival denials — and the proactive strong-set denial carries real win share. First data point of the load-bearing-churn finding (see v35). `v33` archived. |
 | v34 | 2026-06-21 | **STRONG-set hot-potato — temporal anti-churn cooldown** (`versions/v34/trades.ts` `tradedWithin` + `DENY_COOLDOWN_TURNS`): after v33, attack only the REPETITION, not the denial — a completer traded within K turns is off-limits for a fresh denial buy (first denial fires, re-hops don't). Branched from champion v29; isolated to Offer C. K-swept {3,8,24}. `v34/cooldown.test.ts` pins the suppression + that completions/first-denials are untouched. | **REJECTED — WORSE vs v29: 47.7% (1493–1635, 3128 decisive, −15.8 Elo), IDENTICAL across all K** (rings are tight, ≤3-turn hops, so even K=3 catches them all). | **rejected** (regression). Confirmed v33's lesson by a second, independent mechanism: removing the ring costs ~15 Elo regardless of method. Triggered the diagnostic (below). `v34` archived (also recommended-against as live: same churn-kill as v35 but at −15 Elo). |
@@ -437,29 +781,35 @@ bot as of this doc.
 
 **Two independent tracks — don't conflate them:**
 
-- **The loop champion** — the latest validated `vX` (currently **v29**). The
-  improvement loop advances this on its own, each version branching from the prior
-  best. **No human greenlight is needed to bump versions** — that's just Claude Code
-  continuing to make the bot stronger. (The code half of crowning a champion is the
-  `CHAMPION_VERSION` pointer in `bots/roles.ts`; the doc half is the version-log row.)
-- **The live/official bot** — the `claude` strategy in `registry.ts`, the one
-  shipped in the game, picked by the UI, played by humans. It is a **pointer**
-  (`bots/live.ts` → `LIVE_VERSION`) into the archive, changed **only** on a human
-  **greenlight** ("ship vX into the game") — a separate, deliberate, rare
-  decision, *not* a precondition for continuing the loop, and **orthogonal to the
-  gauntlet floor**.
+- **The loop champion (crown + substrate)** — the latest *confidently-validated*
+  `vX`, the version the next one branches from. The improvement loop advances this
+  on its own — **no human greenlight needed** — but only on a **SPRT-confirmed** win
+  (gauntlet `BETTER` on both streams), never a bare Elo point lead. The doc half is
+  the version-log row.
+- **What the lobby/game fields (strongest/default)** — there is no "live" pointer.
+  Humans pick a concrete version, and the Add-Bot / new-game default is whatever
+  currently **tops the Elo ladder** (`DEFAULT_BOT_VERSION`), ungated. So the player
+  default tracks the *measured* strongest, which may briefly be a version that isn't
+  (yet) the SPRT-confirmed crown — that's fine and expected (see "Two bests").
 
-**As of 2026-06-21 (after the v28 → v29 crowns, then v30/v31/v32 rejects):** the loop champion is
-**v29** (desperation acquisition with the MAXIMAL distress discount), branched from **v28**
-(the desperation-acquisition breakthrough) ← **v17** ← **v14** ← v5. After NINE straight
+**As of 2026-06-21:** the cross-lineage champion (crown + default substrate) is **`claude-v36`**
+(see the Champion-status note above — that note is authoritative): a single-knob fork of the
+prior champion `jane-v2` (DENY_FACTOR 0.3→0.15) proving denial was still over-weighted, BETTER on
+both streams with no regressions. It superseded **`jane-v2`** (the first non-Claude champion).
+Within the Claude machine the line reached **v35** (← v29 ← v28 ← v17 ← v14 ← v5) before adopting
+the Jane base at v36; the v28→v29 desperation-acquisition wins are the live lead this section
+tracks. (The "loop champion" framing below was written at v29, before
+the v33/v34 rejects and the v35 crown.) After NINE straight
 rejects (v19–v27), lead (b) broke through: **v28** introduced desperation-pricing
 acquisition (buy a distressed rival's set-completer BELOW fair price to finish your own
 monopoly — asymmetric + underpriced, the two conditions every prior win shared; BETTER vs
 v17 train 55.8% / holdout 53.2% / +22.3 Elo), and **v29** then pushed its `DISTRESS_DISCOUNT`
 0.75→1.0 for another ~+18 Elo (BETTER vs v28 train 52.7% / holdout 52.6%, near-identical
-streams). TWO acquisition wins in a row on the same lead. The floor stays **v1**; the **live
-bot is whatever `bots/live.ts` → `LIVE_VERSION` points to** (now **v35** — the win-safe
-hot-potato fix, shipped over v17 on a product greenlight; champion stays v29 by Elo).
+streams). TWO acquisition wins in a row on the same lead. The Elo **anchor** stays **claude-v2**;
+the lobby's player-facing **Strongest/default** is whoever tops `bots/ratings.ts`, while the
+**crown/substrate** is the SPRT-confirmed best (the two can differ — see "Two bests").
+(Historical note: this lineage's prior "live/champion" pointers were retired when the lobby
+moved to deriving the player default from the Elo ladder.)
 
 **Lead landscape for the next session (after Batch 4 closed the mortgage-to-fund lead):**
 
@@ -700,17 +1050,55 @@ cash). Positive-sum self-improvement (v3, v4, **and v24's fair-price acquisition
 information (v12) wash; defence (v9/v13/v15) and over-pushing a denial parameter (v7/v10)
 regress.
 
-**Promotion status:** **`LIVE_VERSION = v35`** (the shipped Claude bot) AND
-**`CHAMPION_VERSION = jane-v2`** (cross-lineage). v35 was crowned champion 2026-06-21 (a
-quality tiebreak at parity with v29 — the win-safe strong-set hot-potato fix, carrying the
-whole v29 mechanism + v14's phantom-denial fix). The cross-lineage crown then moved to the
-**Jane-lineage `jane-v2`** (2026-06-21, PR #5) — the FIRST non-Claude champion — which is
-STRICTLY BETTER than v35 on BOTH seed streams (train 54.5% / +31.6 Elo, holdout 53.3% / +22.8
-Elo, zero regressions; gauntlet `jane-v2 --base v35 --field v35`). A clean strictly-better
-crown, full rationale at `roles.ts` `CHAMPION_VERSION`; Jane's own evolution is documented in
-`versions/jane-v2/index.ts`, not this Claude log. `LIVE_VERSION` stays v35 (shipping is a
-Claude product call). **The next CLAUDE version still branches from v35** — the best Claude
-version, independent of the cross-lineage crown.
+**Champion (crown + substrate) status:** the SPRT-confirmed best is
+**`claude-v36`** (2026-06-21) — the first Claude-LABEL champion built on the Jane
+base: a single-knob fork of `jane-v2` (DENY_FACTOR 0.3 → 0.15) that is BETTER than
+`jane-v2` on BOTH seed streams (train 58.9% / +62.6 Elo, holdout 60.6% / +74.5 Elo,
+zero regressions; gauntlet `claude-v36 --base jane-v2 --field jane-v2`) and beats a
+targeted field of the strongest/denial-heaviest opponents with no regression
+(claude-v5 61.6%, claude-v35 53.6%, jane-v4 54.9%, gemini-v1 82.9%). It proves the
+denial knob was still over-weighted at jane-v2's 0.3 — exactly the over-investment
+the real 4-player human game (`game:review 2h0y0y`) showed killing a Claude bot.
+The PRIOR champion `jane-v2` (the FIRST non-Claude champion, PR #5, beat `claude-v35`
+on both streams) is now superseded.
+**The next version we evolve branches from the current champion `claude-v36` by default**
+— improve the measured best directly. Lineages are just provenance (the machine a
+version was discovered on) and borrowing across them is free, so the substrate is the
+best base regardless of family. Branch from a different base only as a deliberate call
+— an archived building block to exploit, or to escape a local maximum. The first lead
+on `claude-v36` — "sweep DENY below 0.15 to bracket the optimum" — was **tried in
+`jane-v3` (DENY 0.0625) and the gradient turned out to be a CYCLE, not a slope**:
+jane-v3 beats claude-v36 head-to-head on both streams but LOSES to jane-v2 (DENY 0.3),
+which claude-v36 beats — a rock-paper-scissors loop (see "Non-transitivity & the
+crown"). So the denial knob has **no single global optimum**; pushing it lower just
+trades which opponent you counter. A future version chasing more win share should look
+to a **different axis** than denial level, or to an **opponent-adaptive / mixed
+denial** strategy (the game-theoretic answer to the cycle), not a lower constant.
+After regenerating `ratings.ts`, the lobby's player-facing **Strongest/default**
+(top of the Elo ladder) should also be `claude-v36` — crown and player-default
+realigned (see "Two bests"). Jane's own evolution is in `versions/jane-v2/index.ts`,
+not this Claude log.
+
+**`jane-v4`** (2026-06-21, PR #6) — **RECORDED + player default, NOT crowned, NOT substrate.**
+A textbook case of the three decisions diverging (see "Two bests"):
+- **Record:** YES — legal (deterministic, self-contained, typecheck/lint clean), registered in
+  `versions/index.ts`.
+- **Strongest / player default:** YES — on the regenerated ladder it **tops the field** (jane-v4
+  +114.8 > jane-v2 +100.8 > jane-v1 +69.8 > claude-v35 +65.2 > claude-v2 0 > gemini-v1 −154.1),
+  so `DEFAULT_BOT_VERSION` follows it. Ungated — that's the point.
+- **Crown / substrate:** NO — the SPRT gate is not met. Gauntlet vs the champion `jane-v2` (both
+  seed streams, bit-reproducible across 3 reruns each): **train EVEN** (50.4%, +3.0 Elo,
+  1283–1261), **holdout BETTER** (52.3%, +16.0 Elo, 1560–1423). The streams aren't statistically
+  distinguishable (~1.4 SE apart) — its true edge is a thin ~+1% / ≈+7 Elo straddling the SPRT
+  EVEN/BETTER line, so it wins holdout but not train. A one-stream win fails the both-streams gate,
+  so **the next evolution still branches from the champion `jane-v2`**, not jane-v4.
+
+So a higher ladder Elo did NOT crown it — exactly the noise-vs-confidence distinction the gate
+exists for. (The PR's self-reported +47.8 Elo was vs `claude-v35`, a baseline `jane-v2` already
+dominates, so it didn't survive a champion re-measure.) Its **trade-memory subsystem** is a
+candidate **archived building block** — scaffolding a later lever might exploit — to be judged on
+its own, never inherited by branching. Jane's own evolution is documented in
+`versions/jane-v4/index.ts`, not this Claude log.
 
 **Lead for the next session (from v17, after the v19–v27 sweep).** Both proven winning
 shapes are at sharp local optima: capital deployment is tapped on EVERY gate (reserve
@@ -1280,13 +1668,26 @@ jail-as-haven timing or auction aggression — see "Status & next step". Next ve
 is **v9 from v5**. NEVER gauntlet `dumb`. v1 is now **out of the default field**
 (Decision 8, taken) — re-add with `--with-v1` only for an occasional floor audit.
 
-**Shipping `vX` to the live bot (whenever a human greenlights it):** change
-`LIVE_VERSION` in `bots/live.ts` to `"vX"`. That is the **whole** procedure — the
-`claude` strategy resolves through it, so no code is copied and no tests change.
-`bots/live.ts` is the single source of truth for what currently ships; this doc
-deliberately does **not** restate the current live version (it would only go
-stale). The old copy-over dance is gone: the live bot is a pointer and `v1` is a
-real frozen snapshot (`versions/v1/`), so the gauntlet floor is permanently
-decoupled from what ships. (Promotion is still a deliberate, rare, human call —
-it's just now a one-liner.) The mechanism has been exercised on real promotions
-(v1→v3, then v3→v5); see the version log for which were strength vs engagement calls.
+**Promoting `vX` — two separate acts (see "Two bests"):**
+
+1. **Make it the player default (strongest):** register it in `versions/index.ts`
+   and run `npm run sim:ratings`. The cached round-robin rates the new version, the
+   regenerated `ratings.ts` re-ranks the field, and the lobby derives
+   Strongest / per-family-best straight from it (`roles.ts`). No code copied, no
+   tests change, no pointer to bump — the default just follows the ladder.
+2. **Crown it / make it the default substrate:** only on a **confident SPRT win
+   against the FIELD** — `npm run sim:gauntlet -- <vX> --base <champion> --panel` on
+   **both** seed streams, accepted iff it is `BETTER` than its base AND regresses
+   against **no panel member**. Beating the champion head-to-head is *not* sufficient
+   on its own (non-transitivity — see "Non-transitivity & the crown"); the panel field
+   is the guard. Record the crown as the version-log row below; by default the next
+   version branches from it (though substrate is ultimately a judgment — you may branch
+   elsewhere or start fresh to escape a local maximum; see "Two bests"). A ladder-topper
+   that's only EVEN under SPRT, or a counter that regresses against a panel member, is
+   the player default at most but **stays uncrowned** and is **not** the default
+   substrate (this is the complexity-ratchet guard).
+
+This doc deliberately does **not** restate the current best (it would only go stale;
+read `ratings.ts` for the ladder, the version log below for the crown). `claude-v1`
+is a real frozen snapshot (`versions/claude-v1/`) deliberately left unrated
+(`RATING_EXCLUDED`), so it stays decoupled from the competitive field.

@@ -1,12 +1,24 @@
 import process from "node:process";
-import type { BotStrategy, GameEvent } from "../types";
+import { botFor } from "./registry";
 import {
   formatResult,
   simulateGame,
-  type Highlight,
+  type Contender,
   type SimOptions,
 } from "./simulate";
-import { spaceName } from "../logic";
+import { DEFAULT_BOT_VERSION } from "./roles";
+import { valueNetStubBot } from "./value-net-stub";
+import { valuePolicyStubBot } from "./value-policy";
+import { VERSIONS } from "./versions";
+import { renderHighlight } from "./render-log";
+
+/** Seat tokens the sim accepts that AREN'T registry strategies: the learned-bot
+ *  prototypes, fielded via the head-to-head `seats` API so they need no
+ *  registry/route wiring (they're prototypes, not fieldable bots).
+ *  - `value-stub`: the minimal reactive loop (`value-net-stub.ts`).
+ *  - `value-policy`: the full-capability agent (`value-policy.ts`). */
+const VALUE_STUB_TOKEN = "value-stub";
+const VALUE_POLICY_TOKEN = "value-policy";
 
 /** `npm run sim` — an on-demand script that plays a full, headless Monopoly game
  *  between bots and prints the outcome. No UI, pure CPU, deterministic by seed.
@@ -15,22 +27,29 @@ import { spaceName } from "../logic";
  *  here as a script, not in the test suite.
  *
  *  Usage:
- *    npm run sim                              # 4 Claude bots, default seed
- *    npm run sim -- claude claude dumb dumb   # custom roster (2, 4, or 8 seats)
- *    npm run sim -- --seed my-seed            # pick the RNG seed
- *    npm run sim -- --turns 4000              # raise the safety cap
- *    npm run sim -- --log                     # stream the per-decision play-by-play
+ *    npm run sim                                  # 4 overall-best bots, default seed
+ *    npm run sim -- claude-v35 jane-v2 dumb dumb  # custom roster (2, 4, or 8 seats)
+ *    npm run sim -- value-policy claude-v2 claude-v2 claude-v2  # full-capability learned-bot prototype
+ *    npm run sim -- value-stub claude-v2 claude-v2 claude-v2    # minimal reactive prototype
+ *    npm run sim -- --seed my-seed                # pick the RNG seed
+ *    npm run sim -- --turns 4000                  # raise the safety cap
+ *    npm run sim -- --log                         # stream the per-decision play-by-play
+ *
+ *  A seat is `dumb` (the reactive baseline), `value-policy` / `value-stub` (the
+ *  learned-bot prototypes — `value-policy.ts` / `value-net-stub.ts`), or any
+ *  version label in the archive (`bots/versions/index.ts`, e.g. `claude-v35`).
  */
 
 interface Args {
   seed: string;
-  strategies: BotStrategy[];
+  /** Raw seat tokens in order: a version label, `dumb`, or `value-stub`. */
+  seats: string[];
   maxTurns: number;
   log: boolean;
 }
 
 function parseArgs(argv: readonly string[]): Args {
-  const strategies: BotStrategy[] = [];
+  const seats: string[] = [];
   let seed = "table-1";
   let maxTurns = 2000;
   let log = false;
@@ -50,91 +69,71 @@ function parseArgs(argv: readonly string[]): Args {
       }
     } else if (arg === "--log") {
       log = true;
-    } else if (arg === "claude" || arg === "dumb") {
-      strategies.push(arg);
+    } else if (
+      arg === "dumb" ||
+      arg === VALUE_STUB_TOKEN ||
+      arg === VALUE_POLICY_TOKEN ||
+      arg in VERSIONS
+    ) {
+      seats.push(arg);
     } else {
       throw new Error(
-        `unknown argument "${arg}" (expected claude | dumb | --seed | --turns | --log)`,
+        `unknown argument "${arg}" (expected dumb, ${VALUE_STUB_TOKEN}, ` +
+          `${VALUE_POLICY_TOKEN}, a version label like claude-v35, or ` +
+          `--seed | --turns | --log)`,
       );
     }
   }
 
   return {
     seed,
-    strategies:
-      strategies.length > 0
-        ? strategies
-        : ["claude", "claude", "claude", "claude"],
+    seats:
+      seats.length > 0
+        ? seats
+        : [
+            DEFAULT_BOT_VERSION,
+            DEFAULT_BOT_VERSION,
+            DEFAULT_BOT_VERSION,
+            DEFAULT_BOT_VERSION,
+          ],
     maxTurns,
     log,
   };
 }
 
-/** Render one play-by-play moment as a single console line. */
-function renderHighlight(h: Highlight, nameOf: (id: string | null) => string): string {
-  const e = h.event;
-  const t = `T${h.turn}`.padEnd(6);
-  switch (e.kind) {
-    case "bot-note":
-      return `${t}💭 ${nameOf(e.playerId)}: ${e.text}`;
-    case "buy":
-      return `${t}🛒 ${nameOf(h.actorId)} buys ${spaceName(e.position)} ($${e.price})`;
-    case "auction":
-      return `${t}🔨 ${spaceName(e.position)} auctioned → ${e.winnerId === null ? "no sale" : nameOf(e.winnerId)} ($${e.price})`;
-    case "build":
-      return `${t}🏠 ${nameOf(e.playerId)} builds ${spaceName(e.position)} → level ${e.toLevel} ($${e.cost})`;
-    case "sell-building":
-      return `${t}🏚️ ${nameOf(e.playerId)} sells a building on ${spaceName(e.position)} → level ${e.toLevel} (+$${e.refund})`;
-    case "mortgage":
-      return `${t}🏦 ${nameOf(e.playerId)} mortgages ${spaceName(e.position)} (+$${e.received})`;
-    case "unmortgage":
-      return `${t}💵 ${nameOf(e.playerId)} unmortgages ${spaceName(e.position)} (−$${e.cost})`;
-    case "trade":
-      return `${t}🤝 ${nameOf(e.proposerId)} trade — ${tradeSummary(e, nameOf)}`;
-    case "trade-declined":
-      return `${t}🚫 ${nameOf(e.proposerId)}'s offer declined by ${nameOf(e.declinedBy)}`;
-    case "bankrupt":
-      return `${t}💥 ${nameOf(e.debtorId)} goes bankrupt → ${nameOf(e.creditorId)}`;
-    case "winner":
-      return `${t}🏆 ${nameOf(e.winnerId)} WINS`;
-    default:
-      return `${t}${e.kind}`;
+/** Resolve a seat token to a `Contender`. The registry handles `dumb` + version
+ *  labels; `value-stub` resolves to the prototype `Bot` directly (it isn't a
+ *  registry strategy). */
+function toContender(token: string): Contender {
+  if (token === VALUE_STUB_TOKEN) return { label: VALUE_STUB_TOKEN, bot: valueNetStubBot };
+  if (token === VALUE_POLICY_TOKEN) {
+    return { label: VALUE_POLICY_TOKEN, bot: valuePolicyStubBot };
   }
-}
-
-function tradeSummary(
-  e: Extract<GameEvent, { kind: "trade" }>,
-  nameOf: (id: string | null) => string,
-): string {
-  const props = Object.entries(e.propertyTo).map(
-    ([pos, to]) => `${spaceName(Number(pos))}→${nameOf(to)}`,
-  );
-  const cash = Object.entries(e.cashDelta)
-    .filter(([, d]) => d !== 0)
-    .map(([id, d]) => `${nameOf(id)} ${d > 0 ? "+" : "−"}$${Math.abs(d)}`);
-  return [...props, ...cash].join(", ");
+  return { label: token, bot: botFor(token) };
 }
 
 function main(): void {
   const args = parseArgs(process.argv.slice(2));
-  const count = args.strategies.length;
+  const count = args.seats.length;
   if (count !== 2 && count !== 4 && count !== 8) {
     console.error(
       `Need 2, 4, or 8 seats (got ${count}). ` +
-        `Example: npm run sim -- claude claude claude claude`,
+        `Example: npm run sim -- claude-v2 claude-v2 claude-v2 claude-v2`,
     );
     process.exit(1);
   }
 
   console.log("\nMonopoly — headless bot self-play");
   console.log(
-    `Seats: ${args.strategies.join(", ")}   ` +
+    `Seats: ${args.seats.join(", ")}   ` +
       `Seed: "${args.seed}"   Max turns: ${args.maxTurns}\n`,
   );
 
+  // Always seat via the `Contender` path so a registry strategy and the
+  // value-stub prototype share one code path.
   const opts: SimOptions = {
     seed: args.seed,
-    strategies: args.strategies,
+    seats: args.seats.map(toContender),
     maxTurns: args.maxTurns,
     includeLog: args.log,
   };

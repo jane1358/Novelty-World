@@ -1,10 +1,11 @@
 // ===========================================================================
 // v1 SNAPSHOT — the original champion, frozen (see EVOLUTION.md). This is the
 // gauntlet's floor: a self-contained copy so `v1` always means *v1*, never
-// "whatever currently ships". The live bot is a pointer into this archive
-// (`bots/live.ts` → `LIVE_VERSION`), not this file. Exposed as `claudeV1Bot` via
-// `./index.ts`. Shared infrastructure (engine, board geometry, the Bot
-// contract) is imported from the canonical modules; only the policy is copied.
+// "whatever currently ships". What the lobby fields is derived from the archive +
+// the Elo ladder, not this file; `claude-v1` is deliberately unrated. Exposed as
+// `claudeV1Bot` via `./index.ts`. Shared infrastructure (engine, board geometry,
+// the Bot contract) is imported from the canonical modules; only the policy is
+// copied.
 // ===========================================================================
 import { colorAt, groupPositions } from "../../../development";
 import { auctionBidCap, BID_INCREMENT, firstNegativePlayer } from "../../../engine";

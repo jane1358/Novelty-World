@@ -2,10 +2,12 @@
 
 Read this before touching any version's `policy.ts`, `valuation.ts`, or
 `trades.ts`. The policy code lives in the version archive
-(`bots/versions/<label>/`), not at the top level — there is no `bots/policy.ts`;
-the live bot is a pointer (`bots/live.ts` → `LIVE_VERSION` — read that file for
-the version currently shipped) into that archive (see EVOLUTION.md "Coexistence &
-promotion"). The main
+(`bots/versions/<label>/`), not at the top level — there is no `bots/policy.ts`.
+A seat fields a **concrete version label** (`Player.botStrategy`); the lobby's
+"best" picks are simply the **highest-Elo** labels, derived from the measured
+ladder (`bots/ratings.ts` → `bots/roles.ts`), not hand-picked pointers (see
+"Lobby strength ratings" below and EVOLUTION.md "Coexistence & promotion"). The
+main
 `monopoly/CLAUDE.md` "Bots" section owns the shared **infrastructure** (the `Bot`
 contract, the registry, BOT-note mechanics, and how the pacer drives proactive
 play). This file owns the **`claude` strategy itself** — its purpose, its
@@ -29,6 +31,15 @@ this bot should be the best work we can produce.
   the only loyalty. The opponents it's built to beat are themselves ruthless pros:
   fast, optimal, merciless, and willing to exploit the fact that a seat is a bot.
   Claude Bot must out-play exactly that.
+- **Lineages are provenance OR paradigm — never loyalty.** A prefix labels what a
+  family *is about*: usually the machine a version was *discovered on* (`claude` /
+  `jane` / `gemini`), but it can also name a **system/paradigm** a line explores
+  (`trade-v` — an asymmetric-valuation trade engine, authored on Jane but filed under
+  the idea). Either way the family is **not** a walled-off codebase. Borrowing or
+  stealing a rival lineage's idea wholesale to make a version stronger is encouraged
+  — "winning is the only loyalty" applies to the code as much as to in-game play.
+  When you evolve, look across ALL families and branch from whatever base you can
+  most improve (see EVOLUTION.md "Two bests").
 - **Proactive across the full surface.** It buys, trades, mortgages *and*
   unmortgages at the strategic moment — it does not sit on a winning position.
 - **Transparency serves insight, never at the cost of winning.** Every decision
@@ -173,6 +184,23 @@ bust. **Invariant: keep buyer-side and holder-side denial pricing in lockstep** 
 you ever change `DENY_FACTOR` or `acquisitionValue`'s deny premium, `denialPositionCost`
 must move with it, or the ring returns.
 
+**`denialPositionCost` was LOST, then restored on the opt base (claude-v39).** When
+claude-v36 branched off jane-v2 (a stronger base that had the v14 phantom-denial gate
+and a low `denyFactor` but **never** carried v35's holder-side price), it dropped
+`denialPositionCost` — and the whole opt lineage (`opt-v1…v4`, the parameterized
+factory) inherited that gap *and* pushed `denyFactor` back up to 0.317, which makes the
+ring **worse**. A real 4-player game vs a human (`game:review 514j43`; corroborated by
+`16043u`) caught it live: two opt/claude bots hot-potatoed one completer 18–24× while
+the human just developed and won. The `rivalCanAcquire` phantom gate does **not** catch
+this — it only blocks denials of sets the rival *can't* get; a **strong** set the rival
+genuinely threatens passes the gate, yet rotating the completer between two non-rival
+deniers still has zero marginal denial value. **claude-v39** = the opt-v4 champion
+factory + `denialPositionCost` ported back in (same vector, one logical change). The
+ring collapses (one lot's hops 15–99 → 1–6, reproduced in `claude-v39/policy.test.ts`)
+at **no cost**: gauntlet `--base opt-v4 --panel` = **EVEN vs opt-v4, BETTER vs all 8
+other panel members, zero regressions**. It's a non-regression, not a crown (EVEN, not
+better), and a clean substrate for the seller-side trade work in "Refinement targets" #3.
+
 ## Randomness & the RNG seam
 
 The bot is a pure function `(state, playerId) => BotDecision | null` today — no
@@ -220,6 +248,56 @@ Ordered by impact. Each is a place the *current* policy leaves value on the tabl
    fully closed — both halves washed.** Mortgage-to-fund is a win-safe building block,
    not an edge.
 
+3. **Price the SELLER side of a set-handover properly — "don't gift a monopoly for
+   spendable-on-nothing cash" (OPEN — Kyle's thesis, 2026-06-23).** *Not yet built; the
+   single most promising untested trade idea, and it would make the hot-potato a
+   non-issue for free.* The thesis, plainly: **giving a rival a set is only OK if you (a)
+   get an equivalent set back, OR (b) are handed a LOT of cash AND have something
+   productive to spend it on — because cash that can't be turned into more cash is nearly
+   worthless.** Denial (the buyer-side premium + `denialPositionCost`) is a *patch* for the
+   real disease: bots are too willing to *sell* completers. Raise the seller's reluctance
+   enough and the completer never reaches the market, so there is nothing to deny and the
+   ring has no fuel — fixing the root, not the symptom (a pro essentially never gifts a
+   monopoly for cash).
+
+   How it maps to the engine (three conditions):
+   - **(a) equivalent set — already modeled.** `monopolyGain(me)` credits a set I also
+     complete, so a balanced mutual-completion swap nets positive and still passes. *Do
+     not break this.*
+   - **(b) a LOT of cash — underpriced today.** The *only* term penalizing "I handed a
+     rival a monopoly" is `rivalThreatCost = RIVAL_THREAT_FACTOR × bonus`, and
+     `RIVAL_THREAT_FACTOR` is pinned to `DENY_FACTOR` (0.317 on opt) — so the bot prices
+     its *own* harm at ~32% of what the rival *gains* (100%+ plus compounding rent). That
+     asymmetry is why bots sell completers for too little (e.g. 514j43 T41: a bot gifted
+     the human the light blues for $200 net). **Decouple `rivalThreatFactor` from
+     `denyFactor`** (it is NOT part of the buyer/holder ring lockstep — that's
+     `denyFactor`↔`denialPositionCost`; `rivalThreatCost` fires only when the recipient
+     *is* the completing rival, mutually exclusive with `denialPositionCost`) and raise it.
+     *Early signal:* a throwaway sweep on the claude-v39 base, `denyFactor` fixed at 0.317,
+     moved `rivalThreatFactor` 0.317→0.6 and lifted win share vs opt-v4 ~45%→~51% on one
+     130-seed stream (within-noise, directional). **Caveat: do NOT push it too high** —
+     `rivalThreatFactor` ≳ 1.0 made bots refuse all deals and games ran to the turn cap
+     (the trade-deadlock the games-must-be-decisive rule exists to prevent; it also
+     spawned the CPU-hogging never-terminating sims during exploration).
+   - **(c) the cash must be DEPLOYABLE — not modeled at all; the novel piece.** In
+     `positionValue` cash is dollar-for-dollar, and the trade evaluator only ever values
+     cash *above* face (the `sellerDistress`/`survivalFactor` survival bonus). There is no
+     term for the other end: a **safe** seat with **no outlet** (no near-monopoly to
+     complete, no undeveloped set to build, no mortgages to redeem) should value incoming
+     cash *below* face, because idle cash earns nothing. Add a **deployability discount**
+     on incoming cash *in a set-handover trade*, so a fat cash offer doesn't tempt a bot
+     that can't put the money to work. **This is NOT the rejected "cash-scaled monopoly
+     value"** (see "Considered and rejected") — that scaled *own-set value by own cash* and
+     injected timidity into completing your *own* monopolies; this scales *the value of
+     cash received* in a deal that *enables a rival*, leaving own-set acquisition
+     untouched. Watch for the same timidity failure mode when implementing.
+
+   The win it's after: fewer one-sided "set for cash" gifts (the human's edge in both
+   reviewed games), a stronger overall bot, and — as a free side effect — no trade-loop,
+   because rotating a completer you'd never sell cheaply is simply never proposed.
+   Acceptance is the usual gauntlet + SPRT vs opt-v4 on the v39 base. Build (b) and (c)
+   together as `claude-v40`; field via a decoupled vector + the new discount.
+
 When you close one of these, move it out of this list and fold the resulting
 behavior into the relevant section above.
 
@@ -264,6 +342,104 @@ evaluator already vetoes a deal that ends cash-negative unless the gain is
 transformative. A graduated version (don't trade below the rent reserve for a
 marginal gain) is a reasonable future *defensive* hardening — but it is a
 liquidity guard, not a discount on what a monopoly is worth.
+
+## Lobby strength ratings — the player-facing strength axis
+
+**A bot's Elo IS its strength.** The lobby is a SINGLE-axis, player-facing view —
+"which bot challenges me most right now?" — derived entirely from the measured Elo
+ladder. It has **no** notion of "champion"/"crown": that is a separate *evolution*
+concept with a different audience and a stricter (confidence-gated) bar — see
+**"Two bests: strongest vs crown vs substrate"** in `EVOLUTION.md`. Keep them
+apart; conflating them is the trap this model exists to avoid. Read this before
+touching `roles.ts`, `ratings-cli.ts`, or `ratings.ts`.
+
+What the ladder drives (all in `roles.ts` `LOBBY_BOTS`, recomputed from the
+generated `BOT_RATINGS`):
+- **Strongest** — highest Elo across all families. The lobby default and the
+  `addBot`/`freshGame` seat (`DEFAULT_BOT_VERSION`). **No confidence gate** — it
+  just follows the top of the ladder, so a within-noise tie may flip the label
+  (fine: two bots within noise are genuinely ~equally hard).
+- **Each family's best** — highest Elo within that family.
+- **Deprecated** — any version with **no Elo** (struck through, "???", disabled).
+
+Mechanics:
+- **Generated, never hand-typed.** `npm run sim:ratings` (`ratings-cli.ts`) fits one
+  Elo over the **whole archive** (every version except `dumb` and `RATING_EXCLUDED`)
+  and writes `bots/ratings.ts` (`BOT_RATINGS`, raw Elo). Treat it as build output — a
+  hand-edited rating would quietly lie to players about how hard each bot is.
+- **The ANCHOR PANEL — why the default is NOT a full round-robin.** A complete
+  round-robin is **O(N²)** pairings and a new version's marginal cost is its whole
+  **O(N)** column — both grow without bound, and most of that work re-measures tiny
+  distinctions between near-duplicate parameter siblings (34 of the first 35 versions
+  share `DENY_FACTOR=0.6`). Elo only needs a **connected** comparison graph, not a
+  complete one. So by default `sim:ratings` fits over the **anchor-panel graph**: a
+  small fixed panel (`RATING_PANEL` in `ratings-cli.ts`) plays a full round-robin
+  among itself, and every other version plays **only the panel** — making a new
+  version **O(k)** (constant) and the whole archive **O(N·k)** (linear). The panel is
+  chosen empirically (claude-v2/v5/v17/v35 + jane-v2 + claude-v36) to span the Elo
+  range *and* the strategic axes (denial level, trade mechanism); vs a full
+  round-robin it reproduces the overall Strongest and **both family bests exactly**,
+  with ~6 Elo mean per-version error confined to the intra-family ordering of non-best
+  siblings (which differ by 1–3 Elo — within the full ladder's own noise). **Re-examine
+  the panel when a STRUCTURALLY different lineage lands** (e.g. the learned bot):
+  parameter siblings are ~transitive so a small panel suffices, but a genuinely new
+  engine can expose a matchup the panel doesn't represent.
+- **Cached, and now cheap by default.** Games are deterministic in (versions, seed,
+  count, turn-cap) and versions are frozen, so each pairing's tally is persisted to
+  `ratings-cache.json` and reused. With the panel as the default, a no-arg
+  `npm run sim:ratings` only ever plays a new version's **k panel pairings** (the rest
+  cache hits) — seconds on a warm cache. `--full` forces the **complete O(N²)
+  round-robin** (a high-precision recalibration): use it sparingly — on a cold cache
+  it is *hours*, historically dominated by **gemini-v1's capped-game slogs** (now in
+  `RATING_EXCLUDED`, so out of the default field).
+- **Explicit list — a focused check (the panel does NOT apply here).** The default
+  no-arg run already rates a new version cheaply (it plays only the k panel pairings),
+  so you rarely need this. But `sim:ratings` still accepts an **explicit version
+  list**, over which it does a full round-robin and fits Elo over *just those*
+  (anchored at `claude-v2`), writing `ratings.ts` with **exactly that set** — handy
+  for a tight head-to-head Elo among a hand-picked few. If you use it to publish the
+  ladder, rate against **every version currently in `ratings.ts`**:
+  ```
+  npm run sim:ratings -- <new-version> <every-version-currently-in-ratings.ts>
+  ```
+  **Caveats:**
+  (1) *Include every currently-rated version* — any you accidentally omit drops out
+  of `ratings.ts` and its family deprecates. (Conversely, *deliberately* omitting a
+  version is exactly how you deprecate it — that's how `gemini-v1` was retired: drop
+  it from the rated set AND add it to `RATING_EXCLUDED`.) (2) The numbers differ
+  slightly from a full-field fit (it's a smaller fit);
+  the eventual full run overwrites with the complete joint Elo and **reuses** these
+  cached pairings. (3) This does **not** fix `ratings.test.ts` coverage — versions
+  outside the rated set stay unrated (that test is about full coverage, a separate
+  concern from "is the new bot selectable").
+- **Fixed anchor (`claude-v2 = 0`), permanently.** Elo is only defined up to a
+  global offset, so one version is pinned to 0. We pin the field floor and **never
+  move it** — keeping a saved number comparable across regenerations. The anchor
+  need not be competitive; it just defines the scale.
+- **Only relative gaps mean anything.** The friendly display offset
+  (`RATING_DISPLAY_BASE`, +1000) lives in `roles.ts` (`ratingFor`), so the floor
+  reads ~1000 instead of a discouraging 0; `BOT_RATINGS` stays the raw measurement.
+- **Two hand-maintained eval knobs (both in `versions/index.ts`, both kept tiny).**
+  (1) `RATING_EXCLUDED` — versions deliberately left unrated because they're too
+  weak/slow to be worth the rating + gauntlet cost (`claude-v1` and `gemini-v1` — both
+  real, runnable snapshots, excluded purely as a cost optimization; see EVOLUTION.md
+  Decision 8). They render deprecated, and the gauntlet drops them from its default
+  field too. (2) `RATING_PANEL` — the fixed opponents a version is measured against,
+  shared by BOTH tools: the rater fits the ladder over the panel graph (above), and
+  `sim:gauntlet --panel` uses it as the **crown-gate field** (a version is crowned only
+  if it beats its base AND regresses against no panel member — the non-transitivity
+  guard). Must include the anchor and no excluded member (asserted by both tools).
+  **When you crown a new champion, add it to the panel** (and you may retire a
+  now-redundant member) — that keeps the ceiling of the comparison graph current.
+- **Regenerate after adding any version** (and any time you want to refresh the
+  whole ladder). This sets the player-facing **Strongest/default** automatically —
+  no pointer to bump. It does **not** by itself crown a champion or pick a
+  substrate: those need SPRT confirmation (see EVOLUTION.md). A ladder-topper that
+  isn't a confident win is the Strongest the lobby offers, yet still uncrowned.
+- **Enforced by `ratings.test.ts`.** A test asserts every rateable version (all but
+  `dumb` + `RATING_EXCLUDED`) has a rating, and that the excluded set has none. Add a
+  version without regenerating and `npm run test` fails with a "run
+  `npm run sim:ratings`" message. That's the guardrail.
 
 ## Testing
 
