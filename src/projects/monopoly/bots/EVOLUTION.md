@@ -534,9 +534,46 @@ Open structural leads from here:
 - **search-on-opt-v4:** put search-v1's rollout improvement on top of the opt-v4 base — combine
   lookahead's edge with opt-v4's robustness. (Measurement is slow; rollout bot.) The most promising
   way *out* of the parameter cluster.
-- **Expanded parameter space:** the ES only optimized claude-v38's 15 existing constants. Exposing
-  MORE (per-color set weights, the rail-synergy table values, the distress gate) opens dimensions the
-  cluster never explored — a richer basin the maximin loop could climb.
+- **Expanded parameter space:** the ES only optimized claude-v38's 15 existing constants. The
+  optimizer has since been **widened to 28 dimensions** (commit `70b4888`: 8 per-color
+  `MONOPOLY_BONUS` multipliers + 3 rail-synergy values + `distressSafeRatio` + `spreadFloor`,
+  all fidelity-preserved) — a richer basin the maximin loop can climb. **Not yet run.**
+
+### In-flight handoff (2026-06-23) — two experiments queued, neither baked
+
+The durable pickup state, so a fresh session can resume from the repo alone (the loop's rule:
+state lives here, not in a pasted blob).
+
+**(A) `opt-v5` — a harvested 15-param maximin winner, NOT yet baked or validated.** Re-run of the
+maximin ES against the **9-member panel** (claude-v2/v5/v17/v35, jane-v2, claude-v36, opt-v2, jane-v4,
+**opt-v4**). Train maximin **54.5%** (baseline claude-v38 35.5%) — its worst matchup over the 9 panel
+members, *including opt-v4*, is >50% on the train seeds, so it is a genuine **candidate to beat the
+champion opt-v4** (same pattern by which opt-v4 beat opt-v2). The exact winning vector (SNES, maximin,
+9-panel, seed 1):
+```
+denyFactor 0.37993327623361783, bonusScale 18467.037936993464, railSynergyScale 1.2285592260282767,
+utilPairBonus 16.29118711197981, baseFloor 7.008983216778028, floorRentFraction 0.1,
+floorCap 161.54101792608975, hotelCushion 344.2221252625536, houseScarce 2.0115417088378957,
+jailDangerRent 150, acceptMargin 5, survivalFactor 1.6007327817476908,
+liquidityRiskGain 258.5361030857855, dipWorthMult 1.2653800365373533, raiseWorthMult 1.9729047015060546
+```
+**To finish opt-v5:** (1) bake — `cp -r versions/opt-v2 versions/opt-v5`, rewrite `index.ts`
+(`OPT_V5_PARAMS` = the vector above, `optV5Bot`, header), adapt `policy.test.ts`'s pinned vector,
+register in `versions/index.ts`. (It is a **15-param** vector, so opt-v2's copied `bot.ts` factory is
+the right one — no 28-param work needed.) (2) `npm run typecheck` + `lint` + the new `policy.test.ts`.
+(3) crown gate: `npm run sim:gauntlet -- opt-v5 --base opt-v4 --panel` on **both** streams (add
+`--prefix holdout`). (4) **MANDATORY out-of-panel check** (this is what caught opt-v3):
+`npm run sim:versus -- opt-v5 <jane-v3 | claude-v38 | claude-v30>` — must NOT regress. (5) If BETTER
+vs base on both streams AND no regressions **panel AND out-of-panel** → robust champion (run
+`sim:ratings`, add opt-v5 to `RATING_PANEL`, push); else record as recorded-not-crowned (a counter).
+
+**(B) The 28-param wide run — harness ready (`70b4888`), NOT started.** Launch:
+`npm run sim:optimize -- --pop 36 --gens 30 --games 990 --fitness maximin --workers 14 --seed 1`
+(~3–6 h; the space is bigger, hence the larger pop/gens). **Baking caveat:** a 28-param winner
+**cannot** bake from opt-v2's 15-param `bot.ts` — copy the **current** `optimize/bot.ts` (28-param
+factory) into the new snapshot dir and bind the 28-vector to it, then the same crown-gate +
+out-of-panel discipline as above. Note: opt-v5 and a wide run both write `optimize/best-vector.json`,
+so **run them one at a time** (or in separate worktrees).
 - **Out-of-distribution robustness:** opt-v2 is optimized vs THIS panel; a future check is its
   strength vs a held-out *opponent* set and vs humans, to confirm the hyper-aggressive profile
   isn't exploiting a shared bot blind spot. (It generalized across the archive, which is
