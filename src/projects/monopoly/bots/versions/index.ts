@@ -65,6 +65,9 @@ import { searchV1Bot } from "./search-v1";
 // (every prior version moved one or two constants at a time, SPRT-gated). The
 // winning vector is baked back in as plain static numbers. See `versions/opt-v1/`.
 import { optV1Bot } from "./opt-v1";
+// opt-v2: same ES paradigm, but a CROWN-ALIGNED MAXIMIN fitness (lift the WORST
+// per-member matchup rather than aggregate win-share). See `versions/opt-v2/`.
+import { optV2Bot } from "./opt-v2";
 
 // ---------------------------------------------------------------------------
 // The version archive. Every bot snapshot the simulator can field by name, for
@@ -126,6 +129,7 @@ export const VERSIONS: Readonly<Record<string, Bot>> = {
   "trade-v1": tradeV1Bot,
   "search-v1": searchV1Bot,
   "opt-v1": optV1Bot,
+  "opt-v2": optV2Bot,
   dumb: dumbBot,
 };
 
