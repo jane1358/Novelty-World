@@ -205,6 +205,11 @@ export const RATING_PANEL: readonly string[] = [
   // counter-overfit hole. It also spans a distinct strategy (the Jane trade-memory
   // line), which is exactly the panel's membership rule.
   "jane-v4",
+  // opt-v4 — the CURRENT robust champion (crown base). Maximin ES vs this very
+  // (completed) panel: SPRT-beats opt-v2 AND jane-v4 on both streams with NO panel
+  // OR out-of-panel regressions — the robust improvement opt-v3 wasn't. Added per
+  // "crown a champion → add it here."
+  "opt-v4",
 ];
 
 /** Resolve a version label to its policy, or throw with the known set listed —
