@@ -37,6 +37,7 @@ import { claudeV34Bot } from "./claude-v34";
 import { claudeV35Bot } from "./claude-v35";
 import { claudeV36Bot } from "./claude-v36";
 import { claudeV38Bot } from "./claude-v38";
+import { claudeV39Bot } from "./claude-v39";
 // Jane lineage — a bot family distinct from Claude (see EVOLUTION.md "Bot
 // lineages"). Every lineage is namespaced by label prefix — `claude-vN`,
 // `jane-vN`, `gemini-vN`.
@@ -127,6 +128,7 @@ export const VERSIONS: Readonly<Record<string, Bot>> = {
   "claude-v35": claudeV35Bot,
   "claude-v36": claudeV36Bot,
   "claude-v38": claudeV38Bot,
+  "claude-v39": claudeV39Bot,
   "jane-v1": janeV1Bot,
   "jane-v2": janeV2Bot,
   "jane-v3": janeV3Bot,
